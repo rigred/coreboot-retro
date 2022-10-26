@@ -26,8 +26,8 @@ entries
 # -----------------------------------------------------------------
 # p2b-[ld]s config options: onboard SCSI termination
 # Controls PIIX4 GPO22 (Ultra2-68) and GPO23 (SCSI-50)
-412	1	e	1	scsi_se_term
-413	1	e	2	scsi_lvd_term
+#412	1	e	1	scsi_se_term
+#413	1	e	2	scsi_lvd_term
 
 # -----------------------------------------------------------------
 # TODO: raminit config options
