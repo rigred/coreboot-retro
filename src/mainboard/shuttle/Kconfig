@@ -1,0 +1,17 @@
+## SPDX-License-Identifier: GPL-2.0-only
+
+if VENDOR_SHUTTLE
+
+choice
+	prompt "Mainboard model"
+
+source "src/mainboard/shuttle/*/Kconfig.name"
+
+endchoice
+
+source "src/mainboard/shuttle/*/Kconfig"
+
+config MAINBOARD_VENDOR
+	default "Shuttle"
+
+endif # VENDOR_SHUTTLE

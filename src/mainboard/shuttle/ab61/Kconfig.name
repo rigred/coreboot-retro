@@ -1,0 +1,9 @@
+config BOARD_SHUTTLE_AB61
+	bool "AB61"
+
+config BOARD_SHUTTLE_HOT_661
+	bool "HOT661"
+
+config BOARD_SHUTTLE_HOT_649
+	bool "HOT649"
+
