@@ -10,7 +10,7 @@ static const struct irq_routing_table intel_irq_routing_table = {
 	(0x04 << 3) | 0x0,	/* Interrupt router device */
 	0,			/* IRQs devoted exclusively to PCI usage */
 	0x8086,			/* Vendor */
-	0x122e,			/* Device */
+	0x7110,			/* Device */
 	0,			/* Miniport data */
 	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, /* u8 rfu[11] */
 	0x54,			/* Checksum */
