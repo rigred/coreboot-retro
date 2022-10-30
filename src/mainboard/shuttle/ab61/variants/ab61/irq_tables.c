@@ -88,12 +88,6 @@ unsigned long write_pirq_routing_table(unsigned long addr)
 	pirq_info++;
 	slot_num++;
 
-	/* pci slot 5 */
-	write_pirq_info(pirq_info, 0, PCI_DEVFN(0x0c, 0),
-			0x62, 0xdeb8, 0x63, 0xdeb8, 0x60, 0xdeb8, 0x61, 0xdeb8, 5, 0);
-	pirq_info++;
-	slot_num++;
-
 	/* 82371AB/EB/MB PIIX4/E/M EIDE Controller */
 	write_pirq_info(pirq_info, 0, PCI_DEVFN(0x07, 1),
 			0x60, 0xdeb8, 0x61, 0xdeb8, 0x62, 0xdeb8, 0x63, 0xdeb8, 0, 0);
