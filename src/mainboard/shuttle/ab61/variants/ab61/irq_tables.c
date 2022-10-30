@@ -46,7 +46,7 @@ unsigned long write_pirq_routing_table(unsigned long addr)
 	pirq->rtr_bus = 0;
 	pirq->rtr_devfn = PCI_DEVFN(0x07, 0);
 
-	pirq->exclusive_irqs = 0x0c00;
+	pirq->exclusive_irqs = 0x0c80;
 
 	pirq->rtr_vendor = 0x8086;
 	pirq->rtr_device = 0x7000;
