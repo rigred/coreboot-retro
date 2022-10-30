@@ -31,10 +31,10 @@ entries
 
 # -----------------------------------------------------------------
 # TODO: raminit config options
-#415	1	e	6	ram_timing
-#416	1	e	5	srp_timing
-#417	1	e	5	srcd_timing
-#418	1	e	5	cas_latency
+415	1	e	6	ram_timing
+416	1	e	5	srp_timing
+417	1	e	5	srcd_timing
+418	1	e	5	cas_latency
 
 enumerations
 #ID	value	text
@@ -61,11 +61,11 @@ enumerations
 4	7	Debug
 4	8	Spew
 
-#5	0	3
-#5	1	2
+5	0	3
+5	1	2
 
-#6	0	Auto
-#6	1	Manual
+6	0	Auto
+6	1	Manual
 
 checksums
 

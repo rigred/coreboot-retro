@@ -4,3 +4,7 @@ boot_option=Fallback
 debug_level=Debug
 nmi=Enable
 udma_enable=Enable
+ram_timing=Auto
+srp_timing=3
+srcd_timing=3
+cas_latency=3
