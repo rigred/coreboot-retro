@@ -73,9 +73,9 @@ MENDOCINO_FWM_POSITION=$(call int-add, \
 	$(call int-shift-left, \
 	0x80000 $(CONFIG_AMD_FWM_POSITION_INDEX))) 0x20000 1)
 
-# 0x40 accounts for the cbfs_file struct + filename + metadata structs, aligned to 64 bytes
+# 0x80 accounts for the cbfs_file struct + filename + metadata structs, aligned to 64 bytes
 # Building the cbfs image will fail if the offset isn't large enough
-AMD_FW_AB_POSITION := 0x40
+AMD_FW_AB_POSITION := 0x80
 
 MENDOCINO_FW_A_POSITION=$(call int-add, \
 	$(shell awk '$$2 == "FMAP_SECTION_FW_MAIN_A_START" {print $$3}' $(obj)/fmap_config.h) \
@@ -261,11 +261,17 @@ $(obj)/amdfw.rom:	$(call strip_quotes, $(PSP_BIOSBIN_FILE)) \
 		--location $(shell printf "%#x" $(MENDOCINO_FWM_POSITION)) \
 		--output $@
 
+ifeq ($(CONFIG_CBFS_VERIFICATION)$(CONFIG_VBOOT_STARTS_IN_BOOTBLOCK),yy)
+$(PSP_BIOSBIN_FILE): $(PSP_ELF_FILE)
+	rm -f $@
+	$(OBJCOPY_bootblock) -O binary $< $@
+else
 $(PSP_BIOSBIN_FILE): $(PSP_ELF_FILE) $(AMDCOMPRESS)
 	rm -f $@
 	@printf "    AMDCOMPRS  $(subst $(obj)/,,$(@))\n"
 	$(AMDCOMPRESS) --infile $(PSP_ELF_FILE) --outfile $@ --compress \
 		--maxsize $(PSP_BIOSBIN_SIZE)
+endif
 
 $(obj)/amdfw_a.rom: $(obj)/amdfw.rom
 	rm -f $@
@@ -296,11 +302,6 @@ $(obj)/amdfw_b.rom: $(obj)/amdfw.rom
 		--output $@
 
 
-cbfs-files-y += apu/amdfw
-apu/amdfw-file := $(obj)/amdfw.rom
-apu/amdfw-position := $(MENDOCINO_FWM_POSITION)
-apu/amdfw-type := raw
-
 ifeq ($(CONFIG_VBOOT_SLOTS_RW_A)$(CONFIG_VBOOT_STARTS_BEFORE_BOOTBLOCK),yy)
 cbfs-files-y += apu/amdfw_a
 apu/amdfw_a-file := $(obj)/amdfw_a.rom
@@ -325,5 +326,18 @@ build_complete:: $(obj)/amdfw_a.rom $(obj)/amdfw_b.rom
 	$(CBFSTOOL) $(obj)/coreboot.rom add -r FW_MAIN_B -f $(obj)/amdfw_b.rom.signed.hash \
 		-n apu/amdfw_b_hash -t raw
 endif
+
+# Add ranges for all components up until the first segment of BIOS to be verified by GSC
+ifeq ($(CONFIG_VBOOT_GSCVD),y)
+# Adding range for Bootblock
+vboot-gscvd-ranges += $(call amdfwread-range-cmd,BIOSL2: 0x62)
+# Adding range for PSP Stage1 Bootloader
+vboot-gscvd-ranges += $(call amdfwread-range-cmd,PSPL2: 0x01)
+
+ifeq ($(CONFIG_VBOOT_STARTS_BEFORE_BOOTBLOCK),y)
+# Adding range for PSP Verstage
+vboot-gscvd-ranges += $(call amdfwread-range-cmd,PSPL2: 0x52)
+endif # ifeq ($(CONFIG_VBOOT_STARTS_BEFORE_BOOTBLOCK),y)
+endif # ifeq ($(CONFIG_VBOOT_GSCVD),y)
 
 endif # ($(CONFIG_SOC_AMD_MENDOCINO),y)

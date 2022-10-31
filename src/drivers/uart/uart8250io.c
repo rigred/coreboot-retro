@@ -2,7 +2,10 @@
 
 #include <arch/io.h>
 #include <boot/coreboot_tables.h>
+#include <commonlib/bsd/helpers.h>
 #include <console/uart.h>
+#include <stdint.h>
+
 #include "uart8250reg.h"
 
 /* Should support 8250, 16450, 16550, 16550A type UARTs */
@@ -114,7 +117,6 @@ void uart_fill_lb(void *data)
 	serial.baud = get_uart_baudrate();
 	serial.regwidth = 1;
 	serial.input_hertz = uart_platform_refclk();
-	serial.uart_pci_addr = CONFIG_UART_PCI_ADDR;
 	lb_add_serial(&serial, data);
 
 	lb_add_console(LB_TAG_CONSOLE_SERIAL8250, data);

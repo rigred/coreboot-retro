@@ -2,6 +2,7 @@
 
 #include <amdblocks/amd_pci_util.h>
 #include <commonlib/helpers.h>
+#include <console/console.h>
 #include <device/device.h>
 #include <soc/acpi.h>
 #include <string.h>
@@ -16,11 +17,8 @@
  * Index/Data pair.  These values are chipset and mainboard
  * dependent and should be updated accordingly.
  */
-static uint8_t fch_pic_routing[0x80];
-static uint8_t fch_apic_routing[0x80];
-
-_Static_assert(sizeof(fch_pic_routing) == sizeof(fch_apic_routing),
-	"PIC and APIC FCH interrupt tables must be the same size");
+static uint8_t fch_pic_routing[FCH_IRQ_ROUTING_ENTRIES];
+static uint8_t fch_apic_routing[FCH_IRQ_ROUTING_ENTRIES];
 
 /*
  * This controls the device -> IRQ routing.
@@ -32,11 +30,7 @@ _Static_assert(sizeof(fch_pic_routing) == sizeof(fch_apic_routing),
  *  8: rtc0 <- soc/amd/common/acpi/lpc.asl
  *  9: acpi <- soc/amd/common/acpi/lpc.asl
  */
-static const struct fch_irq_routing {
-	uint8_t intr_index;
-	uint8_t pic_irq_num;
-	uint8_t apic_irq_num;
-} chausie_fch[] = {
+static const struct fch_irq_routing fch_irq_map[] = {
 	{ PIRQ_A,	12,		PIRQ_NC },
 	{ PIRQ_B,	14,		PIRQ_NC },
 	{ PIRQ_C,	15,		PIRQ_NC },
@@ -65,18 +59,32 @@ static const struct fch_irq_routing {
 	{ PIRQ_HPET_H,	0x00,		0x00 },
 };
 
+static const struct fch_irq_routing *mb_get_fch_irq_mapping(size_t *length)
+{
+	*length = ARRAY_SIZE(fch_irq_map);
+	return fch_irq_map;
+}
+
 static void init_tables(void)
 {
-	const struct fch_irq_routing *entry;
-	int i;
+	const struct fch_irq_routing *mb_irq_map;
+	size_t mb_fch_irq_mapping_table_size;
+	size_t i;
+
+	mb_irq_map = mb_get_fch_irq_mapping(&mb_fch_irq_mapping_table_size);
 
 	memset(fch_pic_routing, PIRQ_NC, sizeof(fch_pic_routing));
 	memset(fch_apic_routing, PIRQ_NC, sizeof(fch_apic_routing));
 
-	for (i = 0; i < ARRAY_SIZE(chausie_fch); i++) {
-		entry = chausie_fch + i;
-		fch_pic_routing[entry->intr_index] = entry->pic_irq_num;
-		fch_apic_routing[entry->intr_index] = entry->apic_irq_num;
+	for (i = 0; i < mb_fch_irq_mapping_table_size; i++) {
+		if (mb_irq_map[i].intr_index >= FCH_IRQ_ROUTING_ENTRIES) {
+			printk(BIOS_WARNING,
+			       "Invalid IRQ index %u in FCH IRQ routing table entry %zu\n",
+			       mb_irq_map[i].intr_index, i);
+			continue;
+		}
+		fch_pic_routing[mb_irq_map[i].intr_index] = mb_irq_map[i].pic_irq_num;
+		fch_apic_routing[mb_irq_map[i].intr_index] = mb_irq_map[i].apic_irq_num;
 	}
 }
 

@@ -7,6 +7,7 @@ config SOC_INTEL_ALDERLAKE
 
 config SOC_INTEL_RAPTORLAKE
 	bool
+	select X86_INIT_NEED_1_SIPI
 	help
 	 Intel Raptorlake support. Mainboards using RPL should select
 	 SOC_INTEL_RAPTORLAKE and SOC_INTEL_ALDERLAKE_PCH_* together.
@@ -424,6 +425,14 @@ config ACPI_ADL_IPU_ES_SUPPORT
 	def_bool n
 	help
 	  Enables ACPI entry to provide silicon type information to IPU kernel driver.
+
+config ALDERLAKE_ENABLE_SOC_WORKAROUND
+	bool
+	default y
+	select SOC_INTEL_UFS_LTR_DISQUALIFY
+	select SOC_INTEL_UFS_OCP_TIMER_DISABLE
+	help
+	  Selects the workarounds applicable for Alder Lake SoC.
 
 choice
 	prompt "Multiprocessor (MP) Initialization configuration to use"

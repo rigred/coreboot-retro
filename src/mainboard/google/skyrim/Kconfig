@@ -36,7 +36,6 @@ config BOARD_SPECIFIC_OPTIONS
 	select MAINBOARD_HAS_CHROMEOS
 	select MAINBOARD_HAS_TPM2
 	select SOC_AMD_MENDOCINO
-	select SOC_AMD_COMMON_BLOCK_ACPI_DPTC if !BOARD_GOOGLE_WINTERHOLD && !BOARD_GOOGLE_MORTHAL
 	select SOC_AMD_COMMON_BLOCK_USE_ESPI
 	select TPM_GOOGLE_TI50
 	select PCIEXP_ASPM
@@ -105,11 +104,6 @@ config VBOOT_STARTS_IN_BOOTBLOCK
 	bool
 	default y if VBOOT && !VBOOT_STARTS_BEFORE_BOOTBLOCK
 
-# TODO: Remove once CBFS verification on AMD has been fixed.
-config VBOOT_GSCVD
-	bool
-	default n
-
 if !EM100	# EM100 defaults in soc/amd/common/blocks/spi/Kconfig
 config EFS_SPI_READ_MODE
 	default 2          # Dual IO (1-1-2)
@@ -143,5 +137,9 @@ config OVERRIDE_EFS_SPI_SPEED_MIN_BOARD
 	help
 	  Minimum board version starting which the Override EFS SPI Speed
 	  configuration has to be applied.
+
+config CONSOLE_CBMEM_BUFFER_SIZE
+	hex
+	default 0x80000
 
 endif # BOARD_GOOGLE_BASEBOARD_SKYRIM

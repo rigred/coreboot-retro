@@ -107,7 +107,7 @@ struct saved_msr {
 /* The sipi vector rmodule is included in the ramstage using 'objdump -B'. */
 extern char _binary_sipi_vector_start[];
 
-/* The SIPI vector is loaded at the SMM_DEFAULT_BASE. The reason is at the
+/* The SIPI vector is loaded at the SMM_DEFAULT_BASE. The reason is that the
  * memory range is already reserved so the OS cannot use it. That region is
  * free to use for AP bringup before SMM is initialized. */
 static const uintptr_t sipi_vector_location = SMM_DEFAULT_BASE;
@@ -120,9 +120,6 @@ struct mp_flight_plan {
 
 static int global_num_aps;
 static struct mp_flight_plan mp_info;
-
-/* Keep track of device structure for each CPU. */
-static struct device *cpus_dev[CONFIG_MAX_CPUS];
 
 static inline void barrier_wait(atomic_t *b)
 {
@@ -151,6 +148,7 @@ static enum cb_err wait_for_aps(atomic_t *val, int target, int total_delay,
 	}
 
 	/* APs ready before timeout */
+	printk(BIOS_SPEW, "APs are ready after %dus\n", delayed);
 	return CB_SUCCESS;
 }
 
@@ -174,6 +172,8 @@ static void park_this_cpu(void *unused)
 	stop_this_cpu();
 }
 
+static struct bus *g_cpu_bus;
+
 /* By the time APs call ap_init() caching has been setup, and microcode has
  * been loaded. */
 static void asmlinkage ap_init(void)
@@ -184,7 +184,11 @@ static void asmlinkage ap_init(void)
 	enable_lapic();
 	setup_lapic_interrupts();
 
-	info->cpu = cpus_dev[info->index];
+	struct device *dev = g_cpu_bus->children;
+	for (unsigned int i = info->index; i > 0; i--)
+		dev = dev->sibling;
+
+	info->cpu = dev;
 
 	cpu_add_map_entry(info->index);
 
@@ -383,7 +387,6 @@ static int allocate_cpu_devices(struct bus *cpu_bus, struct mp_params *p)
 			continue;
 		}
 		new->name = processor_name;
-		cpus_dev[i] = new;
 	}
 
 	return max_cpus;
@@ -468,7 +471,7 @@ static enum cb_err start_aps(struct bus *cpu_bus, int ap_count, atomic_t *num_ap
 		if (send_sipi_to_aps(ap_count, num_aps, sipi_vector) != CB_SUCCESS)
 			return CB_ERR;
 
-		/* Wait for CPUs to check in up to 200 us. */
+		/* Wait for CPUs to check in. */
 		wait_for_aps(num_aps, ap_count, 200 /* us */, 15 /* us */);
 	}
 
@@ -477,7 +480,7 @@ static enum cb_err start_aps(struct bus *cpu_bus, int ap_count, atomic_t *num_ap
 		return CB_ERR;
 
 	/* Wait for CPUs to check in. */
-	if (wait_for_aps(num_aps, ap_count, 100000 /* 100 ms */, 50 /* us */) != CB_SUCCESS) {
+	if (wait_for_aps(num_aps, ap_count, 400000 /* 400 ms */, 50 /* us */) != CB_SUCCESS) {
 		printk(BIOS_ERR, "Not all APs checked in: %d/%d.\n",
 		       atomic_read(num_aps), ap_count);
 		return CB_ERR;
@@ -577,6 +580,8 @@ static enum cb_err mp_init(struct bus *cpu_bus, struct mp_params *p)
 {
 	int num_cpus;
 	atomic_t *ap_count;
+
+	g_cpu_bus = cpu_bus;
 
 	init_bsp(cpu_bus);
 

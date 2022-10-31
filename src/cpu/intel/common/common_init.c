@@ -4,8 +4,10 @@
 #include <arch/cpu.h>
 #include <console/console.h>
 #include <cpu/intel/msr.h>
-#include <cpu/x86/msr.h>
 #include <cpu/intel/turbo.h>
+#include <cpu/x86/msr.h>
+#include <types.h>
+
 #include "common.h"
 
 #define  CPUID_6_ECX_EPB		(1 << 3)
@@ -223,5 +225,5 @@ void enable_energy_perf_pref(void)
 void set_energy_perf_pref(u8 pref)
 {
 	msr_unset_and_set(IA32_HWP_REQUEST, IA32_HWP_REQUEST_EPP_MASK,
-		pref << IA32_HWP_REQUEST_EPP_SHIFT);
+		(uint64_t)pref << IA32_HWP_REQUEST_EPP_SHIFT);
 }

@@ -118,6 +118,24 @@ Maintainers List (try to look for most precise areas first)
 # Mainboards
 ################################################################################
 
+51NB MAINBOARDS
+S:	Orphan
+F:	src/mainboard/51nb/
+
+
+
+ACER MAINBOARDS
+S:	Orphan
+F:	src/mainboard/acer/
+
+
+
+ADLINK MAINBOARDS
+S:	Orphan
+F:	src/mainboard/adlink/
+
+
+
 AMD family 17h and 19h reference boards
 M:	Felix Held <felix-coreboot@felixheld.de>
 M:	Jason Glenesk <jason.glenesk@gmail.com>
@@ -131,6 +149,7 @@ F:	src/mainboard/amd/majolica/
 F:	src/mainboard/amd/mandolin/
 
 AMD reference boards outside of family 17h and 19h
+S:	Odd Fixes
 L:	amd_coreboot_org_changes@googlegroups.com
 F:	src/mainboard/amd/gardenia/
 F:	src/mainboard/amd/inagua/
@@ -141,6 +160,12 @@ F:	src/mainboard/amd/persimmon/
 F:	src/mainboard/amd/south_station/
 F:	src/mainboard/amd/thatcher/
 F:	src/mainboard/amd/union_station/
+
+
+
+AOPEN MAINBOARDS
+S:	Orphan
+F:	src/mainboard/aopen/
 
 
 
@@ -161,11 +186,6 @@ M:	Angel Pons <th3fanbus@gmail.com>
 S:	Maintained
 F:	src/mainboard/asrock/g41c-gs/
 
-ASROCK H81M-HDS MAINBOARD
-M:	Tristan Corrick <tristan@corrick.kiwi>
-S:	Maintained
-F:	src/mainboard/asrock/h81m-hds/
-
 
 
 ASUS A88XM-E MAINBOARD
@@ -180,14 +200,8 @@ F:	src/mainboard/asus/am1i-a/
 
 ASUS H61 SERIES MAINBOARDS
 M:	Angel Pons <th3fanbus@gmail.com>
-M:	Tristan Corrick <tristan@corrick.kiwi>
 S:	Maintained
 F:	src/mainboard/asus/h61-series/
-
-ASUS MAXIMUS IV GENE-Z MAINBOARD
-M:	Tristan Corrick <tristan@corrick.kiwi>
-S:	Maintained
-F:	src/mainboard/asus/maximus_iv_gene-z/
 
 ASUS P5QC PRO MAINBOARD & VARIANTS
 M:	Angel Pons <th3fanbus@gmail.com>
@@ -208,11 +222,65 @@ F:	src/mainboard/asus/p8z77-series/
 
 
 
+BAP MAINBOARDS
+S:	Orphan
+F:	src/mainboard/bap/
+
+
+
+BIOSTAR MAINBOARDS
+S:	Orphan
+F:	src/mainboard/biostar/
+
+
+
+BOSTENTECH MAINBOARDS
+S:	Orphan
+F:	src/mainboard/bostentech/
+
+
+
+CAVIUM MAINBOARDS
+S:	Orphan
+F:	src/mainboard/cavium/
+
+
+
 CLEVO MAINBOARDS
 M:	Felix Singer <felixsinger@posteo.net>
 M:	Michael Niewöhner <foss@mniewoehner.de>
 S:	Supported
 F:	src/mainboard/clevo/
+
+
+
+COMPULAB MAINBOARDS
+S:	Orphan
+F:	src/mainboard/compulab/
+
+
+
+DELL MAINBOARDS
+S:	Orphan
+F:	src/mainboard/dell/
+
+
+
+ELMEX MAINBOARDS
+S:	Orphan
+F:	src/mainboard/elmex/
+
+
+
+EMULATION MAINBOARDS
+S:	Orphan
+F:	src/mainboard/emulation/
+
+
+
+EXAMPLE MAINBOARDS
+S:	Orphan
+F:	src/mainboard/example/
 
 
 
@@ -230,20 +298,35 @@ F:	src/mainboard/facebook/monolith/
 
 
 
+FOXCONN MAINBOARDS
+S:	Orphan
+F:	src/mainboard/foxconn/
+
+
+
+GETAC MAINBOARDS
+S:	Orphan
+F:	src/mainboard/getac/
+
+
+
 GIGABYTE GA-D510UD MAINBOARD
 M:	Angel Pons <th3fanbus@gmail.com>
 S:	Maintained
 F:	src/mainboard/gigabyte/ga-d510ud/
 
-GIGABYTE GA-G41M-ES2L MAINBOARD
-M:	Damien Zammit <damien@zamaudio.com>
-S:	Odd Fixes
-F:	src/mainboard/gigabyte/ga-g41m-es2l/
-
 GIGABYTE GA-H61M SERIES MAINBOARDS
 M:	Angel Pons <th3fanbus@gmail.com>
 S:	Maintained
 F:	src/mainboard/gigabyte/ga-h61m-series/
+
+
+
+GIZMOSPHERE MAINBOARDS
+S:	Orphan
+F:	src/mainboard/gizmosphere/
+
+
 
 GOOGLE REX MAINBOARDS
 M:	Subrata Banik <subratabanik@google.com>
@@ -261,11 +344,6 @@ GOOGLE HATCH MAINBOARDS
 M:	Tarun Tuli <taruntuli@google.com>
 S:	Maintained
 F:	src/mainboard/google/hatch/
-
-GOOGLE PANTHER MAINBOARD
-M:	Stefan Reinauer <stefan.reinauer@coreboot.org>
-S:	Supported
-F:	src/mainboard/google/panther/
 
 GOOGLE VOLTEER MAINBOARDS
 M:	Nick Vaccaro <nvaccaro@chromium.org>
@@ -297,6 +375,7 @@ F:	src/mainboard/google/guybrush/
 F:	src/mainboard/google/skyrim/
 
 
+
 HP 280 G2 MAINBOARD
 M:	Angel Pons <th3fanbus@gmail.com>
 S:	Maintained
@@ -304,23 +383,23 @@ F:	src/mainboard/hp/280_g2/
 
 
 
-INTEL D510MO MAINBOARD
-M:	Damien Zammit <damien@zamaudio.com>
-S:	Odd Fixes
-F:	src/mainboard/intel/d510mo/
+IBASE MAINBOARDS
+S:	Orphan
+F:	src/mainboard/ibase/
+
+
 
 INTEL HARCUVAR_CRB MAINBOARD
 M:	Jeff Daly <jeffd@silicom-usa.com>
 M:	Vanessa Eusebio <vanessa.f.eusebio@intel.com>
-M:	Suresh Bellampalli <suresh.bellampalli@intel.com>
-M:	Mariusz Szafranski <mariuszx.szafranski@intel.com>
 S:	Maintained
 F:	src/mainboard/intel/harcuvar/
 
-INTEL STRAGO MAINBOARD
-M:	Hannah Williams <hannah.williams@intel.com>
-S:	Supported
-F:	/src/mainboard/intel/strago/
+
+
+JETWAY MAINBOARDS
+S:	Orphan
+F:	src/mainboard/jetway/
 
 
 
@@ -360,11 +439,18 @@ S:	Maintained
 F:	src/mainboard/lenovo/x201/
 
 
+
 LIBRETREND LT1000 MAINBOARD
 M:	Piotr Król <piotr.krol@3mdeb.com>
 M:	Michał Żygowski <michal.zygowski@3mdeb.com>
 S:	Maintained
 F:	src/mainboard/libretrend/lt1000/
+
+
+
+LIPPERT MAINBOARDS (acquired by Adlink)
+S:	Orphan
+F:	src/mainboard/lippert/
 
 
 
@@ -379,6 +465,8 @@ M:	Michał Kopeć <michal.kopec@3mdeb.com>
 S:	Maintained
 F:	src/mainboard/msi/ms7d25/
 
+
+
 OCP DELTALAKE MAINBOARD
 M:	Arthur Heymans <arthur@aheymans.xyz>
 M:	Christian Walter <christian.walter@9elements.com>
@@ -390,7 +478,6 @@ F:	src/mainboard/ocp/deltalake/
 
 OCP TIOGAPASS MAINBOARD
 M:	Jonathan Zhang <jonzhang@fb.com>
-M:	Reddy Chagam <anjaneya.chagam@intel.com>
 M:	Johnny Lin <Johnny_Lin@wiwynn.com>
 M:	Morgan Jang <Morgan_Jang@wiwynn.com>
 M:	Ryback Hung <<Ryback.Hung@quantatw.com>
@@ -413,6 +500,12 @@ M:	Piotr Król <piotr.krol@3mdeb.com>
 M:	Michał Żygowski <michal.zygowski@3mdeb.com>
 S:	Supported
 F:	src/mainboard/pcengines/
+
+
+
+PINE64 MAINBOARDS
+S:	Orphan
+F:	src/mainboard/pine64/
 
 
 
@@ -454,11 +547,35 @@ F:	src/mainboard/purism/
 
 
 
+RAZER MAINBOARDS
+S:	Orphan
+F:	src/mainboard/razer/
+
+
+
+RODA MAINBOARDS
+S:	Orphan
+F:	src/mainboard/roda/
+
+
+
 SAMSUNG CHROMEOS MAINBOARDS
 M:	Matt DeVillier <MrChromebox@gmail.com>
 S:	Maintained
 F:	src/mainboard/samsung/lumpy/
 F:	src/mainboard/samsung/stumpy/
+
+
+
+SAPPHIRE MAINBOARDS
+S:	Orphan
+F:	src/mainboard/sapphire/
+
+
+
+SCALEWAY MAINBOARDS
+S:	Orphan
+F:	src/mainboard/scaleway/
 
 
 
@@ -476,10 +593,23 @@ F:	src/mainboard/siemens/mc_ehl/
 
 
 
+SIFIVE MAINBOARDS
+S:	Orphan
+F:	src/mainboard/sifive/
+
+
+
 STAR LABS MAINBOARDS
 M:	Sean Rhodes <sean@starlabs.systems>
 S:	Maintained
 F:	src/mainboard/starlabs/
+
+
+
+SUPERMICRO X11-LGA1151-SERIES
+M:	Michael Niewöhner <foss@mniewoehner.de>
+S:	Maintained
+F:	src/mainboard/supermicro/x11-lga1151-series/
 
 
 
@@ -491,15 +621,15 @@ F:	src/mainboard/system76/
 
 
 
-SUPERMICRO X10SLM+-F MAINBOARD
-M:	Tristan Corrick <tristan@corrick.kiwi>
-S:	Maintained
-F:	src/mainboard/supermicro/x10slm-f/
+TI MAINBOARDS
+S:	Orphan
+F:	src/mainboard/ti/
 
-SUPERMICRO X11-LGA1151-SERIES
-M:	Michael Niewöhner <foss@mniewoehner.de>
-S:	Maintained
-F:	src/mainboard/supermicro/x11-lga1151-series/
+
+
+UP MAINBOARDS
+S:	Orphan
+F:	src/mainboard/up/
 
 ################################################################################
 # Architectures
@@ -535,6 +665,7 @@ F:	src/mainboard/sifive/
 F:	util/riscv/
 
 X86 ARCHITECTURE
+S:	MAINTAINED
 F:	src/arch/x86/
 F:	src/cpu/x86/
 F:	src/drivers/pc80/
@@ -549,7 +680,7 @@ CHROME EC
 M:	Boris Mittelberg <bmbm@google.com>
 M:	Caveh Jalali <caveh@chromium.org>
 S:	Maintained
-F:	src/ec/google/chromeec/
+F:	src/ec/google/
 
 LENOVO EC
 M:	Alexander Couzens <lynxis@fe80.eu>
@@ -567,6 +698,19 @@ M:	Tim Crawford <tcrawford@system76.com>
 S:	Maintained
 F:	src/ec/system76/
 
+ORPHANED ECS
+S:	Orphan
+F:	src/ec/51nb/
+F:	src/ec/acpi/
+F:	src/ec/apple/
+F:	src/ec/compal/
+F:	src/ec/hp/
+F:	src/ec/kontron/
+F:	src/ec/purism/
+F:	src/ec/quanta/
+F:	src/ec/roda/
+F:	src/ec/smsc/
+
 ################################################################################
 # Northbridges
 ################################################################################
@@ -577,7 +721,6 @@ S:	Maintained
 F:	src/northbridge/intel/haswell/
 
 INTEL PINEVIEW CHIPSET
-M:	Damien Zammit <damien@zamaudio.com>
 M:	Angel Pons <th3fanbus@gmail.com>
 S:	Odd Fixes
 F:	src/northbridge/intel/pineview/
@@ -588,7 +731,6 @@ S:	Maintained
 F:	src/northbridge/intel/sandybridge/
 
 INTEL X4X CHIPSET
-M:	Damien Zammit <damien@zamaudio.com>
 M:	Angel Pons <th3fanbus@gmail.com>
 S:	Odd Fixes
 F:	src/northbridge/intel/x4x/
@@ -599,6 +741,7 @@ F:	src/northbridge/intel/x4x/
 
 AMD SUPPORT
 L:	amd_coreboot_org_changes@googlegroups.com
+S:	Odd Fixes
 F:	src/vendorcode/amd/
 F:	src/cpu/amd/
 F:	src/northbridge/amd/
@@ -616,9 +759,7 @@ F:	src/drivers/intel/
 F:	src/include/cpu/intel/
 
 INTEL FSP 1.1
-M:	Lee Leahy <leroy.p.leahy@intel.com>
 M:	Huang Jin <huang.jin@intel.com>
-M:	York Yang <york.yang@intel.com>
 S:	Supported
 F:	src/drivers/intel/fsp1_1/
 
@@ -719,8 +860,6 @@ F:	/src/vendorcode/intel/fsp/fsp1_1/braswell/
 INTEL DENVERTON-NS SOC
 M:	Jeff Daly <jeffd@silicom-usa.com>
 M:	Vanessa Eusebio <vanessa.f.eusebio@intel.com>
-M:	Suresh Bellampalli <suresh.bellampalli@intel.com>
-M:	Mariusz Szafranski <mariuszx.szafranski@intel.com>
 S:	Maintained
 F:	src/soc/intel/denverton_ns/
 
@@ -738,7 +877,6 @@ F:	src/soc/intel/tigerlake/
 
 INTEL Xeon Sacalable Processor Family
 M:	Jonathan Zhang <jonzhang@fb.com>
-M:	Reddy Chagam <anjaneya.chagam@intel.com>
 M:	Johnny Lin <Johnny_Lin@wiwynn.com>
 M:	Tim Chu <Tim.Chu@quantatw.com>
 M:	Arthur Heymans <arthur@aheymans.xyz>
@@ -760,7 +898,7 @@ F:	src/soc/mediatek/mt8192/
 F:	src/vendorcode/mediatek/mt8192/
 
 ORPHANED ARM SOCS
-S:	Orphaned
+S:	Orphan
 F:	src/cpu/armltd/
 F:	src/soc/ti/
 F:	src/soc/qualcomm/
@@ -1014,7 +1152,7 @@ MISSING: SPI
 
 CODE OF CONDUCT
 M:	Stefan Reinauer <stefan.reinauer@coreboot.org>
-M:	Ronald Minnich <rminnich@coreboot.org>
+M:	Ronald Minnich <rminnich@gmail.com>
 M:	Martin Roth <martin@coreboot.org>
 S:	Maintained
 F:	Documentation/community/code_of_conduct.md
