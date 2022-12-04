@@ -1,10 +1,12 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 
+#include <console/console.h>
 #include <device/device.h>
 #include <cpu/cpu.h>
 #include <cpu/x86/mtrr.h>
 #include <cpu/intel/microcode.h>
 #include <cpu/x86/cache.h>
+#include <cpu/x86/name.h>
 
 static void model_6xx_init(struct device *dev)
 {
