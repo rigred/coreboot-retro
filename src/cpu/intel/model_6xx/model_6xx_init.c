@@ -8,6 +8,10 @@
 
 static void model_6xx_init(struct device *dev)
 {
+	/* Print processor name */
+	fill_processor_name(processor_name);
+	printk(BIOS_INFO, "CPU: %s.\n", processor_name);
+
 	/* Turn on caching if we haven't already */
 	enable_cache();
 	x86_setup_mtrrs();
@@ -47,12 +51,6 @@ static struct device_operations cpu_dev_ops = {
  * http://download.intel.com/design/intarch/specupdt/24530663.pdf
  */
 static const struct cpu_device_id cpu_table[] = {
-	{ X86_VENDOR_INTEL, 0x0611 }, /* Pentium Pro, B0 */
-	{ X86_VENDOR_INTEL, 0x0612 }, /* Pentium Pro, C0 */
-	{ X86_VENDOR_INTEL, 0x0616 }, /* Pentium Pro, sA0 */
-	{ X86_VENDOR_INTEL, 0x0617 }, /* Pentium Pro, sA1 */
-	{ X86_VENDOR_INTEL, 0x0619 }, /* Pentium Pro, sB1 */
-
 	{ X86_VENDOR_INTEL, 0x0633 }, /* PII, C0 */
 	{ X86_VENDOR_INTEL, 0x0634 }, /* PII, C1 */
 

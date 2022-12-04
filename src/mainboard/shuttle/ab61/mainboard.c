@@ -30,6 +30,13 @@ static void mainboard_init(void *chip_info)
 	reg |= (0x290 | (0xe7 << 16));
 	pci_s_write_config32(px43, DEVRESB, reg);
 	*/
+
+	const pci_devfn_t dev = pci_locate_device(PCI_ID(PCI_VID_INTEL,
+				       PCI_DID_INTEL_82371AB_ISA), 0);
+	u16 reg;
+
+	reg = pci_s_read_config16(dev, XBCS);
+	printk(BIOS_DEBUG, "XBCS: %u", reg);
 }
 
 
