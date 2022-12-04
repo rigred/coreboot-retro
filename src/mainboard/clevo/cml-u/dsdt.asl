@@ -29,5 +29,8 @@ DefinitionBlock(
 		#include <drivers/pc80/pc/ps2_controller.asl>
 	}
 
-	#include "acpi/mainboard.asl"
+#if CONFIG(EC_CLEVO_IT5570E)
+	#include <variant.asl>
+	#include <ec/clevo/it5570e/acpi/common.asl>
+#endif
 }

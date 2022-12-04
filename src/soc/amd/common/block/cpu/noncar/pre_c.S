@@ -1,12 +1,13 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 
+#include <amdblocks/post_codes.h>
 #include <cpu/x86/post_code.h>
 
 .section .init, "ax", @progbits
 
 .global bootblock_resume_entry
 bootblock_resume_entry:
-	post_code(0xb0)
+	post_code(POST_BOOTBLOCK_RESUME_ENTRY)
 
 	/* Get an early timestamp */
 	rdtsc
@@ -23,7 +24,11 @@ bootblock_resume_entry:
 
 .global bootblock_pre_c_entry
 bootblock_pre_c_entry:
-	post_code(0xa0)
+	post_code(POST_BOOTBLOCK_PRE_C_ENTRY)
+
+#if ENV_X86_64
+	#include <cpu/x86/64bit/entry64.inc>
+#endif
 
 	/* Clear .bss section */
 	cld
@@ -40,12 +45,19 @@ bootblock_pre_c_entry:
 	and	$0xfffffff0, %esp
 	sub	$8, %esp
 
+#if ENV_X86_64
+	movd	%mm2, %rdi
+	shlq	$32, %rdi
+	movd	%mm1, %rsi
+	or	%rsi, %rdi
+#else
 	movd	%mm2, %eax
 	pushl	%eax		/* tsc[63:32] */
 	movd	%mm1, %eax
 	pushl	%eax		/* tsc[31:0] */
+#endif
 
-	post_code(0xa2)
+	post_code(POST_BOOTBLOCK_PRE_C_DONE)
 
 	call	bootblock_c_entry
 	/* Never reached */

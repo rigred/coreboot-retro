@@ -3,6 +3,7 @@ chip northbridge/intel/i945
 	register "gfx" = "GMA_STATIC_DISPLAYS(0)"
 
 	device cpu_cluster 0 on
+		ops i945_cpu_bus_ops
 		chip cpu/intel/socket_m
 			device lapic 0 on end
 		end
@@ -11,6 +12,7 @@ chip northbridge/intel/i945
 	register "pci_mmio_size" = "768"
 
 	device domain 0 on
+		ops i945_pci_domain_ops
 		device pci 00.0 on end # host bridge
 		device pci 01.0 off end # i945 PCIe x16 bridge
 		device pci 02.0 on end # GMA950 iGPU + VGA
@@ -33,8 +35,8 @@ chip northbridge/intel/i945
 			register "gpi13_routing" = "1"
 
 			register "sata_mode" = "SATA_MODE_IDE_LEGACY_COMBINED"
-			register "ide_enable_primary" = "0x1"
-			register "ide_enable_secondary" = "0x1"
+			register "ide_enable_primary" = "true"
+			register "ide_enable_secondary" = "true"
 			register "c3_latency" = "85"
 			register "p_cnt_throttling_supported" = "0"
 

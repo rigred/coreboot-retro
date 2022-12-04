@@ -1,27 +1,14 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 
-/* the problem: we have 82801dbm support in fb1, and 82801er in fb2.
- * fb1 code is what we want, fb2 structure is needed however.
- * so we need to get fb1 code for 82801dbm into fb2 structure.
- */
-/* What I did: took the 80801er stuff from fb2, verify it against the
- * db stuff in fb1, and made sure it was right.
- */
-
 #ifndef I82801DX_H
 #define I82801DX_H
 
 #include <acpi/acpi.h>
-
-#if !defined(__ASSEMBLER__)
-
 #include <device/device.h>
 
 void i82801dx_enable(struct device *dev);
 void i82801dx_early_init(void);
-void aseg_smm_lock(void);
-
-#endif
+void i82801dx_lpc_setup(void);
 
 #define DEBUG_PERIODIC_SMIS 0
 
@@ -55,8 +42,7 @@ void aseg_smm_lock(void);
 
 #define PCICMD          0x04
 #define PMBASE          0x40
-#define   PMBASE_ADDR	0x0400
-#define   DEFAULT_PMBASE PMBASE_ADDR
+#define   DEFAULT_PMBASE 0x0400
 #define ACPI_CNTL       0x44
 #define   ACPI_EN	(1 << 4)
 #define BIOS_CNTL       0x4E
@@ -72,6 +58,7 @@ void aseg_smm_lock(void);
 #define PIRQG_ROUT	0x6A
 #define PIRQH_ROUT	0x6B
 #define COM_DEC         0xE0
+#define GEN1_DEC        0xE4
 #define LPC_EN          0xE6
 #define FUNC_DIS        0xF2
 
@@ -89,7 +76,7 @@ void aseg_smm_lock(void);
 #define MTT             0x70
 #define PCI_MAST_STS    0x82
 
-#define RTC_FAILED      (1 <<2)
+#define RTC_FAILED      (1 << 2)
 
 #define PM1_STS		0x00
 #define   WAK_STS	(1 << 15)
@@ -113,9 +100,6 @@ void aseg_smm_lock(void);
 #define PM1_TMR		0x08
 #define PROC_CNT	0x10
 #define LV2		0x14
-#define LV3		0x15
-#define LV4		0x16
-#define PM2_CNT		0x20 // mobile only
 #define GPE0_STS	0x28
 #define   PME_B0_STS	(1 << 13)
 #define   USB3_STS	(1 << 12)
@@ -155,10 +139,11 @@ void aseg_smm_lock(void);
 #define GPE_CNTL	0x42
 #define DEVACT_STS	0x44
 #define SS_CNT		0x50
-#define C3_RES		0x54
 
-#define TCOBASE		0x60 /* TCO Base Address Register */
-#define TCO1_CNT	0x08 /* TCO1 Control Register */
+#if CONFIG(TCO_SPACE_NOT_YET_SPLIT)
+/* TCO1 Control Register */
+#define TCO1_CNT	0x68
+#endif
 
 #define GEN_PMCON_1		0xa0
 #define GEN_PMCON_2		0xa2

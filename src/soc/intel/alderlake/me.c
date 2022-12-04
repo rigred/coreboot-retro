@@ -2,7 +2,6 @@
 
 #include <bootstate.h>
 #include <intelblocks/cse.h>
-#include <intelblocks/spi.h>
 #include <console/console.h>
 #include <soc/me.h>
 #include <stdint.h>
@@ -23,7 +22,8 @@ union me_hfsts2 {
 		uint32_t me_power_gate		: 1;
 		uint32_t ipu_needed		: 1;
 		uint32_t forced_safe_boot	: 1;
-		uint32_t rsvd1			: 2;
+		uint32_t rsvd1			: 1;
+		uint32_t cse_to_be_disabled	: 1;
 		uint32_t listener_change	: 1;
 		uint32_t status_data		: 8;
 		uint32_t current_pmevent	: 4;
@@ -58,10 +58,7 @@ union me_hfsts5 {
 		uint32_t acm_done_sts		: 1;
 		uint32_t timeout_count		: 7;
 		uint32_t scrtm_indicator	: 1;
-		uint32_t inc_boot_guard_acm	: 4;
-		uint32_t inc_key_manifest	: 4;
-		uint32_t inc_boot_policy	: 4;
-		uint32_t rsvd0			: 2;
+		uint32_t rsvd0			: 14;
 		uint32_t start_enforcement	: 1;
 	} __packed fields;
 };
@@ -78,9 +75,8 @@ union me_hfsts6 {
 		uint32_t error_enforce_policy	: 2;
 		uint32_t measured_boot		: 1;
 		uint32_t verified_boot		: 1;
-		uint32_t boot_guard_acmsvn	: 4;
-		uint32_t kmsvn			: 4;
-		uint32_t bpmsvn			: 4;
+		uint32_t rsvd1			: 11;
+		uint32_t manuf_lock		: 1;
 		uint32_t key_manifest_id	: 4;
 		uint32_t boot_policy_status	: 1;
 		uint32_t error			: 1;
@@ -91,23 +87,15 @@ union me_hfsts6 {
 	} __packed fields;
 };
 
-static void log_me_ro_write_protection_info(bool mfg_mode)
+static bool is_manuf_mode(union me_hfsts1 hfsts1, union me_hfsts6 hfsts6)
 {
-	bool cse_ro_wp_en = is_spi_wp_cse_ro_en();
-
-	printk(BIOS_DEBUG, "ME: WP for RO is enabled        : %s\n",
-			cse_ro_wp_en ? "YES" : "NO");
-
-	if (cse_ro_wp_en) {
-		uint32_t base, limit;
-		spi_get_wp_cse_ro_range(&base, &limit);
-		printk(BIOS_DEBUG, "ME: RO write protection scope - Start=0x%X, End=0x%X\n",
-				base, limit);
-	}
-
-	/* If EOM is disabled, but CSE RO is not write protected, log error */
-	if (!mfg_mode && !cse_ro_wp_en)
-		printk(BIOS_ERR, "ME: Write protection for CSE RO is not enabled\n");
+	/*
+	 * ME manufacturing mode is disabled if the descriptor is locked, fuses
+	 * are programmed and manufacturing variables are locked.
+	 */
+	return !((hfsts1.fields.mfg_mode == 0) &&
+		 (hfsts6.fields.fpf_soc_lock == 1) &&
+		 (hfsts6.fields.manuf_lock == 1));
 }
 
 static void dump_me_status(void *unused)
@@ -118,6 +106,7 @@ static void dump_me_status(void *unused)
 	union me_hfsts4 hfsts4;
 	union me_hfsts5 hfsts5;
 	union me_hfsts6 hfsts6;
+	bool manuf_mode;
 
 	if (!is_cse_enabled())
 		return;
@@ -136,19 +125,19 @@ static void dump_me_status(void *unused)
 	printk(BIOS_DEBUG, "ME: HFSTS5                      : 0x%08X\n", hfsts5.data);
 	printk(BIOS_DEBUG, "ME: HFSTS6                      : 0x%08X\n", hfsts6.data);
 
-	/*
-	 * Lock Descriptor, and Fuses must be programmed on a
-	 * production system to indicate ME Manufacturing mode is disabled.
-	 */
+	manuf_mode = is_manuf_mode(hfsts1, hfsts6);
 	printk(BIOS_DEBUG, "ME: Manufacturing Mode          : %s\n",
-		((hfsts1.fields.mfg_mode == 0) &&
-		(hfsts6.fields.fpf_soc_lock == 1)) ? "NO" : "YES");
+	       manuf_mode ? "YES" : "NO");
 	/*
 	 * The SPI Protection Mode bit reflects SPI descriptor
 	 * locked(0) or unlocked(1).
 	 */
 	printk(BIOS_DEBUG, "ME: SPI Protection Mode Enabled : %s\n",
 		hfsts1.fields.mfg_mode ? "NO" : "YES");
+	printk(BIOS_DEBUG, "ME: FPFs Committed              : %s\n",
+		hfsts6.fields.fpf_soc_lock ? "YES" : "NO");
+	printk(BIOS_DEBUG, "ME: Manufacturing Vars Locked   : %s\n",
+		hfsts6.fields.manuf_lock ? "YES" : "NO");
 	printk(BIOS_DEBUG, "ME: FW Partition Table          : %s\n",
 		hfsts1.fields.fpt_bad ? "BAD" : "OK");
 	printk(BIOS_DEBUG, "ME: Bringup Loader Failure      : %s\n",
@@ -183,7 +172,7 @@ static void dump_me_status(void *unused)
 		hfsts6.fields.txt_support ? "YES" : "NO");
 
 	if (CONFIG(SOC_INTEL_CSE_LITE_SKU))
-		log_me_ro_write_protection_info(!!hfsts1.fields.mfg_mode);
+		cse_log_ro_write_protection_info(manuf_mode);
 }
 
 BOOT_STATE_INIT_ENTRY(BS_DEV_ENABLE, BS_ON_EXIT, print_me_fw_version, NULL);

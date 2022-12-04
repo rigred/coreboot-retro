@@ -28,7 +28,8 @@ $$(VBOOT_LIB_$(1)): $(obj)/config.h
 	CC="$$(CC_$(1))" \
 	CFLAGS="$$(VBOOT_CFLAGS_$(1))" VBOOT2="y" \
 	EC_EFS="$(CONFIG_VBOOT_EC_EFS)" \
-	X86_SHA_EXT="$(CONFIG_VBOOT_X86_SHA256_ACCELERATION)" \
+	X86_SHA_EXT="$(if $(CONFIG_ARCH_$(call toupper,$(1))_X86_32)$(CONFIG_ARCH_$(call toupper,$(1))_X86_64),$\
+			$(CONFIG_VBOOT_X86_SHA256_ACCELERATION))" \
 	$(MAKE) -C $(VBOOT_SOURCE) \
 		BUILD=$$(abspath $$(dir $$(VBOOT_LIB_$(1)))) \
 		V=$(V) \
@@ -60,6 +61,7 @@ bootblock-y += vbnv.c
 verstage-y += vbnv.c
 romstage-y += vbnv.c
 ramstage-y += vbnv.c
+postcar-y += vbnv.c
 
 romstage-$(CONFIG_VBOOT_EARLY_EC_SYNC) += ec_sync.c
 
@@ -67,16 +69,19 @@ bootblock-$(CONFIG_VBOOT_VBNV_CMOS) += vbnv_cmos.c
 verstage-$(CONFIG_VBOOT_VBNV_CMOS) += vbnv_cmos.c
 romstage-$(CONFIG_VBOOT_VBNV_CMOS) += vbnv_cmos.c
 ramstage-$(CONFIG_VBOOT_VBNV_CMOS) += vbnv_cmos.c
+postcar-$(CONFIG_VBOOT_VBNV_CMOS) += vbnv_cmos.c
 
 bootblock-$(CONFIG_VBOOT_VBNV_CMOS_BACKUP_TO_FLASH) += vbnv_flash.c
 verstage-$(CONFIG_VBOOT_VBNV_CMOS_BACKUP_TO_FLASH) += vbnv_flash.c
 romstage-$(CONFIG_VBOOT_VBNV_CMOS_BACKUP_TO_FLASH) += vbnv_flash.c
 ramstage-$(CONFIG_VBOOT_VBNV_CMOS_BACKUP_TO_FLASH) += vbnv_flash.c
+postcar-$(CONFIG_VBOOT_VBNV_CMOS_BACKUP_TO_FLASH) += vbnv_flash.c
 
 bootblock-$(CONFIG_VBOOT_VBNV_FLASH) += vbnv_flash.c
 verstage-$(CONFIG_VBOOT_VBNV_FLASH) += vbnv_flash.c
 romstage-$(CONFIG_VBOOT_VBNV_FLASH) += vbnv_flash.c
 ramstage-$(CONFIG_VBOOT_VBNV_FLASH) += vbnv_flash.c
+postcar-$(CONFIG_VBOOT_VBNV_FLASH) += vbnv_flash.c
 
 bootblock-y += vboot_loader.c
 romstage-y += vboot_loader.c

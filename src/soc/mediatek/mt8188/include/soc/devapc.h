@@ -18,8 +18,6 @@ enum devapc_ao_offset {
 };
 
 DEFINE_BIT(MCUPM_SEC, 1)
-DEFINE_BITFIELD(MCUPM_DOM, 11, 8)
-DEFINE_BITFIELD(SCP_SSPM_DOM, 19, 16)
 
 /******************************************************************************
  * STRUCTURE DEFINITION

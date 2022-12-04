@@ -111,9 +111,21 @@ chip soc/intel/elkhartlake
 	register "common_soc_config" = "{
 		.i2c[1] = {
 			.speed = I2C_SPEED_STANDARD,
+			.speed_config[0] = {
+				.speed = I2C_SPEED_STANDARD,
+				.scl_hcnt = 0x1e1,
+				.scl_lcnt = 0x1f4,
+				.sda_hold = 0x64
+			},
 		},
 		.i2c[2] = {
 			.speed = I2C_SPEED_STANDARD,
+			.speed_config[0] = {
+				.speed = I2C_SPEED_STANDARD,
+				.scl_hcnt = 0x1df,
+				.scl_lcnt = 0x1f4,
+				.sda_hold = 0x64
+			},
 		},
 	}"
 
@@ -123,11 +135,12 @@ chip soc/intel/elkhartlake
 		.vcc_low_high_us = 50,
 	}"
 
+	# Disable L1 prefetcher for real-time demands
+	register "L1_prefetcher_disable" = "true"
+
 	device domain 0 on
 		device pci 00.0 on	end # Host Bridge
 		device pci 02.0 on	end # Integrated Graphics Device
-
-		device pci 12.0 on	end # GSPI2
 
 		device pci 14.0 on	end # USB3.1 xHCI
 
@@ -135,6 +148,7 @@ chip soc/intel/elkhartlake
 		device pci 15.1 on	    # I2C1
 			# Enable external RTC chip
 			chip drivers/i2c/rv3028c7
+				register "bus_speed" = "I2C_SPEED_STANDARD"
 				register "set_user_date" = "1"
 				register "user_year" = "04"
 				register "user_month" = "07"
@@ -145,7 +159,14 @@ chip soc/intel/elkhartlake
 				device i2c 0x52 on end  # RTC RV3028-C7
 			end
 		end
-		device pci 15.2 on	end # I2C2
+		device pci 15.2 on	    # I2C2
+		# Add dummy I2C device to limit BUS speed to 100 kHz in OS
+			chip drivers/i2c/generic
+				register "hid" = ""PRP0001""
+				register "speed" = "I2C_SPEED_STANDARD"
+				device i2c 0x7f on end
+			end
+		end
 		device pci 15.3 on	end # I2C3
 
 		device pci 16.0 hidden	end # Management Engine Interface 1
@@ -161,12 +182,57 @@ chip soc/intel/elkhartlake
 		device pci 1c.6 on	end # RP7 (pcie3 multi VC)
 
 		device pci 1d.0 off	end # Intel PSE IPC (local host to PSE)
-		device pci 1d.1 on	end # Intel PSE Time-Sensitive Networking GbE 0
-		device pci 1d.2 on	end # Intel PSE Time-Sensitive Networking GbE 1
+		device pci 1d.1 on	    # Intel PSE Time-Sensitive Networking GbE 0
+			# Enable external Marvell PHY 88E1512
+			chip drivers/net/phy/m88e1512
+				register "configure_leds" = "true"
+				# LED[0]: On - 1000 Mbps Link, Off - Else
+				register "led_0_ctrl" = "7"
+				# LED[1]: On - Link, Blink - Activity, Off - No Link
+				register "led_1_ctrl" = "1"
+				# INTn is routed to LED[2] pin
+				register "enable_int" = "true"
+				register "downshift_cnt" = "2"
+				device mdio 0 on    # PHY address
+					ops m88e1512_ops
+				end
+			end
+		end
+		device pci 1d.2 on	    # Intel PSE Time-Sensitive Networking GbE 1
+			# Enable external Marvell PHY 88E1512
+			chip drivers/net/phy/m88e1512
+				register "configure_leds" = "true"
+				# LED[0]: On - 1000 Mbps Link, Off - Else
+				register "led_0_ctrl" = "7"
+				# LED[1]: On - Link, Blink - Activity, Off - No Link
+				register "led_1_ctrl" = "1"
+				# INTn is routed to LED[2] pin
+				register "enable_int" = "true"
+				register "downshift_cnt" = "2"
+				device mdio 1 on    # PHY address
+					ops m88e1512_ops
+				end
+			end
+		end
 
 		device pci 1e.0 on	end # UART0
 		device pci 1e.1 on	end # UART1
-		device pci 1e.4 on	end # PCH Time-Sensitive Networking GbE
+		device pci 1e.4 on	    # PCH Time-Sensitive Networking GbE
+			# Enable external Marvell PHY 88E1512
+			chip drivers/net/phy/m88e1512
+				register "configure_leds" = "true"
+				# LED[0]: On - 1000 Mbps Link, Off - Else
+				register "led_0_ctrl" = "7"
+				# LED[1]: On - Link, Blink - Activity, Off - No Link
+				register "led_1_ctrl" = "1"
+				# INTn is routed to LED[2] pin
+				register "enable_int" = "true"
+				register "downshift_cnt" = "2"
+				device mdio 1 on    # PHY address
+					ops m88e1512_ops
+				end
+			end
+		end
 
 		device pci 1f.0 on	    # eSPI Interface
 			chip drivers/pc80/tpm

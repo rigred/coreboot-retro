@@ -137,7 +137,7 @@ static void fill_fsps_cpu_params(FSP_S_CONFIG *s_cfg,
 		 * Use FSP running MP PPI services to perform CPU feature programming
 		 * if Kconfig is enabled
 		 */
-		s_cfg->CpuMpPpi = (uintptr_t) mp_fill_ppi_services_data();
+		s_cfg->CpuMpPpi = (uintptr_t)mp_fill_ppi_services_data();
 	} else {
 		/* Use coreboot native driver to perform MP init by default */
 		s_cfg->CpuMpPpi = (uintptr_t)NULL;
@@ -349,6 +349,19 @@ static void fill_fsps_8254_params(FSP_S_CONFIG *s_cfg,
 	s_cfg->Enable8254ClockGatingOnS3 = !CONFIG(USE_LEGACY_8254_TIMER);
 }
 
+static void fill_fsps_pm_timer_params(FSP_S_CONFIG *s_cfg,
+		const struct soc_intel_meteorlake_config *config)
+{
+	/*
+	 * Legacy PM ACPI Timer (and TCO Timer)
+	 * This *must* be 1 in any case to keep FSP from
+	 *  1) enabling PM ACPI Timer emulation in uCode.
+	 *  2) disabling the PM ACPI Timer.
+	 * We handle both by ourself!
+	 */
+	s_cfg->EnableTcoTimer = 1;
+}
+
 static void fill_fsps_pcie_params(FSP_S_CONFIG *s_cfg,
 		const struct soc_intel_meteorlake_config *config)
 {
@@ -370,19 +383,14 @@ static void fill_fsps_pcie_params(FSP_S_CONFIG *s_cfg,
 static void fill_fsps_misc_power_params(FSP_S_CONFIG *s_cfg,
 		const struct soc_intel_meteorlake_config *config)
 {
+	/* Skip setting D0I3 bit for all HECI devices */
+	s_cfg->DisableD0I3SettingForHeci = 1;
+
 	s_cfg->Hwp = 1;
 	s_cfg->Cx = 1;
 	s_cfg->PsOnEnable = 1;
 	/* Enable the energy efficient turbo mode */
 	s_cfg->EnergyEfficientTurbo = 1;
-
-	/*
-	 * UPDATEME: This is WA for HFPGA
-	 * Disable Pch Pm Energy Report
-	 * Energy Report is disabled to enhance boottime with HFPGA.
-	 */
-	s_cfg->PchPmDisableEnergyReport = 1;
-
 	s_cfg->PmcLpmS0ixSubStateEnableMask = get_supported_lpm_mask();
 }
 
@@ -402,10 +410,10 @@ static void fill_fsps_ai_params(FSP_S_CONFIG *s_cfg,
 
 static void arch_silicon_init_params(FSPS_ARCH_UPD *s_arch_cfg)
 {
-	/* UPDATEME: Disable for VP
+	/*
 	 * EnableMultiPhaseSiliconInit for running MultiPhaseSiInit
 	 */
-	s_arch_cfg->EnableMultiPhaseSiliconInit = 0;
+	s_arch_cfg->EnableMultiPhaseSiliconInit = 1;
 
 	/* Assign FspEventHandler arch Upd to use coreboot debug event handler */
 	if (CONFIG(FSP_USES_CB_DEBUG_EVENT_HANDLER) && CONFIG(CONSOLE_SERIAL) &&
@@ -420,7 +428,7 @@ static void soc_silicon_init_params(FSP_S_CONFIG *s_cfg,
 	/* Override settings per board if required. */
 	mainboard_update_soc_chip_config(config);
 
-	const void (*fill_fsps_params[])(FSP_S_CONFIG *s_cfg,
+	 void (*fill_fsps_params[])(FSP_S_CONFIG *s_cfg,
 			const struct soc_intel_meteorlake_config *config) = {
 		fill_fsps_lpss_params,
 		fill_fsps_cpu_params,
@@ -437,6 +445,7 @@ static void soc_silicon_init_params(FSP_S_CONFIG *s_cfg,
 		fill_fsps_vmd_params,
 		fill_fsps_tbt_params,
 		fill_fsps_8254_params,
+		fill_fsps_pm_timer_params,
 		fill_fsps_pcie_params,
 		fill_fsps_misc_power_params,
 		fill_fsps_ufs_params,

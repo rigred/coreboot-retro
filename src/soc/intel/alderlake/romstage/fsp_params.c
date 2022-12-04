@@ -8,6 +8,7 @@
 #include <drivers/wifi/generic/wifi.h>
 #include <fsp/fsp_debug_event.h>
 #include <fsp/util.h>
+#include <intelbasecode/debug_feature.h>
 #include <intelblocks/cpulib.h>
 #include <intelblocks/pcie_rp.h>
 #include <option.h>
@@ -342,6 +343,24 @@ static void fill_fspm_trace_params(FSP_M_CONFIG *m_cfg,
 	m_cfg->CpuCrashLogEnable = m_cfg->CpuCrashLogDevice;
 }
 
+static void fill_fspm_ibecc_params(FSP_M_CONFIG *m_cfg,
+		const struct soc_intel_alderlake_config *config)
+{
+	/* In-Band ECC configuration */
+	if (config->ibecc.enable) {
+		m_cfg->Ibecc = config->ibecc.enable;
+		m_cfg->IbeccOperationMode = config->ibecc.mode;
+		if (m_cfg->IbeccOperationMode == IBECC_MODE_PER_REGION) {
+			FSP_ARRAY_LOAD(m_cfg->IbeccProtectedRangeEnable,
+				       config->ibecc.range_enable);
+			FSP_ARRAY_LOAD(m_cfg->IbeccProtectedRangeBase,
+				       config->ibecc.range_base);
+			FSP_ARRAY_LOAD(m_cfg->IbeccProtectedRangeMask,
+				       config->ibecc.range_mask);
+		}
+	}
+}
+
 static void soc_memory_init_params(FSP_M_CONFIG *m_cfg,
 		const struct soc_intel_alderlake_config *config)
 {
@@ -362,10 +381,16 @@ static void soc_memory_init_params(FSP_M_CONFIG *m_cfg,
 		fill_fspm_usb4_params,
 		fill_fspm_vtd_params,
 		fill_fspm_trace_params,
+		fill_fspm_ibecc_params,
 	};
 
 	for (size_t i = 0; i < ARRAY_SIZE(fill_fspm_params); i++)
 		fill_fspm_params[i](m_cfg, config);
+}
+
+static void debug_override_memory_init_params(FSP_M_CONFIG *mupd)
+{
+	debug_get_pch_cpu_tracehub_modes(&mupd->CpuTraceHubMode, &mupd->PchTraceHubMode);
 }
 
 void platform_fsp_memory_init_params_cb(FSPM_UPD *mupd, uint32_t version)
@@ -394,6 +419,10 @@ void platform_fsp_memory_init_params_cb(FSPM_UPD *mupd, uint32_t version)
 
 	soc_memory_init_params(m_cfg, config);
 	mainboard_memory_init_params(mupd);
+
+	/* Override the memory init params through runtime debug capability */
+	if (CONFIG(SOC_INTEL_COMMON_BASECODE_DEBUG_FEATURE))
+		debug_override_memory_init_params(m_cfg);
 }
 
 __weak void mainboard_memory_init_params(FSPM_UPD *memupd)

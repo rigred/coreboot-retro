@@ -12,6 +12,8 @@
 #define EC_OEM_VARIABLE_DATA_MASK	0x7
 #define INT3400_ODVP_CHANGED		0x88
 
+#define ACPI_NOTIFY_CROS_EC_PANIC	0xB0
+
 // Mainboard specific throttle handler
 #ifdef DPTF_ENABLE_CHARGER
 External (\_SB.DPTF.TCHG, DeviceObj)
@@ -56,6 +58,7 @@ Device (EC0)
 		CHGL, 8,	// Charger Current Limit
 		TBMD, 1,	// Tablet mode
 		DDPN, 3,	// Device DPTF Profile Number
+		STTB, 1,	// Switch thermal table by body detection status
 		// DFUD must be 0 for the other 31 values to be valid
 		Offset (0x0a),
 		DFUD, 1,	// Device Features Undefined
@@ -226,6 +229,11 @@ Device (EC0)
 	Method (_Q01, 0, NotSerialized)
 	{
 		Printf ("EC: LID CLOSE")
+#if CONFIG(SOC_AMD_COMMON_BLOCK_ACPI_DPTC)
+		If (CondRefOf (\_SB.DPTC)) {
+			\_SB.DPTC()
+		}
+#endif
 		Store (LIDS, \LIDS)
 #ifdef EC_ENABLE_LID_SWITCH
 		Notify (LID0, 0x80)
@@ -236,6 +244,11 @@ Device (EC0)
 	Method (_Q02, 0, NotSerialized)
 	{
 		Printf ("EC: LID OPEN")
+#if CONFIG(SOC_AMD_COMMON_BLOCK_ACPI_DPTC)
+		If (CondRefOf (\_SB.DPTC)) {
+			\_SB.DPTC()
+		}
+#endif
 		Store (LIDS, \LIDS)
 		Notify (CREC, 0x2)
 #ifdef EC_ENABLE_LID_SWITCH
@@ -408,6 +421,13 @@ Device (EC0)
 		\PNOT ()
 	}
 
+	// EC Panic
+	Method (_Q18, 0, NotSerialized)
+	{
+		Printf ("EC: PANIC")
+		Notify (CREC, ACPI_NOTIFY_CROS_EC_PANIC)
+	}
+
 	// MKBP interrupt.
 	Method (_Q1B, 0, NotSerialized)
 	{
@@ -530,6 +550,12 @@ Device (EC0)
 	 */
 	Method (_Q09, 0, NotSerialized)
 	{
+
+#if CONFIG(SOC_AMD_COMMON_BLOCK_ACPI_DPTC)
+		If (CondRefOf (\_SB.DPTC)) {
+			\_SB.DPTC()
+		}
+#endif
 		If (!Acquire (^PATM, 1000)) {
 			/* Read sensor ID for event */
 			Store (^PATI, Local0)

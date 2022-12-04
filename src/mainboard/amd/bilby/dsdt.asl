@@ -16,9 +16,6 @@ DefinitionBlock (
 	#include <acpi/dsdt_top.asl>
 	#include <globalnvs.asl>
 
-	/* PCI IRQ mapping for the Southbridge */
-	#include <pcie.asl>
-
 	/* Power state notification to ALIB */
 	#include <pnot.asl>
 

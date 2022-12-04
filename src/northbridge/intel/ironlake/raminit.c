@@ -782,6 +782,8 @@ static void compute_derived_timings(struct raminfo *info)
 		    some_delay_2_halfcycles_ceil - 1;
 	if (!info->revision_flag_1)
 		some_delay_2_halfcycles_floor++;
+	/* FIXME: this variable is unused. Should it be used? */
+	(void)some_delay_2_halfcycles_floor;
 	info->some_delay_2_halfcycles_ceil = some_delay_2_halfcycles_ceil;
 	info->some_delay_3_ps_rounded = some_delay_3_ps_rounded;
 	if ((info->populated_ranks[0][0][0] && info->populated_ranks[0][1][0])
@@ -1649,7 +1651,7 @@ static u8 check_testing(struct raminfo *info, u8 total_rank, int flip)
 				u32 curroffset =
 				    comp3 * 8 * 60 + 2 * comp1 + 8 * comp2;
 				read128((total_rank << 28) | (curroffset << 3),
-					(u64 *) re);
+					(u64 *)re);
 				failxor[0] |=
 				    get_etalon2(flip, curroffset) ^ re[0];
 				failxor[1] |=

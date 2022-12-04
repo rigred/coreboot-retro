@@ -17,6 +17,9 @@ chip soc/intel/alderlake
 	# SaGv Configuration
 	register "sagv" = "CONFIG(ATLAS_ENABLE_SAGV) ? SaGv_Enabled : SaGv_Disabled"
 
+	# Disable S0ix
+	register "s0ix_enable" = "0"
+
 	# Display configuration (4 DPs)
 	register "ddi_ports_config" = "{
 		[DDI_PORT_A] = DDI_ENABLE_HPD | DDI_ENABLE_DDC,
@@ -46,6 +49,9 @@ chip soc/intel/alderlake
 	register "usb3_ports[1]" = "USB3_PORT_DEFAULT(OC0)"
 	register "usb3_ports[2]" = "USB3_PORT_DEFAULT(OC1)"
 	register "usb3_ports[3]" = "USB3_PORT_DEFAULT(OC1)"
+
+	register "ibecc.enable" = "CONFIG(ATLAS_ENABLE_IBECC)"
+	register "ibecc.mode" = "CONFIG(ATLAS_ENABLE_IBECC) ? IBECC_MODE_ALL : IBECC_MODE_NONE"
 
 	register "sata_salp_support" = "1"
 

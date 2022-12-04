@@ -11,15 +11,7 @@ chip northbridge/intel/sandybridge
 	register "gpu_panel_power_down_delay" = "500"
 	register "gpu_panel_power_up_delay" = "600"
 	register "gpu_pch_backlight" = "0x041e041e"
-	device cpu_cluster 0 on
-		chip cpu/intel/model_206ax
-			register "acpi_c1" = "1"
-			register "acpi_c2" = "3"
-			register "acpi_c3" = "5"
-			device lapic 0 on end
-			device lapic 0xacac off end
-		end
-	end
+
 	device domain 0 on
 		subsystemid 0x17aa 0x2205 inherit
 
@@ -47,7 +39,7 @@ chip northbridge/intel/sandybridge
 			register "spi_lvscc" = "0x2005"
 
 			device pci 14.0 on end # USB 3.0 Controller
-			device pci 16.0 off end # Management Engine Interface 1
+			device pci 16.0 on end # Management Engine Interface 1
 			device pci 16.1 off end # Management Engine Interface 2
 			device pci 16.2 off end # Management Engine IDE-R
 			device pci 16.3 off end # Management Engine KT

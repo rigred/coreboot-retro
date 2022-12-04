@@ -62,7 +62,7 @@ void i2c_generic_fill_ssdt(const struct device *dev,
 		return;
 
 	if (!config->hid) {
-		printk(BIOS_ERR, "%s: ERROR: HID required\n", dev_path(dev));
+		printk(BIOS_ERR, "%s: HID required but not set\n", dev_path(dev));
 		return;
 	}
 
@@ -75,6 +75,16 @@ void i2c_generic_fill_ssdt(const struct device *dev,
 				dev_path(dev));
 			return;
 		}
+	}
+
+	if (config->has_power_resource && !config->disable_gpio_export_in_crs) {
+		/*
+		 * This case will most likely cause timing problems. The OS driver might be
+		 * controlling the GPIOs, but the ACPI Power Resource will also be controlling
+		 * them. This will result in the two fighting and stomping on each other.
+		 */
+		printk(BIOS_ERR, "%s: Exposing GPIOs in Power Resource and _CRS\n",
+		       dev_path(dev));
 	}
 
 	/* Device */

@@ -4,7 +4,7 @@
 #define ARCH_CPU_H
 
 #include <types.h>
-#include <arch/cpuid.h>
+#include <arch/cpuid.h> /* IWYU pragma: export */
 
 /*
  * EFLAGS bits
@@ -101,7 +101,7 @@ int cpu_have_cpuid(void);
 
 static inline bool cpu_is_amd(void)
 {
-	return CONFIG(CPU_AMD_AGESA) || CONFIG(CPU_AMD_PI) || CONFIG(SOC_AMD_COMMON);
+	return CONFIG(CPU_AMD_PI) || CONFIG(SOC_AMD_COMMON);
 }
 
 static inline bool cpu_is_intel(void)
@@ -147,23 +147,25 @@ struct per_cpu_segment_data {
 	struct cpu_info *cpu_info;
 };
 
+enum cb_err set_cpu_info(unsigned int index, struct device *cpu);
+
 static inline struct cpu_info *cpu_info(void)
 {
-/* We use a #if because we don't want to mess with the &s below. */
-#if CONFIG(CPU_INFO_V2)
 	struct cpu_info *ci = NULL;
 
-	__asm__("mov %%gs:%c[offset], %[ci]"
+	__asm__ __volatile__("mov %%gs:%c[offset], %[ci]"
 		: [ci] "=r" (ci)
 		: [offset] "i" (offsetof(struct per_cpu_segment_data, cpu_info))
 	);
 
 	return ci;
-#else
-	char s;
-	uintptr_t info = ALIGN_UP((uintptr_t)&s, CONFIG_STACK_SIZE) - sizeof(struct cpu_info);
-	return (struct cpu_info *)info;
-#endif /* CPU_INFO_V2 */
+}
+
+static inline unsigned long cpu_index(void)
+{
+	struct cpu_info *ci;
+	ci = cpu_info();
+	return ci->index;
 }
 
 struct cpuinfo_x86 {
@@ -216,20 +218,6 @@ uint32_t cpu_get_feature_flags_ecx(void);
  * return value in EDX register
  */
 uint32_t cpu_get_feature_flags_edx(void);
-
-/*
- * Previously cpu_index() implementation assumes that cpu_index()
- * function will always getting called from coreboot context
- * (ESP stack pointer will always refer to coreboot).
- *
- * But with MP_SERVICES_PPI implementation in coreboot this
- * assumption might not be true, where FSP context (stack pointer refers
- * to FSP) will request to get cpu_index().
- *
- * Hence new logic to use cpuid to fetch lapic id and matches with
- * cpus_default_apic_id[] variable to return correct cpu_index().
- */
-int cpu_index(void);
 
 #define DETERMINISTIC_CACHE_PARAMETERS_CPUID_IA	0x04
 #define DETERMINISTIC_CACHE_PARAMETERS_CPUID_AMD	0x8000001d

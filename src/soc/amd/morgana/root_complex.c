@@ -118,7 +118,7 @@ static void read_resources(struct device *dev)
 {
 	uint32_t mem_usable = (uintptr_t)cbmem_top();
 	unsigned int idx = 0;
-	const struct hob_header *hob = fsp_get_hob_list();
+	const struct hob_header *hob_iterator;
 	const struct hob_resource *res;
 	struct resource *gnb_apic;
 
@@ -157,19 +157,19 @@ static void read_resources(struct device *dev)
 
 	mmconf_resource(dev, idx++);
 
-	if (!hob) {
-		printk(BIOS_ERR, "Error: %s incomplete because no HOB list was found\n",
+	/* GNB IOAPIC resource */
+	gnb_apic = new_resource(dev, idx++);
+	gnb_apic->base = GNB_IO_APIC_ADDR;
+	gnb_apic->size = 0x00001000;
+	gnb_apic->flags = IORESOURCE_MEM | IORESOURCE_ASSIGNED | IORESOURCE_FIXED;
+
+	if (fsp_hob_iterator_init(&hob_iterator) != CB_SUCCESS) {
+		printk(BIOS_ERR, "%s incomplete because no HOB list was found\n",
 				__func__);
 		return;
 	}
 
-	for (; hob->type != HOB_TYPE_END_OF_HOB_LIST; hob = fsp_next_hob(hob)) {
-
-		if (hob->type != HOB_TYPE_RESOURCE_DESCRIPTOR)
-			continue;
-
-		res = fsp_hob_header_to_resource(hob);
-
+	while (fsp_hob_iterator_get_next_resource(&hob_iterator, &res) == CB_SUCCESS) {
 		if (res->type == EFI_RESOURCE_SYSTEM_MEMORY && res->addr < mem_usable)
 			continue; /* 0 through low usable was set above */
 		if (res->type == EFI_RESOURCE_MEMORY_MAPPED_IO)
@@ -180,20 +180,14 @@ static void read_resources(struct device *dev)
 		else if (res->type == EFI_RESOURCE_MEMORY_RESERVED)
 			reserved_ram_resource_kb(dev, idx++, res->addr / KiB, res->length / KiB);
 		else
-			printk(BIOS_ERR, "Error: failed to set resources for type %d\n",
+			printk(BIOS_ERR, "Failed to set resources for type %d\n",
 					res->type);
 	}
-
-	/* GNB IOAPIC resource */
-	gnb_apic = new_resource(dev, idx++);
-	gnb_apic->base = GNB_IO_APIC_ADDR;
-	gnb_apic->size = 0x00001000;
-	gnb_apic->flags = IORESOURCE_MEM | IORESOURCE_ASSIGNED | IORESOURCE_FIXED;
 }
 
 static void root_complex_init(struct device *dev)
 {
-	setup_ioapic((u8 *)GNB_IO_APIC_ADDR, GNB_IOAPIC_ID);
+	register_new_ioapic((u8 *)GNB_IO_APIC_ADDR);
 }
 
 static void acipgen_dptci(void)

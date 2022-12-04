@@ -34,7 +34,6 @@ ramstage-y	+= acpi.c
 ramstage-y	+= agesa_acpi.c
 ramstage-y	+= chip.c
 ramstage-y	+= cpu.c
-ramstage-y	+= data_fabric.c
 ramstage-y	+= fch.c
 ramstage-y	+= fsp_s_params.c
 ramstage-y	+= gpio.c
@@ -55,7 +54,10 @@ CPPFLAGS_common += -I$(src)/soc/amd/mendocino/include
 CPPFLAGS_common += -I$(src)/soc/amd/mendocino/acpi
 CPPFLAGS_common += -I$(src)/vendorcode/amd/fsp/mendocino
 
+# allow site-local Makefile to override blobs location
+ifeq ($(MAINBOARD_BLOBS_DIR),)
 MAINBOARD_BLOBS_DIR:=$(top)/3rdparty/blobs/mainboard/$(MAINBOARDDIR)
+endif
 
 # ROMSIG Normally At ROMBASE + 0x20000
 # Overridden by CONFIG_AMD_FWM_POSITION_INDEX
@@ -140,8 +142,8 @@ PSP_APOB_BASE=$(CONFIG_PSP_APOB_DRAM_ADDRESS)
 # type = 0x62
 PSP_BIOSBIN_FILE=$(obj)/amd_biospsp.img
 PSP_ELF_FILE=$(objcbfs)/bootblock.elf
-PSP_BIOSBIN_SIZE=$(shell $(READELF_bootblock) -l $(PSP_ELF_FILE) | grep LOAD | awk '{print $$5}')
-PSP_BIOSBIN_DEST=$(shell $(READELF_bootblock) -l $(PSP_ELF_FILE) | grep LOAD | awk '{print $$3}')
+PSP_BIOSBIN_SIZE=$(shell $(READELF_bootblock) -Wl $(PSP_ELF_FILE) | grep LOAD | awk '{print $$5}')
+PSP_BIOSBIN_DEST=$(shell $(READELF_bootblock) -Wl $(PSP_ELF_FILE) | grep LOAD | awk '{print $$3}')
 
 # type = 0x63 - construct APOB NV base/size from flash map
 # The flashmap section used for this is expected to be named RW_MRC_CACHE

@@ -26,9 +26,6 @@
 #define SMI		(2 << 8)
 #define INT		(1 << 8)
 
-u32 io_apic_read(void *ioapic_base, u32 reg);
-void io_apic_write(void *ioapic_base, u32 reg, u32 value);
-void set_ioapic_id(void *ioapic_base, u8 ioapic_id);
 u8 get_ioapic_id(void *ioapic_base);
 u8 get_ioapic_version(void *ioapic_base);
 
@@ -37,6 +34,8 @@ void ioapic_set_max_vectors(void *ioapic_base, int mre_count);
 void ioapic_lock_max_vectors(void *ioapic_base);
 
 void setup_ioapic(void *ioapic_base, u8 ioapic_id);
+void register_new_ioapic(void *ioapic_base);
+void register_new_ioapic_gsi0(void *ioapic_base);
 
 void ioapic_set_boot_config(void *ioapic_base, bool irq_on_fsb);
 #endif

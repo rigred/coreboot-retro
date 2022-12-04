@@ -6,6 +6,7 @@
 #include <cpu/cpu.h>
 #include <post.h>
 #include <string.h>
+#include <cpu/x86/gdt.h>
 #include <cpu/x86/mp.h>
 #include <cpu/x86/lapic.h>
 #include <cpu/x86/tsc.h>
@@ -58,7 +59,7 @@ static inline int test_cyrix_52div(void)
 	     : "cc");
 
 	/* AH is 0x02 on Cyrix after the divide.. */
-	return (unsigned char) (test >> 8) == 0x02;
+	return (unsigned char)(test >> 8) == 0x02;
 }
 
 /*
@@ -317,26 +318,40 @@ void arch_bootstate_coreboot_exit(void)
 	mp_park_aps();
 }
 
-/*
- * Previously cpu_index() implementation assumes that cpu_index()
- * function will always getting called from coreboot context
- * (ESP stack pointer will always refer to coreboot).
- *
- * But with MP_SERVICES_PPI implementation in coreboot this
- * assumption might not be true, where FSP context (stack pointer refers
- * to FSP) will request to get cpu_index().
- *
- * Hence new logic to use cpuid to fetch lapic id and matches with
- * cpus_default_apic_id[] variable to return correct cpu_index().
- */
-int cpu_index(void)
-{
-	int i;
-	int lapic_id = initial_lapicid();
+/* cpu_info() looks at address 0 at the base of %gs for a pointer to struct cpu_info */
+static struct per_cpu_segment_data segment_data[CONFIG_MAX_CPUS];
+struct cpu_info cpu_infos[CONFIG_MAX_CPUS];
 
-	for (i = 0; i < CONFIG_MAX_CPUS; i++) {
-		if (cpu_get_apic_id(i) == lapic_id)
-			return i;
-	}
-	return -1;
+enum cb_err set_cpu_info(unsigned int index, struct device *cpu)
+{
+	if (index >= ARRAY_SIZE(cpu_infos))
+		return CB_ERR;
+
+	if (!cpu)
+		return CB_ERR;
+
+	const struct cpu_info info = { .cpu = cpu, .index = index};
+	cpu_infos[index] = info;
+	segment_data[index].cpu_info = &cpu_infos[index];
+
+	struct segment_descriptor {
+		uint16_t segment_limit_0_15;
+		uint16_t base_address_0_15;
+		uint8_t base_address_16_23;
+		uint8_t attrs[2];
+		uint8_t base_address_24_31;
+	} *segment_descriptor = (void *)&per_cpu_segment_descriptors;
+
+	segment_descriptor[index].base_address_0_15 = (uintptr_t)&segment_data[index] & 0xffff;
+	segment_descriptor[index].base_address_16_23 = ((uintptr_t)&segment_data[index] >> 16) & 0xff;
+	segment_descriptor[index].base_address_24_31 = ((uintptr_t)&segment_data[index] >> 24) & 0xff;
+
+	const unsigned int cpu_segment = per_cpu_segment_selector + (index << 3);
+
+	__asm__ __volatile__ ("mov %0, %%gs\n"
+		:
+		: "r" (cpu_segment)
+		: );
+
+	return CB_SUCCESS;
 }

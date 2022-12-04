@@ -1,14 +1,15 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 
-#include <arch/cpu.h>
-#include <device/pci_ops.h>
+#include <commonlib/helpers.h>
 #include <console/console.h>
+#include <cpu/cpu.h>
 #include <cpu/intel/cpu_ids.h>
 #include <cpu/intel/microcode.h>
 #include <cpu/x86/msr.h>
 #include <cpu/x86/name.h>
 #include <device/pci.h>
 #include <device/pci_ids.h>
+#include <device/pci_ops.h>
 #include <soc/bootblock.h>
 #include <soc/pci_devs.h>
 
@@ -28,6 +29,7 @@ static struct {
 	{ PCI_DID_INTEL_MTL_P_ID_1, "MeteorLake P" },
 	{ PCI_DID_INTEL_MTL_P_ID_2, "MeteorLake P" },
 	{ PCI_DID_INTEL_MTL_P_ID_3, "MeteorLake P" },
+	{ PCI_DID_INTEL_MTL_P_ID_4, "MeteorLake P" },
 };
 
 static struct {
@@ -52,6 +54,7 @@ static struct {
 	{ PCI_DID_INTEL_MTL_P_GT2_1, "MeteorLake-P GT2" },
 	{ PCI_DID_INTEL_MTL_P_GT2_2, "MeteorLake-P GT2" },
 	{ PCI_DID_INTEL_MTL_P_GT2_3, "MeteorLake-P GT2" },
+	{ PCI_DID_INTEL_MTL_P_GT2_4, "Meteorlake-P GT2" },
 };
 
 static inline uint8_t get_dev_revision(pci_devfn_t dev)
@@ -62,6 +65,21 @@ static inline uint8_t get_dev_revision(pci_devfn_t dev)
 static inline uint16_t get_dev_id(pci_devfn_t dev)
 {
 	return pci_read_config16(dev, PCI_DEVICE_ID);
+}
+
+static void report_cache_info(void)
+{
+	int cache_level = CACHE_L3;
+	struct cpu_cache_info info;
+
+	if (!fill_cpu_cache_info(cache_level, &info))
+		return;
+
+	printk(BIOS_INFO, "Cache: Level %d: ", cache_level);
+	printk(BIOS_INFO, "Associativity = %zd Partitions = %zd Line Size = %zd Sets = %zd\n",
+		info.num_ways, info.physical_partitions, info.line_size, info.num_sets);
+
+	printk(BIOS_INFO, "Cache size = %zu MiB\n", get_cache_size(&info)/MiB);
 }
 
 static void report_cpu_info(void)
@@ -94,6 +112,8 @@ static void report_cpu_info(void)
 	printk(BIOS_DEBUG,
 		"CPU: AES %ssupported, TXT %ssupported, VT %ssupported\n",
 		mode[aes], mode[txt], mode[vt]);
+
+	report_cache_info();
 }
 
 static void report_mch_info(void)

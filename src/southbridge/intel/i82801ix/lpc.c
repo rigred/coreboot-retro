@@ -35,7 +35,7 @@ static void i82801ix_enable_apic(struct device *dev)
 	/* Lock maximum redirection entries (MRE), R/WO register. */
 	ioapic_lock_max_vectors(VIO_APIC_VADDR);
 
-	setup_ioapic(VIO_APIC_VADDR, 2); /* ICH7 code uses id 2. */
+	register_new_ioapic_gsi0(VIO_APIC_VADDR);
 }
 
 static void i82801ix_enable_serial_irqs(struct device *dev)
@@ -374,12 +374,6 @@ static void lpc_init(struct device *dev)
 	i8259_configure_irq_trigger(9, 1);
 
 	i82801ix_set_acpi_mode(dev);
-
-	/* Don't allow evil boot loaders, kernels, or
-	 * userspace applications to deceive us:
-	 */
-	if (CONFIG(SMM_LEGACY_ASEG))
-		aseg_smm_lock();
 }
 
 static void i82801ix_lpc_read_resources(struct device *dev)

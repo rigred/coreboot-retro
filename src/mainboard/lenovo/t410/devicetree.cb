@@ -17,13 +17,12 @@ chip northbridge/intel/ironlake
 	register "gpu_cpu_backlight" = "0x58d"
 	register "gpu_pch_backlight" = "0x061a061a"
 
-	device cpu_cluster 0 on
-		chip cpu/intel/model_2065x
-			device lapic 0 on end
-		end
+	chip cpu/intel/model_2065x
+		device cpu_cluster 0 on ops ironlake_cpu_bus_ops end
 	end
 
 	device domain 0 on
+		ops ironlake_pci_domain_ops
 		device pci 00.0 on # Host bridge
 			subsystemid 0x17aa 0x2193
 		end
@@ -53,7 +52,9 @@ chip northbridge/intel/ironlake
 
 			register "pcie_hotplug_map" = "{ 0, 0, 0, 1, 0, 0, 0, 0 }"
 
-			device pci 16.0 off end # MEI
+			device pci 16.0 on # MEI
+				subsystemid 0x17aa 0x215f
+			end
 			device pci 16.2 on # IDE/SATA
 				subsystemid 0x17aa 0x2161
 			end

@@ -3,13 +3,11 @@
 chip northbridge/intel/e7505
 
 	device cpu_cluster 0 on
-		chip cpu/intel/socket_mPGA604
-			device lapic 0 on end
-			device lapic 6 on end
-		end
+		ops e7505_cpu_bus_ops
 	end
 
 	device domain 0 on
+		ops e7505_pci_domain_ops
 		device pci 0.0 on end # Chipset host controller
 		device pci 0.1 on end # Host RASUM controller
 		device pci 2.0 on # Hub interface B
@@ -45,7 +43,7 @@ chip northbridge/intel/e7505
 						io 0x60 = 0x3f8
 						irq 0x70 = 4
 					end
-					device pnp 2e.5 off # Com2
+					device pnp 2e.5 on # Com2
 						io 0x60 = 0x2f8
 						irq 0x70 = 3
 					end

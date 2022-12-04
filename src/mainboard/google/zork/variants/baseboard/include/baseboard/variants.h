@@ -23,6 +23,9 @@ const struct soc_amd_gpio *variant_override_gpio_table(size_t *size);
 /* This function provides GPIO init in bootblock. */
 const struct soc_amd_gpio *variant_bootblock_gpio_table(size_t *size, int slp_typ);
 
+/* This function provides GPIO settings for romstage. */
+const struct soc_amd_gpio *baseboard_romstage_gpio_table(size_t *size);
+
 /*
  * This function provides GPIO table for the pads that need to be configured when entering
  * sleep.
@@ -47,8 +50,8 @@ void variant_audio_update(void);
 void variant_bluetooth_update(void);
 /* Update touchscreen configuration in devicetree during ramstage. */
 void variant_touchscreen_update(void);
-/* Configure PCIe GPIOs as per variant sequencing requirements. */
-void variant_pcie_gpio_configure(void);
+/* Configure PCIe GPIOs as per baseboard sequencing requirements. */
+void baseboard_pcie_gpio_configure(void);
 
 /* Per variant FSP-S initialization, default implementation in baseboard and
  * overridable by the variant. */

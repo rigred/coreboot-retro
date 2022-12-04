@@ -29,13 +29,9 @@ endif
 
 smm-y += save_state.c
 
-ifeq ($(CONFIG_SMM_TSEG),y)
-
 ramstage-y += tseg_region.c
 romstage-y += tseg_region.c
 postcar-y += tseg_region.c
-
-endif
 
 ifeq ($(CONFIG_PARALLEL_MP),y)
 
@@ -76,17 +72,3 @@ $(obj)/smm/smm: $(obj)/smm/smm.elf.rmod
 	$(OBJCOPY_smm) -O binary $< $@
 
 endif
-
-ifeq ($(CONFIG_SMM_LEGACY_ASEG),y)
-
-smm-y += smm.ld
-
-$(obj)/smm/smm: $(obj)/smm/smm.o $(call src-to-obj,smm,$(src)/cpu/x86/smm/smm.ld)
-	$(LD_smm) $(LDFLAGS_smm) -o $(obj)/smm/smm.elf -T $(call src-to-obj,smm,$(src)/cpu/x86/smm/smm.ld) $(obj)/smm/smm.o
-	$(NM_smm) -n $(obj)/smm/smm.elf | sort > $(obj)/smm/smm.map
-	$(OBJCOPY_smm) -O binary $(obj)/smm/smm.elf $@
-
-smm-y += smmhandler.S
-smm-y += smihandler.c
-
-endif # CONFIG_SMM_LEGACY_ASEG

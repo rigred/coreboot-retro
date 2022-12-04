@@ -1,6 +1,9 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 chip soc/amd/mendocino
+	# Set Package Power Parameters
+	register "stapm_time_constant_s" = "200"
+
 	device domain 0 on
 		device ref gpp_bridge_a on  # Internal GPP Bridge 0 to Bus A
 			device ref xhci_1 on # XHCI1 controller
@@ -49,7 +52,7 @@ chip soc/amd/mendocino
 			register "generic.hid" = ""ELAN9008""
 			register "generic.desc" = ""ELAN Touchscreen""
 			register "generic.irq_gpio" = "ACPI_GPIO_IRQ_LEVEL_LOW(GPIO_29)"
-			register "generic.probed" = "1"
+			register "generic.detect" = "1"
 			register "generic.enable_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_HIGH(GPIO_131)"
 			register "generic.enable_delay_ms" = "1"
 			register "generic.reset_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_LOW(GPIO_136)"

@@ -32,10 +32,12 @@ config BOARD_SPECIFIC_OPTIONS
 	select ELOG_GSMI
 	select FW_CONFIG
 	select FW_CONFIG_SOURCE_CHROMEEC_CBI
+	select GOOGLE_SMBIOS_MAINBOARD_VERSION
 	select I2C_TPM
 	select MAINBOARD_HAS_CHROMEOS
 	select MAINBOARD_HAS_TPM2
 	select SOC_AMD_MENDOCINO
+	select SOC_AMD_COMMON_BLOCK_I2C3_TPM_SHARED_WITH_PSP
 	select SOC_AMD_COMMON_BLOCK_USE_ESPI
 	select TPM_GOOGLE_TI50
 	select PCIEXP_ASPM
@@ -78,6 +80,7 @@ config MAINBOARD_PART_NUMBER
 	default "Winterhold" if BOARD_GOOGLE_WINTERHOLD
 	default "Morthal" if BOARD_GOOGLE_MORTHAL
 	default "Frostflow" if BOARD_GOOGLE_FROSTFLOW
+	default "Crystaldrift" if BOARD_GOOGLE_CRYSTALDRIFT
 
 config OVERRIDE_DEVICETREE
 	string
@@ -89,6 +92,7 @@ config VARIANT_DIR
 	default "winterhold" if BOARD_GOOGLE_WINTERHOLD
 	default "morthal" if BOARD_GOOGLE_MORTHAL
 	default "frostflow" if BOARD_GOOGLE_FROSTFLOW
+	default "crystaldrift" if BOARD_GOOGLE_CRYSTALDRIFT
 
 config VBOOT
 	select EC_GOOGLE_CHROMEEC_SWITCHES
@@ -106,7 +110,8 @@ config VBOOT_STARTS_IN_BOOTBLOCK
 
 if !EM100	# EM100 defaults in soc/amd/common/blocks/spi/Kconfig
 config EFS_SPI_READ_MODE
-	default 2          # Dual IO (1-1-2)
+	default 2 if BOARD_GOOGLE_SKYRIM          # Dual IO (1-1-2)
+	default 4                                 # Dual IO (1-2-2)
 
 config EFS_SPI_SPEED
 	default 0	# 66MHz
@@ -141,5 +146,19 @@ config OVERRIDE_EFS_SPI_SPEED_MIN_BOARD
 config CONSOLE_CBMEM_BUFFER_SIZE
 	hex
 	default 0x80000
+
+config ENABLE_STB_SPILL_TO_DRAM
+	default y
+	help
+	  Spill-to-DRAM is an STB feature that extends the buffer from using
+	  just the small SRAM buffer to a much larger area reserved in main
+	  memory.
+
+config FEATURE_DYNAMIC_DPTC
+	bool
+	depends on SOC_AMD_COMMON_BLOCK_ACPI_DPTC
+	help
+	  Selected by mainboards that implement support for ALIB
+	  to enable dynamic DPTC.
 
 endif # BOARD_GOOGLE_BASEBOARD_SKYRIM

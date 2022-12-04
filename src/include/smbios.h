@@ -270,6 +270,7 @@ typedef enum {
 	SMBIOS_TEMPERATURE_PROBE = 28,
 	SMBIOS_SYSTEM_BOOT_INFORMATION = 32,
 	SMBIOS_IPMI_DEVICE_INFORMATION = 38,
+	SMBIOS_SYSTEM_POWER_SUPPLY = 39,
 	SMBIOS_ONBOARD_DEVICES_EXTENDED_INFORMATION = 41,
 	SMBIOS_TPM_DEVICE = 43,
 	SMBIOS_END_OF_TABLE = 127,
@@ -484,6 +485,16 @@ struct smbios_type4 {
 
 #define SMBIOS_PROCESSOR_STATUS_POPULATED		(1 << 6)
 #define SMBIOS_PROCESSOR_STATUS_CPU_ENABLED		(1 << 0)
+
+/* defines for processor family */
+#define SMBIOS_PROCESSOR_FAMILY_OTHER			0x01
+#define SMBIOS_PROCESSOR_FAMILY_UNKNOWN			0x02
+#define SMBIOS_PROCESSOR_FAMILY_XEON			0xb3
+
+/* defines for processor characteristics */
+#define PROCESSOR_64BIT_CAPABLE				(1 << 2)
+#define PROCESSOR_MULTI_CORE				(1 << 3)
+#define PROCESSOR_POWER_PERFORMANCE_CONTROL		(1 << 7)
 
 /* defines for supported_sram_type/current_sram_type */
 
@@ -721,6 +732,7 @@ enum misc_slot_type {
 	SlotTypePciExpressMini52pinWithBSKO = 0x21,
 	SlotTypePciExpressMini52pinWithoutBSKO = 0x22,
 	SlotTypePciExpressMini76pin = 0x23,
+	SlotTypePciExpressOCPNIC30SFF = 0x26,
 	SlotTypePC98C20 = 0xA0,
 	SlotTypePC98C24 = 0xA1,
 	SlotTypePC98E = 0xA2,
@@ -1000,6 +1012,69 @@ enum smbios_bmc_interface_type {
 	SMBIOS_BMC_INTERFACE_BLOCK,
 	SMBIOS_BMC_INTERFACE_SMBUS,
 };
+
+typedef enum {
+	PowerSupplyTypeOther = 1,
+	PowerSupplyTypeUnknown = 2,
+	PowerSupplyTypeLinear = 3,
+	PowerSupplyTypeSwitching = 4,
+	PowerSupplyTypeBattery = 5,
+	PowerSupplyTypeUps = 6,
+	PowerSupplyTypeConverter = 7,
+	PowerSupplyTypeRegulator = 8
+} power_supply_type;
+
+typedef enum {
+	PowerSupplyStatusOther = 1,
+	PowerSupplyStatusUnknown = 2,
+	PowerSupplyStatusOk = 3,
+	PowerSupplyStatusNonCritical = 4,
+	PowerSupplyStatusCritical = 5
+} power_supply_status;
+
+typedef enum {
+	PowerSupplyInputVoltageRangeSwitchingOther = 1,
+	PowerSupplyInputVoltageRangeSwitchingUnknown = 2,
+	PowerSupplyInputVoltageRangeSwitchingManual = 3,
+	PowerSupplyInputVoltageRangeSwitchingAutoSwitch = 4,
+	PowerSupplyInputVoltageRangeSwitchingWideRange = 5,
+	PowerSupplyInputVoltageRangeSwitchingNotApplicable = 6
+} power_supply_input_voltage_range_switching;
+
+struct power_supply_ch {
+	u16 reserved				:2;
+	u16 power_supply_type			:4;
+	u16 power_supply_status			:3;
+	u16 input_voltage_range_switch		:4;
+	u16 power_supply_unplugged		:1;
+	u16 power_supply_present		:1;
+	u16 power_supply_hot_replaceble		:1;
+};
+
+struct smbios_type39 {
+	struct smbios_header header;
+	u8 power_unit_group;
+	u8 location;
+	u8 device_name;
+	u8 manufacturer;
+	u8 serial_number;
+	u8 asset_tag_number;
+	u8 model_part_number;
+	u8 revision_level;
+	u16 max_power_capacity;
+	u16 power_supply_characteristics;
+	u16 input_voltage_probe_handle;
+	u16 cooling_device_handle;
+	u16 input_current_probe_handle;
+	u8 eos[2];
+} __packed;
+
+int smbios_write_type39(unsigned long *current, int *handle,
+			u8 unit_group, const char *loc, const char *dev_name,
+			const char *man, const char *serial_num,
+			const char *tag_num, const char *part_num,
+			const char *rev_lvl, u16 max_pow_cap,
+			const struct power_supply_ch *ps_ch);
 
 typedef enum {
 	SMBIOS_DEVICE_TYPE_OTHER = 0x01,

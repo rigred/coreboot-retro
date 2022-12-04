@@ -2,16 +2,17 @@
 
 #include <acpi/acpi_pm.h>
 #include <acpi/acpigen.h>
-#include <arch/cpu.h>
 #include <arch/ioapic.h>
 #include <arch/smp/mpspec.h>
 #include <console/console.h>
-#include <cpu/intel/turbo.h>
-#include <cpu/intel/msr.h>
+#include <cpu/cpu.h>
 #include <cpu/intel/common/common.h>
+#include <cpu/intel/msr.h>
+#include <cpu/intel/turbo.h>
+#include <cpu/x86/lapic.h>
 #include <cpu/x86/smm.h>
-#include <intelblocks/acpi.h>
 #include <intelblocks/acpi_wake_source.h>
+#include <intelblocks/acpi.h>
 #include <intelblocks/lpc_lib.h>
 #include <intelblocks/pmclib.h>
 #include <intelblocks/sgx.h>
@@ -19,7 +20,6 @@
 #include <soc/gpio.h>
 #include <soc/iomap.h>
 #include <soc/pm.h>
-#include <cpu/x86/lapic.h>
 
 #define  CPUID_6_EAX_ISST	(1 << 7)
 
@@ -69,12 +69,6 @@ static unsigned long acpi_madt_irq_overrides(unsigned long current)
 	current +=
 	    acpi_create_madt_irqoverride((void *)current, 0, sci, sci, flags);
 
-	/* NMI */
-	current += acpi_create_madt_lapic_nmi((acpi_madt_lapic_nmi_t *)current, 0xff, 5, 1);
-
-	if (is_x2apic_mode())
-		current += acpi_create_madt_lx2apic_nmi((acpi_madt_lx2apic_nmi_t *)current,
-				0xffffffff, 0x5, 1);
 
 	return current;
 }
@@ -91,7 +85,7 @@ unsigned long acpi_fill_madt(unsigned long current)
 	size_t ioapic_entries;
 
 	/* Local APICs */
-	current = acpi_create_madt_lapics(current);
+	current = acpi_create_madt_lapics_with_nmis(current);
 
 	/* IOAPIC */
 	ioapic_table = soc_get_ioapic_info(&ioapic_entries);
@@ -105,7 +99,7 @@ unsigned long acpi_fill_madt(unsigned long current)
 		}
 	} else {
 		/* Default SOC IOAPIC entry */
-		current += acpi_create_madt_ioapic((void *)current, 2, IO_APIC_ADDR, 0);
+		current += acpi_create_madt_ioapic_from_hw((void *)current, IO_APIC_ADDR);
 	}
 
 	return acpi_madt_irq_overrides(current);

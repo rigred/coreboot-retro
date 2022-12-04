@@ -149,7 +149,7 @@ uintptr_t uart_platform_base(unsigned int idx)
 void uart_init(unsigned int idx)
 {
 	struct am335x_uart *uart = uart_platform_baseptr(idx);
-	uint16_t div = (uint16_t) uart_baudrate_divisor(
+	uint16_t div = (uint16_t)uart_baudrate_divisor(
 		get_uart_baudrate(), uart_platform_refclk(), 16);
 	am335x_uart_init(uart, div);
 }
@@ -170,15 +170,13 @@ void uart_tx_flush(unsigned int idx)
 {
 }
 
-void uart_fill_lb(void *data)
+enum cb_err fill_lb_serial(struct lb_serial *serial)
 {
-	struct lb_serial serial;
-	serial.type = LB_SERIAL_TYPE_MEMORY_MAPPED;
-	serial.baseaddr = uart_platform_base(CONFIG_UART_FOR_CONSOLE);
-	serial.baud = get_uart_baudrate();
-	serial.regwidth = 2;
-	serial.input_hertz = uart_platform_refclk();
-	lb_add_serial(&serial, data);
+	serial->type = LB_SERIAL_TYPE_MEMORY_MAPPED;
+	serial->baseaddr = uart_platform_base(CONFIG_UART_FOR_CONSOLE);
+	serial->baud = get_uart_baudrate();
+	serial->regwidth = 2;
+	serial->input_hertz = uart_platform_refclk();
 
-	lb_add_console(LB_TAG_CONSOLE_SERIAL8250MEM, data);
+	return CB_SUCCESS;
 }

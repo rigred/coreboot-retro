@@ -6,6 +6,8 @@ fw_config
 end
 
 chip soc/intel/alderlake
+	register "sagv" = "SaGv_Enabled"
+
 	# Intel Common SoC Config
 	#+-------------------+---------------------------+
 	#| Field             |  Value                    |
@@ -34,17 +36,19 @@ chip soc/intel/alderlake
 		},
 	}"
 
-	register "usb2_ports[1]" = "USB2_PORT_EMPTY"	# Disable USB2 Port 1
-	register "usb2_ports[2]" = "USB2_PORT_EMPTY"	# Disable USB2 Port 2
-	register "usb2_ports[3]" = "USB2_PORT_EMPTY"	# Disable USB2 Port 3
-	register "usb2_ports[4]" = "USB2_PORT_EMPTY"	# Disable USB2 Port 4
+	register "usb2_ports[0]" = "USB2_PORT_MAX_TYPE_C(OC2)"  # set to Max for USB2_C0
+	register "usb2_ports[1]" = "USB2_PORT_EMPTY"	    	# Disable Port 1
+	register "usb2_ports[2]" = "USB2_PORT_EMPTY"	    	# Disable Port 2
+	register "usb2_ports[3]" = "USB2_PORT_EMPTY"        	# Disable Port 3
+	register "usb2_ports[4]" = "USB2_PORT_EMPTY"	    	# Disable Port 4
 
-	register "usb3_ports[0]" = "{
-		.enable           = 1,
-		.ocpin            = OC_SKIP,
-		.tx_de_emp        = 0x2B,
-		.tx_downscale_amp = 0x00,
-	}" # Type-A port A0
+	register "usb3_ports[0]" = "USB3_PORT_DEFAULT(OC_SKIP)" # Type-A port A0
+	register "usb3_ports[1]" = "USB3_PORT_DEFAULT(OC_SKIP)" # Type-A port A1(DCI)
+	register "usb3_ports[2]" = "USB3_PORT_DEFAULT(OC_SKIP)" # Type-A port A2
+	register "usb3_ports[3]" = "USB3_PORT_DEFAULT(OC_SKIP)" # Type-A port A3
+
+	register "tcss_ports[1]" = "TCSS_PORT_DEFAULT(OC1)"     # USB TYPE C
+	register "tcss_ports[2]" = "TCSS_PORT_EMPTY"            # Disable Port2
 
 	register "serial_io_gspi_mode" = "{
 		[PchSerialIoIndexGSPI0] = PchSerialIoDisabled,
@@ -146,13 +150,12 @@ chip soc/intel/alderlake
 				.flags = PCIE_RP_LTR | PCIE_RP_AER,
 			}"
 		end
-		device ref tcss_dma0 on
-			chip drivers/intel/usb4/retimer
-				register "dfp[0].power_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_HIGH(GPP_E4)"
-				use tcss_usb3_port1 as dfp[0].typec_port
-				device generic 0 on end
-			end
-		end
+		device ref tbt_pcie_rp0 off end
+		device ref tbt_pcie_rp1 off end
+		device ref tbt_pcie_rp2 off end
+
+		device ref tcss_dma0 off end
+		device ref tcss_dma1 off end
 		device ref cnvi_wifi on
 			chip drivers/wifi/generic
 				register "wake" = "GPE0_PME_B0"
@@ -189,6 +192,7 @@ chip soc/intel/alderlake
 				register "customized_led0" = "0x23f"
 				register "customized_led2" = "0x028"
 				register "enable_aspm_l1_2" = "1"
+				register "add_acpi_dma_property" = "true"
 				device pci 00.0 on end
 			end
 		end # RTL8111 Ethernet NIC
@@ -200,6 +204,14 @@ chip soc/intel/alderlake
 				device generic 0 on end
 			end
 		end	#PCIE8 SD card
+		device ref pcie_rp12 on
+			# Enable PCIE eMMC bridge 12 using clk 4
+			register "pch_pcie_rp[PCH_RP(12)]" = "{
+				.clk_src = 4,
+				.clk_req = 4,
+				.flags = PCIE_RP_HOTPLUG | PCIE_RP_AER,
+			}"
+		end     #PCIE12 EMMC
 		device ref gspi1 off end
 		device ref pch_espi on
 			chip ec/google/chromeec

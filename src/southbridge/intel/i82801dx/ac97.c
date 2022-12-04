@@ -1,12 +1,14 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 
+#include <arch/io.h>
 #include <console/console.h>
+#include <delay.h>
 #include <device/device.h>
 #include <device/pci.h>
 #include <device/pci_ids.h>
-#include <arch/io.h>
 #include <device/pci_ops.h>
-#include <delay.h>
+#include <stdint.h>
+
 #include "i82801dx.h"
 
 #define NAMBAR		0x10
@@ -82,9 +84,8 @@ static int ac97_semaphore(void)
 		reg8 = inb(nabmbar + CAS);
 		timeout--;
 	} while ((reg8 & 1) && timeout);
-	if (! timeout) {
+	if (!timeout)
 		printk(BIOS_DEBUG, "Timeout!\n");
-	}
 
 	return (!timeout);
 }

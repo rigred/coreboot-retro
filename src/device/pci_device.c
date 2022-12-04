@@ -108,7 +108,7 @@ struct resource *pci_get_resource(struct device *dev, unsigned long index)
 	     PCI_BASE_ADDRESS_MEM_LIMIT_64)) {
 		/* Find the high bits that move. */
 		moving |=
-		    ((resource_t) pci_moving_config32(dev, index + 4)) << 32;
+		    ((resource_t)pci_moving_config32(dev, index + 4)) << 32;
 	}
 
 	/* Find the resource constraints.
@@ -408,7 +408,7 @@ static void configure_adjustable_base(const struct device *dev,
 
 	int max_requested_bits = __fls64(size_mask);
 	if (max_requested_bits > CONFIG_PCIEXP_DEFAULT_MAX_RESIZABLE_BAR_BITS) {
-		printk(BIOS_WARNING, "WARNING: Device %s requests a BAR with"
+		printk(BIOS_WARNING, "Device %s requests a BAR with"
 		       " %u bits of address space, which coreboot is not"
 		       " configured to hand out, truncating to %u bits\n",
 		       dev_path(dev), max_requested_bits,
@@ -417,7 +417,7 @@ static void configure_adjustable_base(const struct device *dev,
 	}
 
 	if (!(res->flags & IORESOURCE_PCI64) && max_requested_bits > 32) {
-		printk(BIOS_ERR, "ERROR: Resizable BAR requested"
+		printk(BIOS_ERR, "Resizable BAR requested"
 		       " above 32 bits, but PCI function reported a"
 		       " 32-bit BAR.");
 		return;
@@ -496,13 +496,13 @@ static void pci_bridge_read_bases(struct device *dev)
 	resource_t moving_base, moving_limit, moving;
 
 	/* See if the bridge I/O resources are implemented. */
-	moving_base = ((u32) pci_moving_config8(dev, PCI_IO_BASE)) << 8;
+	moving_base = ((u32)pci_moving_config8(dev, PCI_IO_BASE)) << 8;
 	moving_base |=
-	  ((u32) pci_moving_config16(dev, PCI_IO_BASE_UPPER16)) << 16;
+	  ((u32)pci_moving_config16(dev, PCI_IO_BASE_UPPER16)) << 16;
 
-	moving_limit = ((u32) pci_moving_config8(dev, PCI_IO_LIMIT)) << 8;
+	moving_limit = ((u32)pci_moving_config8(dev, PCI_IO_LIMIT)) << 8;
 	moving_limit |=
-	  ((u32) pci_moving_config16(dev, PCI_IO_LIMIT_UPPER16)) << 16;
+	  ((u32)pci_moving_config16(dev, PCI_IO_LIMIT_UPPER16)) << 16;
 
 	moving = moving_base & moving_limit;
 
@@ -511,14 +511,14 @@ static void pci_bridge_read_bases(struct device *dev)
 
 	/* See if the bridge prefmem resources are implemented. */
 	moving_base =
-	  ((resource_t) pci_moving_config16(dev, PCI_PREF_MEMORY_BASE)) << 16;
+	  ((resource_t)pci_moving_config16(dev, PCI_PREF_MEMORY_BASE)) << 16;
 	moving_base |=
-	  ((resource_t) pci_moving_config32(dev, PCI_PREF_BASE_UPPER32)) << 32;
+	  ((resource_t)pci_moving_config32(dev, PCI_PREF_BASE_UPPER32)) << 32;
 
 	moving_limit =
-	  ((resource_t) pci_moving_config16(dev, PCI_PREF_MEMORY_LIMIT)) << 16;
+	  ((resource_t)pci_moving_config16(dev, PCI_PREF_MEMORY_LIMIT)) << 16;
 	moving_limit |=
-	  ((resource_t) pci_moving_config32(dev, PCI_PREF_LIMIT_UPPER32)) << 32;
+	  ((resource_t)pci_moving_config32(dev, PCI_PREF_LIMIT_UPPER32)) << 32;
 
 	moving = moving_base & moving_limit;
 	/* Initialize the prefetchable memory constraints on the current bus. */
@@ -526,8 +526,8 @@ static void pci_bridge_read_bases(struct device *dev)
 				   IORESOURCE_MEM | IORESOURCE_PREFETCH);
 
 	/* See if the bridge mem resources are implemented. */
-	moving_base = ((u32) pci_moving_config16(dev, PCI_MEMORY_BASE)) << 16;
-	moving_limit = ((u32) pci_moving_config16(dev, PCI_MEMORY_LIMIT)) << 16;
+	moving_base = ((u32)pci_moving_config16(dev, PCI_MEMORY_BASE)) << 16;
+	moving_limit = ((u32)pci_moving_config16(dev, PCI_MEMORY_LIMIT)) << 16;
 
 	moving = moving_base & moving_limit;
 
@@ -1423,7 +1423,7 @@ void pci_scan_bus(struct bus *bus, unsigned int min_devfn,
 		max_devfn=0xff;
 	}
 
-	post_code(0x24);
+	post_code(POST_ENTER_PCI_SCAN_BUS);
 
 	if (pci_bus_only_one_child(bus))
 		max_devfn = MIN(max_devfn, 0x07);
@@ -1463,8 +1463,6 @@ void pci_scan_bus(struct bus *bus, unsigned int min_devfn,
 			devfn += 0x07;
 		}
 	}
-
-	post_code(0x25);
 
 	/*
 	 * Warn if any leftover static devices are found.
@@ -1516,7 +1514,7 @@ void pci_scan_bus(struct bus *bus, unsigned int min_devfn,
 	 * side of any bridges that may be on this bus plus any devices.
 	 * Return how far we've got finding sub-buses.
 	 */
-	post_code(0x55);
+	post_code(POST_EXIT_PCI_SCAN_BUS);
 }
 
 typedef enum {

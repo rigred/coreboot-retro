@@ -77,21 +77,20 @@ int google_chromeec_kbbacklight(int percent)
 	struct ec_params_pwm_set_keyboard_backlight params = {
 		.percent = percent % 101,
 	};
-	struct ec_response_pwm_get_keyboard_backlight resp = {};
 	struct chromeec_command cmd = {
 		.cmd_code = EC_CMD_PWM_SET_KEYBOARD_BACKLIGHT,
 		.cmd_version = 0,
 		.cmd_data_in = &params,
-		.cmd_data_out = &resp,
+		.cmd_data_out = NULL,
 		.cmd_size_in = sizeof(params),
-		.cmd_size_out = sizeof(resp),
+		.cmd_size_out = 0,
 		.cmd_dev_index = 0,
 	};
 
-	google_chromeec_command(&cmd);
-	printk(BIOS_DEBUG, "Google Chrome set keyboard backlight: %x status (%x)\n",
-	       resp.percent, cmd.cmd_code);
-	return cmd.cmd_code;
+	if (google_chromeec_command(&cmd) != 0)
+		return -1;
+
+	return 0;
 }
 
 void google_chromeec_post(uint8_t postcode)
@@ -791,7 +790,7 @@ int rtc_get(struct rtc_time *time)
 }
 #endif
 
-int google_chromeec_reboot(int dev_idx, enum ec_reboot_cmd type, uint8_t flags)
+int google_chromeec_reboot(enum ec_reboot_cmd type, uint8_t flags)
 {
 	struct ec_params_reboot_ec params = {
 		.cmd = type,
@@ -805,7 +804,7 @@ int google_chromeec_reboot(int dev_idx, enum ec_reboot_cmd type, uint8_t flags)
 		.cmd_data_out = &resp,
 		.cmd_size_in = sizeof(params),
 		.cmd_size_out = 0, /* ignore response, if any */
-		.cmd_dev_index = dev_idx,
+		.cmd_dev_index = 0,
 	};
 
 	return google_chromeec_command(&cmd);
@@ -949,7 +948,7 @@ uint32_t google_chromeec_get_sku_id(void)
 	return resp.sku_id;
 }
 
-static uint16_t google_chromeec_get_uptime_info(
+static bool google_chromeec_get_uptime_info(
 	struct ec_response_uptime_info *resp)
 {
 	struct chromeec_command cmd = {
@@ -962,8 +961,7 @@ static uint16_t google_chromeec_get_uptime_info(
 		.cmd_dev_index = 0,
 	};
 
-	google_chromeec_command(&cmd);
-	return cmd.cmd_code;
+	return google_chromeec_command(&cmd) == 0;
 }
 
 bool google_chromeec_get_ap_watchdog_flag(void)
@@ -971,7 +969,7 @@ bool google_chromeec_get_ap_watchdog_flag(void)
 	int i;
 	struct ec_response_uptime_info resp;
 
-	if (google_chromeec_get_uptime_info(&resp))
+	if (!google_chromeec_get_uptime_info(&resp))
 		return false;
 
 	if (resp.ec_reset_flags & EC_RESET_FLAG_AP_WATCHDOG)
@@ -1298,7 +1296,7 @@ static void google_chromeec_log_uptimeinfo(void)
 	struct ec_response_uptime_info cmd_resp;
 	int i, flag, flag_count;
 
-	if (google_chromeec_get_uptime_info(&cmd_resp)) {
+	if (!google_chromeec_get_uptime_info(&cmd_resp)) {
 		/*
 		 * Deliberately say nothing for EC's that don't support this
 		 * command
@@ -1358,10 +1356,11 @@ enum ec_image google_chromeec_get_current_image(void)
 		.cmd_size_out = sizeof(resp),
 		.cmd_dev_index = 0,
 	};
+	int rv;
 
-	google_chromeec_command(&cmd);
+	rv = google_chromeec_command(&cmd);
 
-	if (cmd.cmd_code) {
+	if (rv != 0) {
 		printk(BIOS_DEBUG,
 			"Google Chrome EC: version command failed!\n");
 	} else {
@@ -1379,7 +1378,7 @@ enum ec_image google_chromeec_get_current_image(void)
 
 int google_chromeec_get_num_pd_ports(unsigned int *num_ports)
 {
-	struct ec_response_charge_port_count resp = {};
+	struct ec_response_usb_pd_ports resp = {};
 	struct chromeec_command cmd = {
 		.cmd_code = EC_CMD_USB_PD_PORTS,
 		.cmd_version = 0,
@@ -1394,7 +1393,7 @@ int google_chromeec_get_num_pd_ports(unsigned int *num_ports)
 	if (rv)
 		return rv;
 
-	*num_ports = resp.port_count;
+	*num_ports = resp.num_ports;
 	return 0;
 }
 

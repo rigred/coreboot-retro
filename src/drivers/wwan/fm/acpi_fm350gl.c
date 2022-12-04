@@ -242,12 +242,8 @@ static void wwan_fm350gl_acpi_fill_ssdt(const struct device *dev)
 			wwan_fm350gl_acpi_method_rst(parent, config);
 			wwan_fm350gl_acpi_method_dpts(parent, config);
 
-			if (config->add_acpi_dma_property) {
-				struct acpi_dp *dsd;
-				dsd = acpi_dp_new_table("_DSD");
-				acpi_dp_add_integer(dsd, "DmaProperty", 1);
-				acpi_dp_write(dsd);
-			}
+			if (config->add_acpi_dma_property)
+				acpi_device_add_dma_property(NULL);
 
 			/* NOTE: the 5G driver will call MRST._RST to trigger a cold reset
 			 * during firmware update.

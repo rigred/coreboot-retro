@@ -22,7 +22,7 @@
 #define DEFAULT_GPIOBASE	0x0480
 #define DEFAULT_PMBASE		0x0500
 
-#include <southbridge/intel/common/rcba.h>
+#include <southbridge/intel/common/rcba.h> /* IWYU pragma: export */
 
 #if CONFIG(SOUTHBRIDGE_INTEL_BD82X6X)
 #define CROS_GPIO_DEVICE_NAME	"CougarPoint"
@@ -428,7 +428,6 @@ void early_usb_init(const struct southbridge_usb_port *portmap);
 #define LV2		0x14
 #define LV3		0x15
 #define LV4		0x16
-#define PM2_CNT		0x50 // mobile only
 #define GPE0_STS	0x20
 #define   PME_B0_STS	(1 << 13)
 #define   PME_STS	(1 << 11)
@@ -462,17 +461,20 @@ void early_usb_init(const struct southbridge_usb_port *portmap);
 #define ALT_GP_SMI_STS	0x3a
 #define GPE_CNTL	0x42
 #define DEVACT_STS	0x44
-#define SS_CNT		0x50
+#define PM2_CNT		0x50 // mobile only
 #define C3_RES		0x54
+
+#if CONFIG(TCO_SPACE_NOT_YET_SPLIT)
 #define TCO1_STS	0x64
-#define   TCO1_TIMEOUT	(1 << 3)
+#define   TCO_TIMEOUT	(1 << 3)
 #define   DMISCI_STS	(1 << 9)
 #define TCO2_STS	0x66
-#define   SECOND_TO_STS	(1 << 1)
+#define   TCO2_STS_SECOND_TO	(1 << 1)
 #define TCO1_CNT	0x68
 #define   TCO_TMR_HLT	(1 << 11)
 #define   TCO_LOCK	(1 << 12)
 #define TCO2_CNT	0x6a
+#endif
 
 #define SPIBAR_HSFS                 0x3804   /* SPI hardware sequence status */
 #define  SPIBAR_HSFS_SCIP           (1 << 5) /* SPI Cycle In Progress */

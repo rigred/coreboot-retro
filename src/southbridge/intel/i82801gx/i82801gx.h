@@ -7,12 +7,15 @@
 #define DEFAULT_GPIOBASE	0x0480
 #define DEFAULT_PMBASE		0x0500
 
-#include <southbridge/intel/common/rcba.h>
+#include <southbridge/intel/common/rcba.h> /* IWYU pragma: export */
+
+#define SPIBASE 0x3020
+#define SPIBAR16(x) RCBA16(SPIBASE + x)
+#define SPIBAR32(x) RCBA32(SPIBASE + x)
 
 #ifndef __ACPI__
-#define DEBUG_PERIODIC_SMIS 0
-
 #include <device/device.h>
+
 void i82801gx_enable(struct device *dev);
 
 void i82801gx_lpc_setup(void);
@@ -320,7 +323,10 @@ void ich7_setup_cir(void);
 #define DEVACT_STS	0x44
 #define SS_CNT		0x50
 #define C3_RES		0x54
+
+#if CONFIG(TCO_SPACE_NOT_YET_SPLIT)
 #define TCO1_CNT	0x68
+#endif
 
 #endif /* __ACPI__ */
 #endif				/* SOUTHBRIDGE_INTEL_I82801GX_I82801GX_H */

@@ -265,25 +265,8 @@ endef
 # ResourceTemplate is the correct code.
 # As it's valid ASL, disable the warning.
 EMPTY_RESOURCE_TEMPLATE_WARNING = 3150
-# IASL compiler check for usage of _CRS, _DIS, _PRS, and _SRS objects:
-#	1) If _PRS is present, must have _CRS and _SRS
-#	2) If _SRS is present, must have _PRS (_PRS requires _CRS and _SRS)
-#	3) If _DIS is present, must have _SRS (_SRS requires _PRS, _PRS requires _CRS and _SRS)
-#	4) If _SRS is present, probably should have a _DIS (Remark only)
-# A warning will be issued for each of these cases.
-# For existing ASL code, ignore this warnings
-IASL_MISSING_DEPENDENCY = 3141
 
 IASL_WARNINGS_LIST = $(EMPTY_RESOURCE_TEMPLATE_WARNING)
-
-ifeq ($(CONFIG_IGNORE_IASL_MISSING_DEPENDENCY),y)
-	IASL_WARNINGS_LIST += $(IASL_MISSING_DEPENDENCY)
-build_complete::
-	printf "*** WARNING: The ASL code for this platform is incomplete.  Please fix it. ***\n"
-	printf "*** If _PRS is present, must have _CRS and _SRS ***\n"
-	printf "*** If _SRS is present, must have _PRS and _CRS ***\n"
-	printf "*** If _DIS is present, must have _SRS, _PRS and _CRS ***\n"
-endif
 
 IGNORED_IASL_WARNINGS = $(addprefix -vw , $(IASL_WARNINGS_LIST))
 
@@ -322,17 +305,15 @@ cbfs-files-processor-nvramtool= \
 		mv $(2).tmp $(2))
 
 #######################################################################
-# Reduce a .config file to its minimal representation
+# Reduce a .config file by removing lines about unset booleans
 # arg1: input
 # arg2: output
-define cbfs-files-processor-defconfig
-	$(eval $(2): $(1) $(obj)/build.h $(objutil)/kconfig/conf; \
+define cbfs-files-processor-config
+	$(eval $(2): $(1) $(obj)/build.h; \
 		+printf "    CREATE     $(2) (from $(1))\n"; \
 		printf "# This image was built using coreboot " > $(2).tmp && \
 		grep "\<COREBOOT_VERSION\>" $(obj)/build.h |cut -d\" -f2 >> $(2).tmp && \
-		$(MAKE) DOTCONFIG=$(1) DEFCONFIG=$(2).tmp2 savedefconfig && \
-		cat $(2).tmp2 >> $(2).tmp && \
-		rm -f $(2).tmp2 && \
+		sed -e '/^CONFIG/!d' $(1) >> $(2).tmp && \
 		\mv -f $(2).tmp $(2))
 endef
 
@@ -1229,8 +1210,9 @@ vgaroms/seavgabios.bin-file := $(CONFIG_PAYLOAD_VGABIOS_FILE)
 vgaroms/seavgabios.bin-type := raw
 
 cbfs-files-$(CONFIG_INCLUDE_CONFIG_FILE) += config
-config-file := $(DOTCONFIG):defconfig
+config-file := $(DOTCONFIG):config
 config-type := raw
+config-compression := LZMA
 
 cbfs-files-$(CONFIG_INCLUDE_CONFIG_FILE) += revision
 revision-file := $(obj)/build.h

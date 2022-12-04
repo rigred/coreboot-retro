@@ -36,7 +36,7 @@ static void i82801jx_enable_apic(struct device *dev)
 	/* Lock maximum redirection entries (MRE), R/WO register. */
 	ioapic_lock_max_vectors(VIO_APIC_VADDR);
 
-	setup_ioapic(VIO_APIC_VADDR, 2); /* ICH7 code uses id 2. */
+	register_new_ioapic_gsi0(VIO_APIC_VADDR);
 }
 
 static void i82801jx_enable_serial_irqs(struct device *dev)
@@ -367,20 +367,10 @@ static void lpc_init(struct device *dev)
 unsigned long acpi_fill_madt(unsigned long current)
 {
 	/* Local APICs */
-	current = acpi_create_madt_lapics(current);
+	current = acpi_create_madt_lapics_with_nmis(current);
 
 	/* IOAPIC */
-	current += acpi_create_madt_ioapic((acpi_madt_ioapic_t *) current,
-				2, IO_APIC_ADDR, 0);
-
-	/* LAPIC_NMI */
-	current += acpi_create_madt_lapic_nmi((acpi_madt_lapic_nmi_t *)
-				current, 0,
-				MP_IRQ_POLARITY_HIGH |
-				MP_IRQ_TRIGGER_EDGE, 0x01);
-	current += acpi_create_madt_lapic_nmi((acpi_madt_lapic_nmi_t *)
-				current, 1, MP_IRQ_POLARITY_HIGH |
-				MP_IRQ_TRIGGER_EDGE, 0x01);
+	current += acpi_create_madt_ioapic_from_hw((acpi_madt_ioapic_t *)current, IO_APIC_ADDR);
 
 	/* INT_SRC_OVR */
 	current += acpi_create_madt_irqoverride((acpi_madt_irqoverride_t *)

@@ -32,8 +32,8 @@ void watchdog_off(void)
 	write_pmbase16(PMBASE_TCO_OFFSET + TCO1_CNT, value);
 
 	/* Clear TCO timeout status. */
-	write_pmbase16(PMBASE_TCO_OFFSET + TCO1_STS, TCO1_TIMEOUT);
-	write_pmbase16(PMBASE_TCO_OFFSET + TCO2_STS, SECOND_TO_STS);
+	write_pmbase16(PMBASE_TCO_OFFSET + TCO1_STS, TCO_TIMEOUT);
+	write_pmbase16(PMBASE_TCO_OFFSET + TCO2_STS, TCO2_STS_SECOND_TO);
 
 	printk(BIOS_DEBUG, "ICH-NM10-PCH: watchdog disabled\n");
 }

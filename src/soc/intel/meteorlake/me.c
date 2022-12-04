@@ -34,15 +34,9 @@ union me_hfsts2 {
 union me_hfsts4 {
 	uint32_t data;
 	struct {
-		uint32_t rsvd0			: 9;
-		uint32_t enforcement_flow	: 1;
-		uint32_t sx_resume_type		: 1;
-		uint32_t rsvd1			: 1;
-		uint32_t tpms_disconnected	: 1;
-		uint32_t rvsd2			: 1;
-		uint32_t fwsts_valid		: 1;
-		uint32_t boot_guard_self_test	: 1;
-		uint32_t rsvd3			: 16;
+		uint32_t rsvd0			: 1;
+		uint32_t flash_log_exist	: 1;
+		uint32_t rsvd1			: 30;
 	} __packed fields;
 };
 
@@ -57,9 +51,14 @@ union me_hfsts5 {
 		uint32_t acm_done_sts		: 1;
 		uint32_t timeout_count		: 7;
 		uint32_t scrtm_indicator	: 1;
-		uint32_t inc_boot_guard_acm	: 4;
-		uint32_t inc_key_manifest	: 4;
-		uint32_t inc_boot_policy	: 4;
+		uint32_t txt_support		: 1;
+		uint32_t btg_profile		: 3;
+		uint32_t cpu_debug_disabled	: 1;
+		uint32_t bsp_init_disabled	: 1;
+		/* BSP Boot Policy Manifest Execution Status */
+		uint32_t bsp_bpm_exe_sts        : 1;
+		uint32_t btg_token_applied	: 1;
+		uint32_t btg_status		: 4;
 		uint32_t rsvd0			: 2;
 		uint32_t start_enforcement	: 1;
 	} __packed fields;
@@ -69,26 +68,24 @@ union me_hfsts5 {
 union me_hfsts6 {
 	uint32_t data;
 	struct {
-		uint32_t force_boot_guard_acm	: 1;
-		uint32_t cpu_debug_disable	: 1;
-		uint32_t bsp_init_disable	: 1;
-		uint32_t protect_bios_env	: 1;
-		uint32_t rsvd0			: 2;
-		uint32_t error_enforce_policy	: 2;
-		uint32_t measured_boot		: 1;
-		uint32_t verified_boot		: 1;
-		uint32_t boot_guard_acmsvn	: 4;
-		uint32_t kmsvn			: 4;
-		uint32_t bpmsvn			: 4;
-		uint32_t key_manifest_id	: 4;
-		uint32_t boot_policy_status	: 1;
-		uint32_t error			: 1;
-		uint32_t boot_guard_disable	: 1;
-		uint32_t fpf_disable		: 1;
+		uint32_t rsvd0			: 21;
+		uint32_t manuf_lock		: 1;
+		uint32_t rsvd2			: 8;
 		uint32_t fpf_soc_lock		: 1;
-		uint32_t txt_support		: 1;
+		uint32_t sx_resume_type		: 1;
 	} __packed fields;
 };
+
+static bool is_manufacturing_mode(union me_hfsts1 hfsts1, union me_hfsts6 hfsts6)
+{
+	/*
+	 * ME manufacturing mode is disabled if the descriptor is locked, fuses
+	 * are programmed and manufacturing variables are locked.
+	 */
+	return !((hfsts1.fields.mfg_mode == 0) &&
+		 (hfsts6.fields.fpf_soc_lock == 1) &&
+		 (hfsts6.fields.manuf_lock == 1));
+}
 
 static void dump_me_status(void *unused)
 {
@@ -98,6 +95,7 @@ static void dump_me_status(void *unused)
 	union me_hfsts4 hfsts4;
 	union me_hfsts5 hfsts5;
 	union me_hfsts6 hfsts6;
+	bool manufacturing_mode;
 
 	if (!is_cse_enabled())
 		return;
@@ -116,19 +114,20 @@ static void dump_me_status(void *unused)
 	printk(BIOS_DEBUG, "ME: HFSTS5                      : 0x%08X\n", hfsts5.data);
 	printk(BIOS_DEBUG, "ME: HFSTS6                      : 0x%08X\n", hfsts6.data);
 
-	/*
-	 * Lock Descriptor, and Fuses must be programmed on a
-	 * production system to indicate ME Manufacturing mode is disabled.
-	 */
+	manufacturing_mode = is_manufacturing_mode(hfsts1, hfsts6);
 	printk(BIOS_DEBUG, "ME: Manufacturing Mode          : %s\n",
-		((hfsts1.fields.mfg_mode == 0) &&
-		(hfsts6.fields.fpf_soc_lock == 1)) ? "NO" : "YES");
+	       manufacturing_mode ? "YES" : "NO");
+
 	/*
 	 * The SPI Protection Mode bit reflects SPI descriptor
 	 * locked(0) or unlocked(1).
 	 */
 	printk(BIOS_DEBUG, "ME: SPI Protection Mode Enabled : %s\n",
 		hfsts1.fields.mfg_mode ? "NO" : "YES");
+	printk(BIOS_DEBUG, "ME: FPFs Committed              : %s\n",
+		hfsts6.fields.fpf_soc_lock ? "YES" : "NO");
+	printk(BIOS_DEBUG, "ME: Manufacturing Vars Locked   : %s\n",
+		hfsts6.fields.manuf_lock ? "YES" : "NO");
 	printk(BIOS_DEBUG, "ME: FW Partition Table          : %s\n",
 		hfsts1.fields.fpt_bad ? "BAD" : "OK");
 	printk(BIOS_DEBUG, "ME: Bringup Loader Failure      : %s\n",
@@ -158,9 +157,12 @@ static void dump_me_status(void *unused)
 	printk(BIOS_DEBUG, "ME: Enhanced Debug Mode         : %s\n",
 		hfsts1.fields.invoke_enhance_dbg_mode ? "YES" : "NO");
 	printk(BIOS_DEBUG, "ME: CPU Debug Disabled          : %s\n",
-		hfsts6.fields.cpu_debug_disable ? "YES" : "NO");
+		hfsts5.fields.cpu_debug_disabled ? "YES" : "NO");
 	printk(BIOS_DEBUG, "ME: TXT Support                 : %s\n",
-		hfsts6.fields.txt_support ? "YES" : "NO");
+		hfsts5.fields.txt_support ? "YES" : "NO");
+
+	if (CONFIG(SOC_INTEL_CSE_LITE_SKU))
+		cse_log_ro_write_protection_info(manufacturing_mode);
 }
 
 BOOT_STATE_INIT_ENTRY(BS_DEV_ENABLE, BS_ON_EXIT, print_me_fw_version, NULL);

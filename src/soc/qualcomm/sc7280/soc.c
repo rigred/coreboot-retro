@@ -4,7 +4,6 @@
 #include <soc/mmu.h>
 #include <soc/mmu_common.h>
 #include <soc/symbols_common.h>
-#include <soc/aop_common.h>
 #include <soc/cpucp.h>
 #include <soc/pcie.h>
 
@@ -32,7 +31,6 @@ static void soc_read_resources(struct device *dev)
 
 static void soc_init(struct device *dev)
 {
-	aop_fw_load_reset();
 	cpucp_fw_load_reset();
 }
 
@@ -46,13 +44,12 @@ static void enable_soc_dev(struct device *dev)
 {
 	/* Set the operations if it is a special bus type */
 	if (dev->path.type == DEVICE_PATH_DOMAIN) {
-		if (CONFIG(PCI) && CONFIG(NO_ECAM_MMCONF_SUPPORT))
+		if (mainboard_needs_pcie_init())
 			dev->ops = &pci_domain_ops;
 		else
-			printk(BIOS_INFO,  "Skip setting PCIe ops\n");
-	} else if (dev->path.type == DEVICE_PATH_CPU_CLUSTER) {
+			printk(BIOS_DEBUG, "Skip setting PCIe ops\n");
+	} else if (dev->path.type == DEVICE_PATH_CPU_CLUSTER)
 		dev->ops = &soc_ops;
-	}
 }
 
 struct chip_operations soc_qualcomm_sc7280_ops = {

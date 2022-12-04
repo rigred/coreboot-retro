@@ -1,4 +1,8 @@
 fw_config
+	field SD_BOOT 29
+		option SD_BOOT_ENABLE		0
+		option SD_BOOT_DISABLE		1
+	end
 	field STORAGE 30 31
 		option STORAGE_EMMC		0
 		option STORAGE_NVME		1
@@ -157,7 +161,7 @@ chip soc/intel/alderlake
 		device ref cnvi_wifi on
 			chip drivers/wifi/generic
 				register "wake" = "GPE0_PME_B0"
-				register "is_untrusted" = "true"
+				register "add_acpi_dma_property" = "true"
 				device generic 0 on end
 			end
 		end

@@ -126,25 +126,71 @@ void *fsp_get_hob_list_ptr(void)
 	return &fsp_hob_list_ptr;
 }
 
-static const
-struct hob_resource *find_resource_hob_by_guid(const struct hob_header *hob,
-					       const uint8_t guid[16])
+enum cb_err fsp_hob_iterator_init(const struct hob_header **hob_iterator)
 {
-	const struct hob_resource *res;
-
-	for (; hob->type != HOB_TYPE_END_OF_HOB_LIST;
-		hob = fsp_next_hob(hob)) {
-		if (hob->type != HOB_TYPE_RESOURCE_DESCRIPTOR)
-			continue;
-
-		res = fsp_hob_header_to_resource(hob);
-		if (fsp_guid_compare(res->owner_guid, guid))
-			return res;
-	}
-	return NULL;
+	*hob_iterator = fsp_get_hob_list();
+	return *hob_iterator ? CB_SUCCESS : CB_ERR;
 }
 
-void fsp_print_guid(const void *base)
+static enum cb_err fsp_hob_iterator_get_next(const struct hob_header **hob_iterator,
+					     uint16_t hob_type,
+					     const struct hob_header **hob)
+{
+	const struct hob_header *current_hob;
+	while ((*hob_iterator)->type != HOB_TYPE_END_OF_HOB_LIST) {
+		current_hob = *hob_iterator;
+		*hob_iterator = fsp_next_hob(*hob_iterator);
+		if (current_hob->type == hob_type) {
+			*hob = current_hob;
+			return CB_SUCCESS;
+		}
+	}
+	return CB_ERR;
+}
+
+enum cb_err fsp_hob_iterator_get_next_resource(const struct hob_header **hob_iterator,
+					       const struct hob_resource **res)
+{
+	const struct hob_header *hob;
+	while (fsp_hob_iterator_get_next(hob_iterator, HOB_TYPE_RESOURCE_DESCRIPTOR, &hob) == CB_SUCCESS) {
+		*res = fsp_hob_header_to_resource(hob);
+		return CB_SUCCESS;
+	}
+	return CB_ERR;
+}
+
+enum cb_err fsp_hob_iterator_get_next_guid_resource(const struct hob_header **hob_iterator,
+						    const uint8_t guid[16],
+						    const struct hob_resource **res)
+{
+	const struct hob_resource *res_hob;
+	while (fsp_hob_iterator_get_next_resource(hob_iterator, &res_hob) == CB_SUCCESS) {
+		if (fsp_guid_compare(res_hob->owner_guid, guid)) {
+			*res = res_hob;
+			return CB_SUCCESS;
+		}
+	}
+	return CB_ERR;
+}
+
+enum cb_err fsp_hob_iterator_get_next_guid_extension(const struct hob_header **hob_iterator,
+						     const uint8_t guid[16],
+						     const void **data, size_t *size)
+{
+	const struct hob_header *hob;
+	const uint8_t *guid_hob;
+	while (fsp_hob_iterator_get_next(hob_iterator, HOB_TYPE_GUID_EXTENSION, &hob) == CB_SUCCESS) {
+		guid_hob = hob_header_to_struct(hob);
+		if (fsp_guid_compare(guid_hob, guid)) {
+			*size = hob->length - (HOB_HEADER_LEN + 16);
+			*data = hob_header_to_extension_hob(hob);
+			return CB_SUCCESS;
+		}
+	}
+	return CB_ERR;
+}
+
+void fsp_print_guid(int level, const void *base)
 {
 	uint32_t big;
 	uint16_t mid[2];
@@ -154,25 +200,23 @@ void fsp_print_guid(const void *base)
 	mid[0] = read16(id + 4);
 	mid[1] = read16(id + 6);
 
-	printk(BIOS_SPEW, "%08x-%04x-%04x-%02x%02x%02x%02x%02x%02x%02x%02x",
+	printk(level, "%08x-%04x-%04x-%02x%02x%02x%02x%02x%02x%02x%02x",
 	       big, mid[0], mid[1],
 	       id[8], id[9], id[10], id[11], id[12], id[13], id[14], id[15]);
 }
 
 int fsp_find_range_hob(struct range_entry *re, const uint8_t guid[16])
 {
+	const struct hob_header *hob_iterator;
 	const struct hob_resource *fsp_mem;
-	const void *hob_list = fsp_get_hob_list();
 
-	if (!hob_list)
+	if (fsp_hob_iterator_init(&hob_iterator) != CB_SUCCESS)
 		return -1;
 
 	range_entry_init(re, 0, 0, 0);
 
-	fsp_mem = find_resource_hob_by_guid(hob_list, guid);
-
-	if (!fsp_mem) {
-		fsp_print_guid(guid);
+	if (fsp_hob_iterator_get_next_guid_resource(&hob_iterator, guid, &fsp_mem) != CB_SUCCESS) {
+		fsp_print_guid(BIOS_SPEW, guid);
 		printk(BIOS_SPEW, " not found!\n");
 		return -1;
 	}
@@ -189,23 +233,14 @@ void fsp_find_reserved_memory(struct range_entry *re)
 
 const void *fsp_find_extension_hob_by_guid(const uint8_t *guid, size_t *size)
 {
-	const uint8_t *hob_guid;
-	const struct hob_header *hob = fsp_get_hob_list();
+	const struct hob_header *hob_iterator;
+	const void *hob_guid;
 
-	if (!hob)
+	if (fsp_hob_iterator_init(&hob_iterator) != CB_SUCCESS)
 		return NULL;
 
-	for (; hob->type != HOB_TYPE_END_OF_HOB_LIST;
-		hob = fsp_next_hob(hob)) {
-		if (hob->type != HOB_TYPE_GUID_EXTENSION)
-			continue;
-
-		hob_guid = hob_header_to_struct(hob);
-		if (fsp_guid_compare(hob_guid, guid)) {
-			*size = hob->length - (HOB_HEADER_LEN + 16);
-			return hob_header_to_extension_hob(hob);
-		}
-	}
+	if (fsp_hob_iterator_get_next_guid_extension(&hob_iterator, guid, &hob_guid, size) == CB_SUCCESS)
+		return hob_guid;
 
 	return NULL;
 }
@@ -219,23 +254,21 @@ static void display_fsp_version_info_hob(const void *hob)
 	uint8_t vs;
 #if CONFIG(DISPLAY_FSP_VERSION_INFO)
 	const FIRMWARE_VERSION_INFO *fvi;
-	const FIRMWARE_VERSION_INFO_HOB *fvih =
-			(FIRMWARE_VERSION_INFO_HOB *)hob;
+	const FIRMWARE_VERSION_INFO_HOB *fvih = (FIRMWARE_VERSION_INFO_HOB *)hob;
 
 	fvi = (void *)&fvih[1];
-	str_ptr = (char *)((uintptr_t)fvi +
-			 (fvih->Count * sizeof(FIRMWARE_VERSION_INFO)));
+	str_ptr = (char *)((uintptr_t)fvi + (fvih->Count * sizeof(FIRMWARE_VERSION_INFO)));
 	tcount = fvih->Count;
 #elif CONFIG(DISPLAY_FSP_VERSION_INFO_2)
 
-	uint8_t *hobstart = (uint8_t *) hob;
+	uint8_t *hobstart = (uint8_t *)hob;
 	hobstart += sizeof(EFI_HOB_GUID_TYPE);
 
 	const SMBIOS_TABLE_TYPE_OEM_INTEL_FVI *stfvi =
 			(SMBIOS_TABLE_TYPE_OEM_INTEL_FVI *)hobstart;
 	const INTEL_FIRMWARE_VERSION_INFO *fvi;
 
-	str_ptr = ((char *) &(stfvi->Fvi[0])) +
+	str_ptr = ((char *)&(stfvi->Fvi[0])) +
 			(stfvi->Count * sizeof(INTEL_FIRMWARE_VERSION_INFO));
 	tcount = stfvi->Count;
 	fvi = &stfvi->Fvi[0];
@@ -255,8 +288,7 @@ static void display_fsp_version_info_hob(const void *hob)
 			fvi[index].Version.Revision == 0xFF &&
 			fvi[index].Version.BuildNumber == 0xFF &&
 			vs == 0) {
-			str_ptr = (char *)((uintptr_t)str_ptr + cnt +
-					sizeof(uint8_t));
+			str_ptr = (char *)((uintptr_t)str_ptr + cnt + sizeof(uint8_t));
 			continue;
 		}
 		/*
@@ -274,13 +306,11 @@ static void display_fsp_version_info_hob(const void *hob)
 					fvi[index].Version.Revision,
 					fvi[index].Version.BuildNumber);
 		else {
-			str_ptr = (char *)((uintptr_t)str_ptr + cnt +
-					sizeof(uint8_t));
+			str_ptr = (char *)((uintptr_t)str_ptr + cnt + sizeof(uint8_t));
 			cnt = strlen(str_ptr);
 			printk(BIOS_DEBUG, "%s\n", str_ptr);
 		}
-		str_ptr = (char *)((uintptr_t)str_ptr + cnt +
-				sizeof(uint8_t));
+		str_ptr = (char *)((uintptr_t)str_ptr + cnt + sizeof(uint8_t));
 	}
 #endif
 }
@@ -294,8 +324,7 @@ void fsp_display_fvi_version_hob(void)
 		return;
 
 	printk(BIOS_DEBUG, "Display FSP Version Info HOB\n");
-	for (; hob->type != HOB_TYPE_END_OF_HOB_LIST;
-			hob = fsp_next_hob(hob)) {
+	for (; hob->type != HOB_TYPE_END_OF_HOB_LIST; hob = fsp_next_hob(hob)) {
 		if (hob->type != HOB_TYPE_GUID_EXTENSION)
 			continue;
 

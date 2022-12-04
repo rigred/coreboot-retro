@@ -12,6 +12,7 @@
 #include <device/pci_ops.h>
 #include <intelblocks/cse.h>
 #include <intelblocks/pmclib.h>
+#include <intelblocks/post_codes.h>
 #include <option.h>
 #include <security/vboot/misc.h>
 #include <security/vboot/vboot_common.h>
@@ -162,7 +163,7 @@ static size_t filled_slots(uint32_t data)
 	uint8_t wp, rp;
 	rp = data >> CSR_RP_START;
 	wp = data >> CSR_WP_START;
-	return (uint8_t) (wp - rp);
+	return (uint8_t)(wp - rp);
 }
 
 static size_t cse_filled_slots(void)
@@ -570,7 +571,7 @@ static enum cse_tx_rx_status heci_receive(void *buff, size_t *maxlen)
 		} while (received && !(hdr & MEI_HDR_IS_COMPLETE) && left > 0);
 
 		if ((hdr & MEI_HDR_IS_COMPLETE) && received) {
-			*maxlen = p - (uint8_t *) buff;
+			*maxlen = p - (uint8_t *)buff;
 			return CSE_TX_RX_SUCCESS;
 		}
 	}
@@ -611,7 +612,7 @@ int heci_reset(void)
 	uint32_t csr;
 
 	/* Clear post code to prevent eventlog entry from unknown code. */
-	post_code(0);
+	post_code(POST_CODE_ZERO);
 
 	/* Send reset request */
 	csr = read_host_csr();
@@ -931,15 +932,10 @@ void cse_trigger_vboot_recovery(enum csme_failure_reason reason)
 	       "HFSTS3: 0x%x\n", me_read_config32(PCI_ME_HFSTS1),
 	       me_read_config32(PCI_ME_HFSTS2), me_read_config32(PCI_ME_HFSTS3));
 
-	if (CONFIG(VBOOT)) {
-		struct vb2_context *ctx = vboot_get_context();
-		if (ctx == NULL)
-			goto failure;
-		vb2api_fail(ctx, VB2_RECOVERY_INTEL_CSE_LITE_SKU, reason);
-		vboot_save_data(ctx);
-		vboot_reboot();
-	}
-failure:
+	if (CONFIG(VBOOT))
+		vboot_fail_and_reboot(vboot_get_context(), VB2_RECOVERY_INTEL_CSE_LITE_SKU,
+				      reason);
+
 	die("cse: Failed to trigger recovery mode(recovery subcode:%d)\n", reason);
 }
 
@@ -1232,17 +1228,13 @@ static void cse_set_state(struct device *dev)
  * performed by FSP NotifyPhase(Ready To Boot) API invocations.
  *
  * Operations are:
- * 1. Send EOP to CSE if not done.
- * 2. Perform global reset lock.
- * 3. Put HECI1 to D0i3 and disable the HECI1 if the user selects
+ * 1. Perform global reset lock.
+ * 2. Put HECI1 to D0i3 and disable the HECI1 if the user selects
  *      DISABLE_HECI1_AT_PRE_BOOT config or CSE HFSTS1 Operation Mode is
  *      `Software Temporary Disable`.
  */
 static void cse_final_ready_to_boot(void)
 {
-	if (CONFIG(SOC_INTEL_CSE_SET_EOP))
-		cse_send_end_of_post();
-
 	cse_control_global_reset_lock();
 
 	if (CONFIG(DISABLE_HECI1_AT_PRE_BOOT) || cse_is_hfs1_com_soft_temp_disable()) {
@@ -1264,11 +1256,35 @@ static void cse_final_end_of_firmware(void)
 }
 
 /*
+ * This function to perform essential post EOP cse related operations
+ * upon SoC selecting `SOC_INTEL_CSE_SEND_EOP_LATE` config
+ */
+void cse_late_finalize(void)
+{
+	if (!CONFIG(SOC_INTEL_CSE_SEND_EOP_LATE))
+		return;
+
+	if (!CONFIG(USE_FSP_NOTIFY_PHASE_READY_TO_BOOT))
+		cse_final_ready_to_boot();
+
+	if (!CONFIG(USE_FSP_NOTIFY_PHASE_END_OF_FIRMWARE))
+		cse_final_end_of_firmware();
+}
+
+/*
  * `cse_final` function is native implementation of equivalent events performed by
  * each FSP NotifyPhase() API invocations.
  */
 static void cse_final(struct device *dev)
 {
+	/* SoC user decided to send EOP late */
+	if (CONFIG(SOC_INTEL_CSE_SEND_EOP_LATE))
+		return;
+
+	/* 1. Send EOP to CSE if not done.*/
+	if (CONFIG(SOC_INTEL_CSE_SET_EOP))
+		cse_send_end_of_post();
+
 	if (!CONFIG(USE_FSP_NOTIFY_PHASE_READY_TO_BOOT))
 		cse_final_ready_to_boot();
 

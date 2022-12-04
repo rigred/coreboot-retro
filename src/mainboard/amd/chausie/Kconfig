@@ -29,6 +29,7 @@ config MAINBOARD_PART_NUMBER
 config AMD_FWM_POSITION_INDEX
 	int
 	default 3 if CHROMEOS
+	default 4
 	help
 	  TODO: might need to be adapted for better placement of files in cbfs
 
@@ -76,7 +77,7 @@ config RO_REGION_ONLY
 	depends on VBOOT_SLOTS_RW_AB || VBOOT_SLOTS_RW_A
 	# Add the EFS and EC to the RO region only
 	# This is a chausie-specific override of soc/amd/mendocino/Kconfig
-	default "apu/amdfw apu/ecfw"
+	default "apu/amdfw ec/ecfw"
 
 config CHROMEOS
 	# Use default libpayload config

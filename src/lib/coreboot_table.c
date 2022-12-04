@@ -33,7 +33,7 @@
 void lb_string_platform_blob_version(struct lb_header *header);
 #endif
 
-__weak enum cb_err lb_fill_pcie(struct lb_pcie *pcie)
+__weak enum cb_err fill_lb_pcie(struct lb_pcie *pcie)
 {
 	return CB_ERR_NOT_IMPLEMENTED;
 }
@@ -96,19 +96,22 @@ static struct lb_memory *lb_memory(struct lb_header *header)
 	return mem;
 }
 
-void lb_add_serial(struct lb_serial *new_serial, void *data)
+static void lb_add_serial(struct lb_header *header)
 {
-	struct lb_header *header = (struct lb_header *)data;
-	struct lb_serial *serial;
+	struct lb_serial new_serial = { .tag = LB_TAG_SERIAL,
+					.size = sizeof(struct lb_serial),
+	};
+	if (fill_lb_serial(&new_serial) != CB_SUCCESS)
+		return;
 
-	serial = (struct lb_serial *)lb_new_record(header);
-	serial->tag = LB_TAG_SERIAL;
-	serial->size = sizeof(*serial);
-	serial->type = new_serial->type;
-	serial->baseaddr = new_serial->baseaddr;
-	serial->baud = new_serial->baud;
-	serial->regwidth = new_serial->regwidth;
-	serial->input_hertz = new_serial->input_hertz;
+	struct lb_serial *serial = (struct lb_serial *)lb_new_record(header);
+	memcpy(serial, &new_serial, sizeof(*serial));
+	assert(serial->type == LB_SERIAL_TYPE_IO_MAPPED
+	       || serial->type == LB_SERIAL_TYPE_MEMORY_MAPPED)
+	if (serial->type == LB_SERIAL_TYPE_IO_MAPPED)
+		lb_add_console(LB_TAG_CONSOLE_SERIAL8250, header);
+	else
+		lb_add_console(LB_TAG_CONSOLE_SERIAL8250MEM, header);
 }
 
 void lb_add_console(uint16_t consoletype, void *data)
@@ -126,7 +129,7 @@ static void lb_pcie(struct lb_header *header)
 {
 	struct lb_pcie pcie = { .tag = LB_TAG_PCIE, .size = sizeof(pcie) };
 
-	if (lb_fill_pcie(&pcie) != CB_SUCCESS)
+	if (fill_lb_pcie(&pcie) != CB_SUCCESS)
 		return;
 
 	memcpy(lb_new_record(header), &pcie, sizeof(pcie));
@@ -492,7 +495,7 @@ static uintptr_t write_coreboot_table(uintptr_t rom_table_end)
 
 	/* Record the serial ports and consoles */
 	if (CONFIG(CONSOLE_SERIAL))
-		uart_fill_lb(head);
+		lb_add_serial(head);
 
 	if (CONFIG(CONSOLE_USB))
 		lb_add_console(LB_TAG_CONSOLE_EHCI, head);

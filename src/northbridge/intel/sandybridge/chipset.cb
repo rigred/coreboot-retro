@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
+chip northbridge/intel/sandybridge
+	chip cpu/intel/model_206ax
+		device cpu_cluster 0 on ops sandybridge_cpu_bus_ops end
+
+		register "acpi_c1" = "CPU_ACPI_C1"
+		register "acpi_c2" = "CPU_ACPI_C3"
+		register "acpi_c3" = "CPU_ACPI_C7"
+	end
+	device domain 0 on
+		ops sandybridge_pci_domain_ops
+	end
+end

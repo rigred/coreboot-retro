@@ -251,6 +251,9 @@ static enum dev_sleep_states get_min_sleep_state(const struct device *dev)
 		return DEFAULT_CPU_D_STATE;
 
 	case DEVICE_PATH_PCI:
+		/* skip external buses*/
+		if (dev->bus->secondary != 0)
+			return NONE;
 		for (size_t i = 0; i < ARRAY_SIZE(min_pci_sleep_states); i++)
 			if (min_pci_sleep_states[i].pci_dev == dev->path.pci.devfn)
 				return min_pci_sleep_states[i].min_sleep_state;
@@ -279,6 +282,7 @@ void soc_lpi_get_constraints(void *unused)
 	acpigen_emit_byte(RETURN_OP);
 	acpigen_write_package(num_entries);
 
+	size_t cpu_index = 0;
 	for (dev = all_devices; dev; dev = dev->next) {
 		min_sleep_state = get_min_sleep_state(dev);
 		if (min_sleep_state == NONE)
@@ -294,15 +298,8 @@ void soc_lpi_get_constraints(void *unused)
 				break;
 
 			case DEVICE_PATH_APIC:
-				/* Lookup CPU id */
-				for (size_t i = 0; i < CONFIG_MAX_CPUS; i++) {
-					if (cpu_get_apic_id(i) == dev->path.apic.apic_id) {
-						snprintf(path, sizeof(path),
-							CONFIG_ACPI_CPU_STRING, i);
-						break;
-					}
-				}
-
+				snprintf(path, sizeof(path), CONFIG_ACPI_CPU_STRING,
+					 cpu_index++);
 				acpigen_emit_namestring(path);
 				break;
 

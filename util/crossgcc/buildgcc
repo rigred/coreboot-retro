@@ -33,14 +33,14 @@ THREADS=1
 
 # GCC toolchain version numbers
 GMP_VERSION=6.2.1
-MPFR_VERSION=4.1.0
+MPFR_VERSION=4.1.1
 MPC_VERSION=1.2.1
 GCC_VERSION=11.2.0
 BINUTILS_VERSION=2.37
-IASL_VERSION=20220331
+IASL_VERSION="R10_20_22"
 # CLANG version number
-CLANG_VERSION=15.0.0
-CMAKE_VERSION=3.24.2
+CLANG_VERSION=15.0.6
+CMAKE_VERSION=3.25.0
 NASM_VERSION=2.15.05
 
 # GCC toolchain archive locations
@@ -52,7 +52,7 @@ MPFR_ARCHIVE="https://ftpmirror.gnu.org/mpfr/mpfr-${MPFR_VERSION}.tar.xz"
 MPC_ARCHIVE="https://ftpmirror.gnu.org/mpc/mpc-${MPC_VERSION}.tar.gz"
 GCC_ARCHIVE="https://ftpmirror.gnu.org/gcc/gcc-${GCC_VERSION}/gcc-${GCC_VERSION}.tar.xz"
 BINUTILS_ARCHIVE="https://ftpmirror.gnu.org/binutils/binutils-${BINUTILS_VERSION}.tar.xz"
-IASL_ARCHIVE="https://acpica.org/sites/acpica/files/acpica-unix2-${IASL_VERSION}.tar.gz"
+IASL_ARCHIVE="https://github.com/acpica/acpica/archive/refs/tags/${IASL_VERSION}.tar.gz"
 # CLANG toolchain archive locations
 LLVM_ARCHIVE="https://github.com/llvm/llvm-project/releases/download/llvmorg-${CLANG_VERSION}/llvm-${CLANG_VERSION}.src.tar.xz"
 CLANG_ARCHIVE="https://github.com/llvm/llvm-project/releases/download/llvmorg-${CLANG_VERSION}/clang-${CLANG_VERSION}.src.tar.xz"
@@ -75,7 +75,7 @@ MPC_DIR="mpc-${MPC_VERSION}"
 GCC_DIR="gcc-${GCC_VERSION}"
 # shellcheck disable=SC2034
 BINUTILS_DIR="binutils-${BINUTILS_VERSION}"
-IASL_DIR="acpica-unix2-${IASL_VERSION}"
+IASL_DIR="acpica-${IASL_VERSION}"
 # CLANG toolchain directories
 LLVM_DIR="llvm-${CLANG_VERSION}.src"
 CLANG_DIR="clang-${CLANG_VERSION}.src"
@@ -624,9 +624,11 @@ build_GMP() {
 
 	# shellcheck disable=SC2086
 	CC="$(hostcc host)" CXX="$(hostcxx host)" \
-	../${GMP_DIR}/configure --disable-shared --enable-fat \
-		--prefix="$TARGETDIR" $OPTIONS \
-		|| touch .failed
+	../${GMP_DIR}/configure \
+		--disable-shared \
+		--enable-fat \
+		--prefix="$TARGETDIR" \
+		$OPTIONS || touch .failed
 	# shellcheck disable=SC2086
 	$MAKE $JOBS || touch .failed
 	$MAKE install DESTDIR=$DESTDIR || touch .failed
@@ -639,10 +641,12 @@ build_GMP() {
 build_MPFR() {
 	test "$UNAME" = "Darwin" && CFLAGS="$CFLAGS -force_cpusubtype_ALL"
 	CC="$(hostcc host)" CXX="$(hostcxx host)" \
-	../${MPFR_DIR}/configure --disable-shared --prefix="$TARGETDIR" \
+	../${MPFR_DIR}/configure \
+		--disable-shared \
+		--prefix="$TARGETDIR" \
 		--infodir="$TARGETDIR/info" \
-		--with-gmp="$DESTDIR$TARGETDIR" CFLAGS="$HOSTCFLAGS" || \
-		touch .failed
+		--with-gmp="$DESTDIR$TARGETDIR" \
+		CFLAGS="$HOSTCFLAGS" || touch .failed
 	# shellcheck disable=SC2086
 	$MAKE $JOBS || touch .failed
 	$MAKE install DESTDIR=$DESTDIR || touch .failed
@@ -657,10 +661,13 @@ build_MPFR() {
 
 build_MPC() {
 	CC="$(hostcc host)" CXX="$(hostcxx host)" \
-	../${MPC_DIR}/configure --disable-shared --prefix="$TARGETDIR" \
-		--infodir="$TARGETDIR/info" --with-mpfr="$DESTDIR$TARGETDIR" \
-		--with-gmp="$DESTDIR$TARGETDIR" CFLAGS="$HOSTCFLAGS" || \
-		touch .failed
+	../${MPC_DIR}/configure \
+		--disable-shared \
+		--prefix="$TARGETDIR" \
+		--infodir="$TARGETDIR/info" \
+		--with-mpfr="$DESTDIR$TARGETDIR" \
+		--with-gmp="$DESTDIR$TARGETDIR" \
+		CFLAGS="$HOSTCFLAGS" || touch .failed
 
 	# work around build problem of libmpfr.la
 	if [ "$DESTDIR" != "" ]; then
@@ -685,14 +692,18 @@ build_BINUTILS() {
 	fi
 	# shellcheck disable=SC2086
 	CC="$(hostcc target)" CXX="$(hostcxx target)" \
-	../binutils-${BINUTILS_VERSION}/configure --prefix="$TARGETDIR" \
-		--target=${TARGETARCH} --enable-targets=${TARGETARCH}${ADDITIONALTARGET} \
-		--disable-werror --disable-nls --enable-lto \
-		--enable-gold --enable-multilib \
+	../binutils-${BINUTILS_VERSION}/configure \
+		--prefix="$TARGETDIR" \
+		--target=${TARGETARCH} \
+		--enable-targets=${TARGETARCH}${ADDITIONALTARGET} \
+		--disable-werror \
+		--disable-nls \
+		--enable-lto \
+		--enable-gold \
+		--enable-multilib \
 		${BINUTILS_OPTIONS} \
 		CFLAGS="$HOSTCFLAGS" \
-		CXXFLAGS="$HOSTCFLAGS" \
-		|| touch .failed
+		CXXFLAGS="$HOSTCFLAGS" || touch .failed
 	# shellcheck disable=SC2086
 	$MAKE $JOBS || touch .failed
 	$MAKE install DESTDIR=$DESTDIR || touch .failed
@@ -708,14 +719,21 @@ bootstrap_GCC() {
 		CXXFLAGS_FOR_BUILD="$HOSTCFLAGS" \
 		CXXFLAGS_FOR_TARGET="$HOSTCFLAGS -fPIC" \
 		../gcc-${GCC_VERSION}/configure \
-		--prefix="$TARGETDIR" --libexecdir="$TARGETDIR/lib" \
+		--prefix="$TARGETDIR" \
+		--libexecdir="$TARGETDIR/lib" \
 		--enable-bootstrap \
-		--disable-werror --disable-nls \
-		--disable-shared --disable-multilib \
-		--disable-libssp --disable-libquadmath --disable-libcc1 \
+		--disable-werror \
+		--disable-nls \
+		--disable-shared \
+		--disable-multilib \
+		--disable-libssp \
+		--disable-libquadmath \
+		--disable-libcc1 \
 		--disable-libsanitizer \
-		${GCC_OPTIONS} --enable-languages="${LANGUAGES}" \
-		--with-gmp="$DESTDIR$TARGETDIR" --with-mpfr="$DESTDIR$TARGETDIR" \
+		${GCC_OPTIONS} \
+		--enable-languages="${LANGUAGES}" \
+		--with-gmp="$DESTDIR$TARGETDIR" \
+		--with-mpfr="$DESTDIR$TARGETDIR" \
 		--with-mpc="$DESTDIR$TARGETDIR" \
 		--with-pkgversion="coreboot bootstrap v$CROSSGCC_VERSION" \
 		&& \
@@ -750,19 +768,35 @@ build_cross_GCC() {
 		CXXFLAGS="$HOSTCFLAGS $CLANGCXXFLAGS" \
 		CXXFLAGS_FOR_BUILD="$HOSTCFLAGS $CLANGCXXFLAGS" \
 		../gcc-${GCC_VERSION}/configure \
-		--prefix="$TARGETDIR" --libexecdir="$TARGETDIR/lib" \
-		--target=${TARGETARCH} --disable-werror --disable-shared \
-		--enable-lto --enable-plugins --enable-gold --enable-ld=default \
-		--disable-libssp --disable-bootstrap --disable-nls \
-		--disable-libquadmath --without-headers \
+		--prefix="$TARGETDIR" \
+		--libexecdir="$TARGETDIR/lib" \
+		--target=${TARGETARCH} \
+		--disable-werror \
+		--disable-shared \
+		--enable-lto \
+		--enable-plugins \
+		--enable-gold \
+		--enable-ld=default \
+		--disable-libssp \
+		--disable-bootstrap \
+		--disable-nls \
+		--disable-libquadmath \
+		--without-headers \
 		--disable-threads \
-		--enable-interwork --enable-multilib --enable-targets=all \
-		--disable-libatomic --disable-libcc1 --disable-decimal-float \
-		${GCC_OPTIONS} --enable-languages="${LANGUAGES}" \
+		--enable-interwork \
+		--enable-multilib \
+		--enable-targets=all \
+		--disable-libatomic \
+		--disable-libcc1 \
+		--disable-decimal-float \
+		${GCC_OPTIONS} \
+		--enable-languages="${LANGUAGES}" \
 		--with-system-zlib \
-		--with-gmp="$DESTDIR$TARGETDIR" --with-mpfr="$DESTDIR$TARGETDIR" \
+		--with-gmp="$DESTDIR$TARGETDIR" \
+		--with-mpfr="$DESTDIR$TARGETDIR" \
 		--with-mpc="$DESTDIR$TARGETDIR" \
-		--with-gnu-as --with-gnu-ld \
+		--with-gnu-as \
+		--with-gnu-ld \
 		--with-pkgversion="coreboot toolchain v$CROSSGCC_VERSION" \
 		&& \
 	mkdir -p gcc/$TARGETARCH && \
@@ -810,15 +844,21 @@ build_LLVM() {
 	ln -nsf "$CRT_DIR" ../compiler-rt
 	ln -nsf "$LLVMCMAKE_DIR" ../cmake
 
-	$CMAKE -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX="$DESTDIR$TARGETDIR" \
+	$CMAKE -G "Unix Makefiles" \
+		-DCMAKE_INSTALL_PREFIX="$DESTDIR$TARGETDIR" \
 		-DCLANG_VENDOR="coreboot toolchain v$CROSSGCC_VERSION - " \
 		-DLLVM_ENABLE_PROJECTS="clang;clang-tools-extra;compiler-rt" \
-		-DLLVM_INCLUDE_BENCHMARKS="OFF" -DCMAKE_BUILD_TYPE=Release ../llvm || touch .failed
+		-DLLVM_INCLUDE_BENCHMARKS="OFF" \
+		-DLLVM_INCLUDE_TESTS="OFF" \
+		-DLLVM_INCLUDE_EXAMPLES="OFF" \
+		-DCMAKE_BUILD_TYPE=Release \
+		-DLLVM_TARGETS_TO_BUILD="AArch64;ARM;PowerPC;RISCV;X86" \
+		../llvm || touch .failed
 	# shellcheck disable=SC2086
 	$MAKE $JOBS || touch .failed
 	$MAKE install || touch .failed
 
-	rm -f ../llvm ../clang ../clang-tools-extra ../compiler-rt
+	rm -f ../llvm ../clang ../clang-tools-extra ../compiler-rt ../cmake
 
 	cp -a ../$CLANG_DIR/tools/scan-build/* "$DESTDIR$TARGETDIR/bin"
 	cp -a ../$CLANG_DIR/tools/scan-view/* "$DESTDIR$TARGETDIR/bin"
@@ -833,8 +873,8 @@ build_LLVM() {
 
 build_CMAKE() {
 	CC="$(hostcc host)" CXX="$(hostcxx host)" CFLAGS="$HOSTCFLAGS" \
-	../${CMAKE_DIR}/configure --prefix="$TARGETDIR" \
-		 || touch .failed
+	../${CMAKE_DIR}/configure \
+		--prefix="$TARGETDIR" || touch .failed
 	# shellcheck disable=SC2086
 	$MAKE $JOBS || touch .failed
 	$MAKE install DESTDIR=$DESTDIR || touch .failed
@@ -842,8 +882,8 @@ build_CMAKE() {
 
 build_NASM() {
 	CC="$(hostcc host)" CXX="$(hostcxx host)" CFLAGS="$HOSTCFLAGS"
-	../${NASM_DIR}/configure --prefix="$TARGETDIR" \
-		|| touch .failed
+	../${NASM_DIR}/configure \
+		--prefix="$TARGETDIR" || touch .failed
 	# shellcheck disable=SC2086
 	$MAKE $JOBS || touch .failed
 	$MAKE install DESTDIR=$DESTDIR || touch .failed

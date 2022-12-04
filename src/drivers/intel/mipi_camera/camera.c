@@ -5,7 +5,7 @@
 #include <acpi/acpi_device.h>
 #include <acpi/acpigen.h>
 #include <acpi/acpigen_pci.h>
-#include <arch/cpu.h>
+#include <cpu/cpu.h>
 #include <console/console.h>
 #include <cpu/intel/cpu_ids.h>
 #include <device/i2c_simple.h>
@@ -138,9 +138,7 @@ static void camera_fill_cio2(const struct device *dev)
 		port_name[i] = strdup(name);
 		if (CONFIG(ACPI_ADL_IPU_ES_SUPPORT)) {
 			u32 cpu_id = cpu_get_cpuid();
-			if (cpu_id == CPUID_ALDERLAKE_J0 || cpu_id == CPUID_ALDERLAKE_Q0 ||
-				cpu_id == CPUID_RAPTORLAKE_P_J0 ||
-				cpu_id == CPUID_RAPTORLAKE_P_Q0)
+			if (cpu_id == CPUID_ALDERLAKE_J0 || cpu_id == CPUID_ALDERLAKE_Q0)
 				acpi_dp_add_integer(dsd, "is_es", 1);
 			else
 				acpi_dp_add_integer(dsd, "is_es", 0);

@@ -5,6 +5,9 @@
 
 #include <cpu/x86/smm.h>
 
+#define GPE0_HAS_64_EVENTS \
+	(!(CONFIG(SOUTHBRIDGE_INTEL_I82801DX) || CONFIG(SOUTHBRIDGE_INTEL_I82801GX)))
+
 #define D31F0_PMBASE		0x40
 #define D31F0_GEN_PMCON_1	0xa0
 #define   SMI_LOCK		(1 << 4)
@@ -54,13 +57,18 @@
 #define LV2		0x14
 #define LV3		0x15
 #define LV4		0x16
-#if CONFIG(SOUTHBRIDGE_INTEL_I82801GX)
+
+#if GPE0_HAS_64_EVENTS
+#define GPE0_STS	0x20
+#define GPE0_EN		0x28 // GPE0_STS + 8
+#define PM2_CNT		0x50 // mobile only
+#else
 #define PM2_CNT		0x20 // mobile only
 #define GPE0_STS	0x28
-#else
-#define PM2_CNT		0x50 // mobile only
-#define GPE0_STS	0x20
-#endif /* CONFIG(SOUTHBRIDGE_INTEL_I82801GX) */
+#define GPE0_EN		0x2c // GPE0_STS + 4
+#endif
+
+/* def	GPE0_STS */
 #define   USB4_STS	(1 << 14) /* i82801gx only */
 #define   PME_B0_STS	(1 << 13)
 #define   PME_STS	(1 << 11)
@@ -71,11 +79,8 @@
 #define   TCOSCI_STS	(1 << 6)
 #define   SWGPE_STS	(1 << 2)
 #define   HOT_PLUG_STS	(1 << 1)
-#if CONFIG(SOUTHBRIDGE_INTEL_I82801GX)
-#define GPE0_EN		0x2c
-#else
-#define GPE0_EN		0x28
-#endif /* CONFIG(SOUTHBRIDGE_INTEL_I82801GX) */
+
+/* def	GPE0_EN */
 #define   PME_B0_EN	(1 << 13)
 #define   PME_EN	(1 << 11)
 #define   TCOSCI_EN	(1 << 6)
@@ -98,8 +103,8 @@
 #define ALT_GP_SMI_STS	0x3a
 #define GPE_CNTL	0x42
 #define DEVACT_STS	0x44
-#define SS_CNT		0x50
-#define C3_RES		0x54
+
+#if CONFIG(TCO_SPACE_NOT_YET_SPLIT)
 #define TCO1_STS	0x64
 #define   DMISCI_STS	(1 << 9)
 #define   BOOT_STS	(1 << 18)
@@ -107,6 +112,7 @@
 #define TCO1_CNT	0x68
 #define   TCO_LOCK	(1 << 12)
 #define TCO2_CNT	0x6a
+#endif
 
 u16 get_pmbase(void);
 
@@ -120,7 +126,6 @@ void dump_smi_status(u32 smi_sts);
 u32 reset_smi_status(void);
 void gpe0_mask(u32 clr, u32 set);
 void alt_gpi_mask(u16 clr, u16 set);
-void smi_set_eos(void);
 void dump_alt_gp_smi_status(u16 alt_gp_smi_sts);
 u16 reset_alt_gp_smi_status(void);
 void dump_all_status(void);

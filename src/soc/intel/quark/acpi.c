@@ -5,11 +5,6 @@
 #include <soc/acpi.h>
 #include <soc/ramstage.h>
 
-unsigned long acpi_fill_madt(unsigned long current)
-{
-	return current;
-}
-
 void acpi_fill_fadt(acpi_fadt_t *fadt)
 {
 	struct device *dev = pcidev_on_root(PCI_DEVICE_NUMBER_QNC_LPC,
@@ -77,5 +72,5 @@ uint16_t get_pmbase(void)
 {
 	struct device *dev = pcidev_on_root(PCI_DEVICE_NUMBER_QNC_LPC,
 		PCI_FUNCTION_NUMBER_QNC_LPC);
-	return (uint16_t) pci_read_config32(dev, R_QNC_LPC_PM1BLK) & B_QNC_LPC_PM1BLK_MASK;
+	return (uint16_t)pci_read_config32(dev, R_QNC_LPC_PM1BLK) & B_QNC_LPC_PM1BLK_MASK;
 }

@@ -4,15 +4,16 @@
 #include <amdblocks/acpimmio.h>
 #include <amdblocks/memmap.h>
 #include <amdblocks/pmlib.h>
-#include <arch/cpu.h>
+#include <amdblocks/post_codes.h>
 #include <console/console.h>
+#include <cpu/cpu.h>
 #include <fsp/api.h>
 #include <program_loading.h>
 #include <romstage_common.h>
 
 void __noreturn romstage_main(void)
 {
-	post_code(0x40);
+	post_code(POST_ROMSTAGE_MAIN);
 
 	/* Snapshot chipset state prior to any FSP call */
 	fill_chipset_state();

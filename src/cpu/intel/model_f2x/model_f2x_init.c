@@ -2,9 +2,6 @@
 
 #include <device/device.h>
 #include <cpu/cpu.h>
-#include <cpu/x86/mtrr.h>
-#include <cpu/intel/microcode.h>
-#include <cpu/intel/hyperthreading.h>
 #include <cpu/intel/common/common.h>
 #include <cpu/x86/cache.h>
 
@@ -12,18 +9,6 @@ static void model_f2x_init(struct device *cpu)
 {
 	/* Turn on caching if we haven't already */
 	enable_cache();
-
-	if (!intel_ht_sibling()) {
-		/* MTRRs are shared between threads */
-		x86_setup_mtrrs();
-		x86_mtrr_check();
-
-		/* Update the microcode */
-		intel_update_microcode_from_cbfs();
-	}
-
-	/* Start up my CPU siblings */
-	intel_sibling_init(cpu);
 };
 
 static struct device_operations cpu_dev_ops = {

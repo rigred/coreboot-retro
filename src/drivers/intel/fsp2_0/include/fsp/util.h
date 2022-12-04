@@ -6,7 +6,7 @@
 #include <boot/coreboot_tables.h>
 #include <cbfs.h>
 #include <commonlib/region.h>
-#include <arch/cpu.h>
+#include <cpu/cpu.h>
 #include <fsp/api.h>
 #include <efi/efi_datatype.h>
 #include <fsp/info_header.h>
@@ -105,6 +105,23 @@ enum hob_type {
 extern const uint8_t fsp_bootloader_tolum_guid[16];
 extern const uint8_t fsp_nv_storage_guid[16];
 extern const uint8_t fsp_reserved_memory_guid[16];
+
+/*
+ * Functions to iterate over the HOBs and get resource structs or extension HOB data. It's
+ * required to initialize the hob_iterator struct by a fsp_hob_iterator_init call before
+ * passing the fsp_hob_iterator_get_next_* functions. The fsp_hob_iterator_get_next_* functions
+ * will update the hob_iterator to point to the next HOB header, so the iterators can be called
+ * multiple times to get the data from multiple HOB instances.
+ */
+enum cb_err fsp_hob_iterator_init(const struct hob_header **hob_iterator);
+enum cb_err fsp_hob_iterator_get_next_resource(const struct hob_header **hob_iterator,
+					       const struct hob_resource **res);
+enum cb_err fsp_hob_iterator_get_next_guid_resource(const struct hob_header **hob_iterator,
+						    const uint8_t guid[16],
+						    const struct hob_resource **res);
+enum cb_err fsp_hob_iterator_get_next_guid_extension(const struct hob_header **hob_iterator,
+						     const uint8_t guid[16],
+						     const void **data, size_t *size);
 
 /* Function to extract the FSP timestamp from FPDT Hob and display */
 void fsp_display_timestamp(void);

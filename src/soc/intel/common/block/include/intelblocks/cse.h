@@ -542,6 +542,12 @@ void cse_control_global_reset_lock(void);
 void cse_send_end_of_post(void);
 
 /*
+ * This function to perform essential post EOP cse related operations
+ * upon SoC selecting `SOC_INTEL_CSE_SEND_EOP_LATE` config
+ */
+void cse_late_finalize(void);
+
+/*
  * SoC override API to make heci1 disable using PCR.
  *
  * Allow SoC to implement heci1 disable override due to PSF registers being
@@ -554,5 +560,8 @@ void soc_disable_heci1_using_pcr(void);
  * insert them into the CBMEM timestamp table.
  */
 void cse_get_telemetry_data(void);
+
+/* Function to log the cse WP information like range, if WP etc. */
+void cse_log_ro_write_protection_info(bool mfg_mode);
 
 #endif // SOC_INTEL_COMMON_CSE_H

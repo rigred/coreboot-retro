@@ -4,6 +4,7 @@
 #define _AMD_FW_TOOL_H_
 
 #include <commonlib/bsd/compiler.h>
+#include <commonlib/bsd/helpers.h>
 #include <openssl/sha.h>
 #include <stdint.h>
 #include <stdbool.h>
@@ -17,6 +18,7 @@ typedef enum _amd_fw_type {
 	AMD_FW_PSP_RTM_PUBKEY = 0x05,
 	AMD_FW_PSP_SMU_FIRMWARE = 0x08,
 	AMD_FW_PSP_SECURED_DEBUG = 0x09,
+	AMD_FW_ABL_PUBKEY = 0x0a,
 	AMD_PSP_FUSE_CHAIN = 0x0b,
 	AMD_FW_PSP_TRUSTLETS = 0x0c,
 	AMD_FW_PSP_TRUSTLETKEY = 0x0d,
@@ -29,6 +31,7 @@ typedef enum _amd_fw_type {
 	AMD_MP2_FW = 0x25,
 	AMD_DRIVER_ENTRIES = 0x28,
 	AMD_FW_KVM_IMAGE = 0x29,
+	AMD_FW_MP5 = 0x2a,
 	AMD_S0I3_DRIVER = 0x2d,
 	AMD_ABL0 = 0x30,
 	AMD_ABL1 = 0x31,
@@ -38,9 +41,12 @@ typedef enum _amd_fw_type {
 	AMD_ABL5 = 0x35,
 	AMD_ABL6 = 0x36,
 	AMD_ABL7 = 0x37,
+	AMD_SEV_DATA = 0x38,
+	AMD_SEV_CODE = 0x39,
 	AMD_FW_PSP_WHITELIST = 0x3a,
 	AMD_VBIOS_BTLOADER = 0x3c,
 	AMD_FW_L2_PTR = 0x40,
+	AMD_FW_DXIO = 0x42,
 	AMD_FW_USB_PHY = 0x44,
 	AMD_FW_TOS_SEC_POLICY = 0x45,
 	AMD_FW_DRTM_TA = 0x47,
@@ -57,10 +63,15 @@ typedef enum _amd_fw_type {
 	AMD_FW_DMCU_ISR = 0x59,
 	AMD_FW_MSMU = 0x5a,
 	AMD_FW_SPIROM_CFG = 0x5c,
+	AMD_FW_MPIO = 0x5d,
 	AMD_FW_PSP_SMUSCS = 0x5f,
 	AMD_FW_DMCUB = 0x71,
 	AMD_FW_PSP_BOOTLOADER_AB = 0x73,
+	AMD_RIB = 0x76,
+	AMD_FW_MPDMA_TF = 0x8c,
 	AMD_TA_IKEK = 0x8d,
+	AMD_FW_GMI3_PHY = 0x91,
+	AMD_FW_MPDMA_PM = 0x92,
 	AMD_FW_IMC = 0x200,	/* Large enough to be larger than the top BHD entry type. */
 	AMD_FW_GEC,
 	AMD_FW_XHCI,
@@ -155,7 +166,16 @@ typedef struct _psp_directory_header {
 typedef struct _psp_directory_entry {
 	uint8_t type;
 	uint8_t subprog;
-	uint16_t rsvd;
+	union {
+		uint16_t rsvd;
+		struct {
+			uint8_t rom_id:2;
+			uint8_t writable:1;
+			uint8_t inst:4;
+			uint8_t rsvd_1:1;
+			uint8_t rsvd_2:8;
+		} __attribute__((packed));
+	};
 	uint32_t size;
 	uint64_t addr:62; /* or a value in some cases */
 	uint64_t address_mode:2;
@@ -289,6 +309,7 @@ typedef struct _amd_fw_entry {
 	uint16_t fw_id;
 	char *filename;
 	uint8_t subprog;
+	uint8_t inst;
 	uint64_t dest;
 	size_t size;
 	int level;
@@ -362,7 +383,5 @@ uint8_t process_config(FILE *config, amd_cb_config *cb_config, uint8_t print_dep
 
 #define LINE_EOF (1)
 #define LINE_TOO_LONG (2)
-
-#define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 
 #endif	/* _AMD_FW_TOOL_H_ */

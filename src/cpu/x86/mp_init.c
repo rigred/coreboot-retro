@@ -176,20 +176,19 @@ static struct bus *g_cpu_bus;
 
 /* By the time APs call ap_init() caching has been setup, and microcode has
  * been loaded. */
-static void asmlinkage ap_init(void)
+static asmlinkage void ap_init(unsigned int index)
 {
-	struct cpu_info *info = cpu_info();
-
 	/* Ensure the local APIC is enabled */
 	enable_lapic();
 	setup_lapic_interrupts();
 
 	struct device *dev = g_cpu_bus->children;
-	for (unsigned int i = info->index; i > 0; i--)
+	for (unsigned int i = index; i > 0; i--)
 		dev = dev->sibling;
 
-	info->cpu = dev;
+	set_cpu_info(index, dev);
 
+	struct cpu_info *info = cpu_info();
 	cpu_add_map_entry(info->index);
 
 	/* Fix up APIC id with reality. */
@@ -369,18 +368,9 @@ static int allocate_cpu_devices(struct bus *cpu_bus, struct mp_params *p)
 
 	info = cpu_info();
 	for (i = 1; i < max_cpus; i++) {
-		struct device_path cpu_path;
-		struct device *new;
-
-		/* Build the CPU device path */
-		cpu_path.type = DEVICE_PATH_APIC;
-
 		/* Assuming linear APIC space allocation. AP will set its own
 		   APIC id in the ap_init() path above. */
-		cpu_path.apic.apic_id = info->cpu->path.apic.apic_id + i;
-
-		/* Allocate the new CPU device structure */
-		new = alloc_find_dev(cpu_bus, &cpu_path);
+		struct device *new = add_cpu_device(cpu_bus, info->cpu->path.apic.apic_id + i, 1);
 		if (new == NULL) {
 			printk(BIOS_CRIT, "Could not allocate CPU device\n");
 			max_cpus--;
@@ -530,9 +520,8 @@ static enum cb_err bsp_do_flight_plan(struct mp_params *mp_params)
 	return ret;
 }
 
-static void init_bsp(struct bus *cpu_bus)
+static enum cb_err init_bsp(struct bus *cpu_bus)
 {
-	struct device_path cpu_path;
 	struct cpu_info *info;
 
 	/* Print processor name */
@@ -543,20 +532,26 @@ static void init_bsp(struct bus *cpu_bus)
 	enable_lapic();
 	setup_lapic_interrupts();
 
-	/* Set the device path of the boot CPU. */
-	cpu_path.type = DEVICE_PATH_APIC;
-	cpu_path.apic.apic_id = lapicid();
+	struct device *bsp = add_cpu_device(cpu_bus, lapicid(), 1);
+	if (bsp == NULL) {
+		printk(BIOS_CRIT, "Failed to find or allocate BSP struct device\n");
+		return CB_ERR;
+	}
 
 	/* Find the device structure for the boot CPU. */
+	set_cpu_info(0, bsp);
 	info = cpu_info();
-	info->cpu = alloc_find_dev(cpu_bus, &cpu_path);
+	info->cpu = bsp;
 	info->cpu->name = processor_name;
 
-	if (info->index != 0)
+	if (info->index != 0) {
 		printk(BIOS_CRIT, "BSP index(%zd) != 0!\n", info->index);
+		return CB_ERR;
+	}
 
 	/* Track BSP in cpu_map structures. */
 	cpu_add_map_entry(info->index);
+	return CB_SUCCESS;
 }
 
 /*
@@ -583,7 +578,10 @@ static enum cb_err mp_init(struct bus *cpu_bus, struct mp_params *p)
 
 	g_cpu_bus = cpu_bus;
 
-	init_bsp(cpu_bus);
+	if (init_bsp(cpu_bus) != CB_SUCCESS) {
+		printk(BIOS_CRIT, "Setting up BSP failed\n");
+		return CB_ERR;
+	}
 
 	if (p == NULL || p->flight_plan == NULL || p->num_records < 1) {
 		printk(BIOS_CRIT, "Invalid MP parameters\n");

@@ -1,17 +1,18 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 
 #include <acpi/acpi.h>
-#include <arch/cpu.h>
 #include <bootstate.h>
-#include <console/console.h>
 #include <cbfs.h>
 #include <commonlib/region.h>
+#include <console/console.h>
+#include <cpu/cpu.h>
 #include <fmap.h>
+#include <intelbasecode/debug_feature.h>
 #include <intelblocks/cse.h>
 #include <intelblocks/cse_layout.h>
-#include <intelbasecode/debug_feature.h>
-#include <security/vboot/vboot_common.h>
+#include <intelblocks/spi.h>
 #include <security/vboot/misc.h>
+#include <security/vboot/vboot_common.h>
 #include <soc/intel/common/reset.h>
 #include <timestamp.h>
 
@@ -132,6 +133,28 @@ struct get_bp_info_rsp {
 } __packed;
 
 static const char * const cse_regions[] = {"RO", "RW"};
+
+void cse_log_ro_write_protection_info(bool mfg_mode)
+{
+	bool cse_ro_wp_en = is_spi_wp_cse_ro_en();
+
+	printk(BIOS_DEBUG, "ME: WP for RO is enabled        : %s\n",
+			cse_ro_wp_en ? "YES" : "NO");
+
+	if (cse_ro_wp_en) {
+		uint32_t base, limit;
+		spi_get_wp_cse_ro_range(&base, &limit);
+		printk(BIOS_DEBUG, "ME: RO write protection scope - Start=0x%X, End=0x%X\n",
+				base, limit);
+	}
+
+	/*
+	 * If manufacturing mode is disabled, but CSE RO is not write protected,
+	 * log error.
+	 */
+	if (!mfg_mode && !cse_ro_wp_en)
+		printk(BIOS_ERR, "ME: Write protection for CSE RO is not enabled\n");
+}
 
 bool cse_get_boot_performance_data(struct cse_boot_perf_rsp *boot_perf_rsp)
 {
@@ -503,7 +526,7 @@ static bool cse_get_target_rdev(const struct cse_bp_info *cse_bp_info,
 		return false;
 
 	printk(BIOS_DEBUG, "cse_lite: CSE RW partition: offset = 0x%x, size = 0x%x\n",
-			(uint32_t)start_offset, (uint32_t) size);
+			(uint32_t)start_offset, (uint32_t)size);
 
 	return true;
 }
@@ -907,8 +930,8 @@ static void cse_sub_part_get_source_fw_version(void *subpart_cbfs_rw, struct fw_
 	struct subpart_entry *subpart_entry;
 	struct subpart_entry_manifest_header *man_hdr;
 
-	subpart_entry = (struct subpart_entry *) (ptr + SUBPART_HEADER_SZ);
-	man_hdr = (struct subpart_entry_manifest_header *) (ptr + subpart_entry->offset_bytes);
+	subpart_entry = (struct subpart_entry *)(ptr + SUBPART_HEADER_SZ);
+	man_hdr = (struct subpart_entry_manifest_header *)(ptr + subpart_entry->offset_bytes);
 
 	fw_ver->major = man_hdr->binary_version.major;
 	fw_ver->minor = man_hdr->binary_version.minor;

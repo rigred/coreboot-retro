@@ -3,6 +3,7 @@
 #include <console/console.h>
 #include <commonlib/endian.h>
 #include <commonlib/fsp.h>
+#include <inttypes.h>
 /*
  * Intel's code does not have a handle on changing global packing state.
  * Therefore, one needs to protect against packing policies that are set
@@ -219,7 +220,7 @@ static int pe_relocate(uintptr_t new_addr, void *pe, void *fsp, size_t fih_off)
 			delta, image_base, img_base_off,
 			(uint32_t)((uint8_t *)&ophdr->ImageBase - pe_base));
 
-	printk(FSP_DBG_LVL, "relocating PE32 image at addr - 0x%lx\n", new_addr);
+	printk(FSP_DBG_LVL, "relocating PE32 image at addr - 0x%" PRIxPTR "\n", new_addr);
 	rsize = read_le32(&ophdr->DataDirectory[EFI_IMAGE_DIRECTORY_ENTRY_BASERELOC].Size);
 	roffset = read_le32(&ophdr->DataDirectory[EFI_IMAGE_DIRECTORY_ENTRY_BASERELOC].VirtualAddress);
 	printk(FSP_DBG_LVL, "relocation table at offset-%x,size=%x\n", roffset, rsize);
@@ -233,13 +234,13 @@ static int pe_relocate(uintptr_t new_addr, void *pe, void *fsp, size_t fih_off)
 		uint32_t i;
 		EFI_IMAGE_DATA_DIRECTORY *relocd;
 
-		relocd = (void *) &pe_base[offset];
+		relocd = (void *)&pe_base[offset];
 		offset += sizeof(*relocd);
 		// Read relocation type, offset pairs
 		rlen = read_le32(&relocd->Size) - sizeof(*relocd);
 		rnum = rlen / sizeof(uint16_t);
 		vaddr = read_le32(&relocd->VirtualAddress);
-		rdata = (uint16_t *) &pe_base[offset];
+		rdata = (uint16_t *)&pe_base[offset];
 		printk(FSP_DBG_LVL, "\t%d Relocs for RVA %x\n", rnum, vaddr);
 
 		for (i = 0; i < rnum; i++) {
@@ -259,10 +260,10 @@ static int pe_relocate(uintptr_t new_addr, void *pe, void *fsp, size_t fih_off)
 				write_le32(&pe_base[aoff], val + delta);
 				break;
 			case EFI_IMAGE_REL_BASED_DIR64:
-				printk(BIOS_ERR, "Error: Unsupported DIR64\n");
+				printk(BIOS_ERR, "Unsupported DIR64\n");
 				break;
 			default:
-				printk(BIOS_ERR, "Error: Unsupported relocation type %d\n",
+				printk(BIOS_ERR, "Unsupported relocation type %d\n",
 						rtype);
 				return -1;
 			}

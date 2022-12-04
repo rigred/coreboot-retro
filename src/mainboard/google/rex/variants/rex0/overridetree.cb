@@ -126,19 +126,8 @@ chip soc/intel/meteorlake
 				.flags = PCIE_RP_LTR | PCIE_RP_AER,
 			}"
 		end	#PCIE9 SSD card
-		device ref pcie_rp11 on
-			probe DB_SD SD_GL9755S
-			# Enable SD Card PCIE 11 using clk 2
-			register "pcie_rp[PCH_RP(11)]" = "{
-				.clk_src = 2,
-				.clk_req = 2,
-				.flags = PCIE_RP_HOTPLUG | PCIE_RP_LTR | PCIE_RP_AER,
-			}"
-		end	#PCIE11 SD card
 		device ref tbt_pcie_rp0 on end
-		device ref tbt_pcie_rp1 on end
 		device ref tbt_pcie_rp2 on end
-		device ref tbt_pcie_rp3 on end
 		device ref tcss_xhci on
 			chip drivers/usb/acpi
 				device ref tcss_root_hub on
@@ -230,7 +219,8 @@ chip soc/intel/meteorlake
 		device ref cnvi_wifi on
 			chip drivers/wifi/generic
 				register "wake" = "GPE0_PME_B0"
-				register "is_untrusted" = "true"
+				register "add_acpi_dma_property" = "true"
+				register "enable_cnvi_ddr_rfim" = "true"
 				device generic 0 on end
 			end
 		end
@@ -309,7 +299,7 @@ chip soc/intel/meteorlake
 				register "off_seq.ops[3]" = "SEQ_OPS_GPIO_DISABLE(0, 0)"
 
 				device i2c 10 on
-					probe UFC UFC_MIPI
+					probe WFC WFC_MIPI
 				end
 			end
 			chip drivers/intel/mipi_camera
@@ -322,7 +312,7 @@ chip soc/intel/meteorlake
 				register "vcm_compat" = ""dongwoon,dw9714""
 
 				device i2c 0C on
-					probe UFC UFC_MIPI
+					probe WFC WFC_MIPI
 				end
 			end
 			chip drivers/intel/mipi_camera
@@ -340,7 +330,7 @@ chip soc/intel/meteorlake
 				register "nvm_width" = "0x0E"
 
 				device i2c 50 on
-					probe UFC UFC_MIPI
+					probe WFC WFC_MIPI
 				end
 			end
 		end #I2C0
@@ -358,6 +348,7 @@ chip soc/intel/meteorlake
 				register "generic.stop_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_LOW(GPP_C06)"
 				register "generic.stop_off_delay_ms" = "2"
 				register "generic.has_power_resource" = "1"
+				register "generic.disable_gpio_export_in_crs" = "1"
 				register "hid_desc_reg_offset" = "0x01"
 				device i2c 10 on end
 			end
@@ -373,7 +364,6 @@ chip soc/intel/meteorlake
 				device i2c 15 on end
 			end
 		end
-		device ref sata on end
 		device ref i2c4 on
 			chip drivers/i2c/tpm
 				register "hid" = ""GOOG0005""
@@ -416,7 +406,7 @@ chip soc/intel/meteorlake
 				register "off_seq.ops[2]" = "SEQ_OPS_GPIO_DISABLE(0, 0)"
 
 				device i2c 36 on
-					probe WFC WFC_MIPI
+					probe UFC UFC_MIPI
 				end
 			end
 			chip drivers/intel/mipi_camera
@@ -434,7 +424,7 @@ chip soc/intel/meteorlake
 				register "nvm_compat" = ""atmel,24c64""
 
 				device i2c 50 on
-					probe WFC WFC_MIPI
+					probe UFC UFC_MIPI
 				end
 			end
 		end #I2C5
@@ -472,7 +462,36 @@ chip soc/intel/meteorlake
 				device generic 0 on end
 			end
 		end	#PCIE6 WWAN card
-		device ref gspi1 on end
+		device ref pcie_rp7 on
+			# Enable SD Card PCIE 7 using clk 2
+			register "pcie_rp[PCH_RP(7)]" = "{
+				.clk_src = 2,
+				.clk_req = 2,
+				.flags = PCIE_RP_HOTPLUG | PCIE_RP_LTR | PCIE_RP_AER,
+			}"
+			chip soc/intel/common/block/pcie/rtd3
+				register "enable_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_HIGH(GPP_D03)"
+				register "reset_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_LOW(GPP_D02)"
+				register "srcclk_pin" = "2"
+				device generic 0 on end
+			end
+			probe DB_SD SD_GL9755S
+		end
+		device ref gspi1 on
+			chip drivers/spi/acpi
+				register "name" = ""CRFP""
+				register "hid" = "ACPI_DT_NAMESPACE_HID"
+				register "uid" = "1"
+				register "compat_string" = ""google,cros-ec-spi""
+				register "irq" = "ACPI_IRQ_WAKE_LEVEL_LOW(GPP_E10_IRQ)"
+				register "wake" = "GPE0_DW1_10"
+				register "has_power_resource" = "1"
+				register "reset_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_LOW(GPP_C23)"
+				register "enable_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_HIGH(GPP_B11)"
+				register "enable_delay_ms" = "3"
+				device spi 0 on end
+			end # FPMCU
+		end
 		device ref soc_espi on
 			chip ec/google/chromeec
 				use conn0 as mux_conn[0]
