@@ -10,6 +10,8 @@
 
 static void model_6xx_init(struct device *dev)
 {
+	char processor_name[49];
+	
 	/* Print processor name */
 	fill_processor_name(processor_name);
 	printk(BIOS_INFO, "CPU: %s.\n", processor_name);
