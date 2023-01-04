@@ -1,11 +1,10 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 
-/* TODO: Update for Morgana */
-
 #include <amdblocks/acpi.h>
 #include <amdblocks/acpimmio.h>
 #include <amdblocks/amd_pci_util.h>
 #include <amdblocks/gpio.h>
+#include <amdblocks/pci_clk_req.h>
 #include <amdblocks/smi.h>
 #include <assert.h>
 #include <bootstate.h>
@@ -46,17 +45,13 @@ const static struct irq_idx_name irq_association[] = {
 	{ PIRQ_SMBUS,	"SMBUS" },
 	{ PIRQ_ASF,	"ASF" },
 	{ PIRQ_PMON,	"PerMon" },
-	{ PIRQ_SD,	"SD" },
 	{ PIRQ_SDIO,	"SDIO" },
 	{ PIRQ_CIR,	"CIR" },
 	{ PIRQ_GPIOA,	"GPIOa" },
 	{ PIRQ_GPIOB,	"GPIOb" },
 	{ PIRQ_GPIOC,	"GPIOc" },
-	{ PIRQ_EMMC,	"eMMC" },
-	{ PIRQ_GPP0,	"GPP0" },
-	{ PIRQ_GPP1,	"GPP1" },
-	{ PIRQ_GPP2,	"GPP2" },
-	{ PIRQ_GPP3,	"GPP3" },
+	{ PIRQ_GSCI,	"GEventSci" },
+	{ PIRQ_GSMI,	"GEventSmi" },
 	{ PIRQ_GPIO,	"GPIO" },
 	{ PIRQ_I2C0,	"I2C0" },
 	{ PIRQ_I2C1,	"I2C1" },
@@ -64,7 +59,6 @@ const static struct irq_idx_name irq_association[] = {
 	{ PIRQ_I2C3,	"I2C3" },
 	{ PIRQ_UART0,	"UART0" },
 	{ PIRQ_UART1,	"UART1" },
-	{ PIRQ_I2C4,	"I2C4" },
 	{ PIRQ_UART4,	"UART4" },
 	{ PIRQ_UART2,	"UART2" },
 	{ PIRQ_UART3,	"UART3" },
@@ -130,7 +124,7 @@ static void fch_init_acpi_ports(void)
 /* configure the general purpose PCIe clock outputs according to the devicetree settings */
 static void gpp_clk_setup(void)
 {
-	const struct soc_amd_morgana_config *cfg = config_of_soc();
+	struct soc_amd_morgana_config *cfg = config_of_soc();
 
 	/* look-up table to be able to iterate over the PCIe clock output settings */
 	const uint8_t gpp_clk_shift_lut[GPP_CLK_OUTPUT_COUNT] = {
@@ -145,6 +139,8 @@ static void gpp_clk_setup(void)
 
 	uint32_t gpp_clk_ctl = misc_read32(GPP_CLK_CNTRL);
 
+	pcie_gpp_dxio_update_clk_req_config(&cfg->gpp_clk_config[0],
+					    ARRAY_SIZE(cfg->gpp_clk_config));
 	for (int i = 0; i < GPP_CLK_OUTPUT_COUNT; i++) {
 		gpp_clk_ctl &= ~GPP_CLK_REQ_MASK(gpp_clk_shift_lut[i]);
 		/*

@@ -6,6 +6,7 @@
 #include <security/tpm/tis.h>
 
 #include "gpio.h"
+#include "panel.h"
 
 void setup_chromeos_gpios(void)
 {
@@ -28,6 +29,15 @@ void fill_lb_gpios(struct lb_gpios *gpios)
 		{GPIO_EN_SPKR.id, ACTIVE_HIGH, -1, "speaker enable"},
 	};
 	lb_add_gpios(gpios, chromeos_gpios, ARRAY_SIZE(chromeos_gpios));
+
+	fill_lp_backlight_gpios(gpios);
+
+	if (CONFIG(SDCARD_INIT)) {
+		struct lb_gpio sd_card_gpios[] = {
+			{GPIO_SD_CD_ODL.id, ACTIVE_LOW, -1, "SD card detect"},
+		};
+		lb_add_gpios(gpios, sd_card_gpios, ARRAY_SIZE(sd_card_gpios));
+	}
 }
 
 int tis_plat_irq_status(void)

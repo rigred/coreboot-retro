@@ -3,19 +3,41 @@ config BOARD_INTEL_MTLRVP_COMMON
 	select BOARD_ROMSIZE_KB_32768
 	select HAVE_ACPI_RESUME
 	select HAVE_ACPI_TABLES
+	select MAINBOARD_HAS_CHROMEOS
+	select SOC_INTEL_CSE_LITE_SKU
 	select SOC_INTEL_METEORLAKE
 
 config BOARD_INTEL_MTLRVP_P
 	select BOARD_INTEL_MTLRVP_COMMON
 
+config BOARD_INTEL_MTLRVP_P_EXT_EC
+	select BOARD_INTEL_MTLRVP_COMMON
+
 if BOARD_INTEL_MTLRVP_COMMON
+
+config CHROMEOS
+	select GBB_FLAG_FORCE_DEV_BOOT_ALTFW
+	select GBB_FLAG_FORCE_DEV_SWITCH_ON
+	select GBB_FLAG_FORCE_DEV_BOOT_USB
+	select GBB_FLAG_FORCE_MANUAL_RECOVERY
+	select GBB_FLAG_DISABLE_PD_SOFTWARE_SYNC
+	select HAS_RECOVERY_MRC_CACHE
+
+config BOARD_SPECIFIC_OPTIONS
+	def_bool y
+	select INTEL_LPSS_UART_FOR_CONSOLE
 
 config MAINBOARD_DIR
 	default "intel/mtlrvp"
 
 config BASEBOARD_DIR
 	string
-	default "mtlrvp"
+	default "mtlrvp_p" if BOARD_INTEL_MTLRVP_P || BOARD_INTEL_MTLRVP_P_EXT_EC
+
+config GBB_HWID
+	string
+	depends on CHROMEOS
+	default "MTLRVP"
 
 config MAINBOARD_PART_NUMBER
 	string
@@ -31,9 +53,41 @@ config MAINBOARD_FAMILY
 config VARIANT_DIR
 	string
 	default "mtlrvp_p" if BOARD_INTEL_MTLRVP_P
+	default "mtlrvp_p_ext_ec" if BOARD_INTEL_MTLRVP_P_EXT_EC
 
 config DEVICETREE
 	string
-	default "devicetree.cb"
+	default "variants/baseboard/\$(CONFIG_BASEBOARD_DIR)/devicetree.cb"
+
+config OVERRIDE_DEVICETREE
+	string
+	default "variants/\$(CONFIG_VARIANT_DIR)/overridetree.cb"
+
+choice
+	prompt "ON BOARD EC"
+	default MTL_INTEL_EC if BOARD_INTEL_MTLRVP_P
+	default MTL_CHROME_EC if BOARD_INTEL_MTLRVP_P_EXT_EC
+	help
+	  This option allows you to select the on board EC to use.
+	  Select whether the board has Intel EC or/and Chrome EC
+
+config MTL_CHROME_EC
+	bool "Chrome EC"
+	select EC_ACPI
+	select EC_GOOGLE_CHROMEEC
+	select EC_GOOGLE_CHROMEEC_ESPI
+	select EC_GOOGLE_CHROMEEC_BOARDID
+
+config MTL_INTEL_EC
+	bool "Intel EC"
+	select EC_ACPI
+endchoice
+
+config VBOOT
+	select VBOOT_LID_SWITCH
+
+config UART_FOR_CONSOLE
+	int
+	default 0
 
 endif # BOARD_INTEL_MTLRVP_COMMON

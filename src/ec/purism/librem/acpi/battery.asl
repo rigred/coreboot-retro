@@ -51,7 +51,7 @@ Device (BAT)
 		0xFFFFFFFF,  /* 0x02: Battery Remaining Capacity */
 		0xFFFFFFFF,  /* 0x03: Battery Present Voltage */
 	})
-	Name (BSTP, Zero)
+	Name (BSTP, 0)
 
 	/* Battery Capacity warning at 15% */
 	Name (DWRN, 15)
@@ -60,7 +60,7 @@ Device (BAT)
 	Name (DLOW, 10)
 
 	/* Workaround for full battery status, enabled by default */
-	Name (BFWK, One)
+	Name (BFWK, 1)
 
 	/* Method to enable full battery workaround */
 	Method (BFWE)

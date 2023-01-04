@@ -392,6 +392,20 @@ variant_sleep_gpio_table(u8 slp_typ, size_t *num)
 	return sleep_gpio_table;
 }
 
+/* GPIOs needed to be set in romstage. */
+static const struct pad_config romstage_gpio_table[] = {
+	/* Enable touchscreen, hold in reset */
+	PAD_CFG_GPO(GPIO_152, 1, DEEP),          /* Touch enable */
+	PAD_CFG_GPO(GPIO_36, 1, DEEP),		 /* Touch reset */
+};
+
+/* Weak implementation of romstage gpio */
+const struct pad_config *__weak variant_romstage_gpio_table(size_t *num)
+{
+	*num = ARRAY_SIZE(romstage_gpio_table);
+	return romstage_gpio_table;
+}
+
 static const struct cros_gpio cros_gpios[] = {
 	CROS_GPIO_REC_AL(CROS_GPIO_VIRTUAL, GPIO_COMM_NW_NAME),
 	CROS_GPIO_WP_AH(PAD_NW(GPIO_PCH_WP), GPIO_COMM_NW_NAME),

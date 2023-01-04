@@ -10,7 +10,7 @@
 #include <fsp/fsp_debug_event.h>
 #include <fsp/ppi/mp_service_ppi.h>
 #include <fsp/util.h>
-#include <option.h>
+#include <gpio.h>
 #include <intelblocks/irq.h>
 #include <intelblocks/lpss.h>
 #include <intelblocks/mp_init.h>
@@ -19,8 +19,8 @@
 #include <intelpch/lockdown.h>
 #include <intelblocks/systemagent.h>
 #include <intelblocks/tcss.h>
+#include <option.h>
 #include <soc/cpu.h>
-#include <soc/gpio.h>
 #include <soc/intel/common/vbt.h>
 #include <soc/pci_devs.h>
 #include <soc/pcie.h>
@@ -471,29 +471,26 @@ static const SI_PCH_DEVICE_INTERRUPT_CONFIG *pci_irq_to_fsp(size_t *out_count)
  */
 static int get_l1_substate_control(enum L1_substates_control ctl)
 {
-	if ((ctl > L1_SS_L1_2) || (ctl == L1_SS_FSP_DEFAULT))
+	if (CONFIG(SOC_INTEL_COMPLIANCE_TEST_MODE))
+		ctl = L1_SS_DISABLED;
+	else if ((ctl > L1_SS_L1_2) || (ctl == L1_SS_FSP_DEFAULT))
 		ctl = L1_SS_L1_2;
 	return ctl - 1;
 }
 
 /*
- * Chip config parameter pcie_rp_aspm uses (UPD value + 1) because
- * a UPD value of 0 for pcie_rp_aspm means disabled. In order to ensure
- * that the mainboard setting does not disable ASPM incorrectly, chip
- * config parameter values are offset by 1 with 0 meaning use FSP UPD default.
  * get_aspm_control() ensures that the right UPD value is set in fsp_params.
- * 0: Use FSP UPD default
- * 1: Disable ASPM
- * 2: L0s only
- * 3: L1 only
- * 4: L0s and L1
- * 5: Auto configuration
+ * 0: Disable ASPM
+ * 1: L0s only
+ * 2: L1 only
+ * 3: L0s and L1
+ * 4: Auto configuration
  */
 static unsigned int get_aspm_control(enum ASPM_control ctl)
 {
-	if ((ctl > ASPM_AUTO) || (ctl == ASPM_DEFAULT))
+	if (ctl > ASPM_AUTO)
 		ctl = ASPM_AUTO;
-	return ctl - 1;
+	return ctl;
 }
 
 /* This function returns the VccIn Aux Imon IccMax values for ADL and RPL
@@ -518,6 +515,7 @@ static uint16_t get_vccin_aux_imon_iccmax(void)
 	case PCI_DID_INTEL_RPL_P_ID_2:
 	case PCI_DID_INTEL_RPL_P_ID_3:
 	case PCI_DID_INTEL_RPL_P_ID_4:
+	case PCI_DID_INTEL_RPL_P_ID_5:
 		tdp = get_cpu_tdp();
 		if (tdp == TDP_45W)
 			return ICC_MAX_TDP_45W;

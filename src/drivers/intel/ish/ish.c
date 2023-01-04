@@ -13,19 +13,25 @@ static void ish_fill_ssdt_generator(const struct device *dev)
 	struct device *root = dev->bus->dev;
 	struct acpi_dp *dsd;
 
-	if (!config || !config->firmware_name)
+	if (!config)
 		return;
 
 	acpigen_write_scope(acpi_device_path(root));
 
 	dsd = acpi_dp_new_table("_DSD");
-	acpi_dp_add_string(dsd, "firmware-name", config->firmware_name);
+
+	if (config->firmware_name) {
+		acpi_dp_add_string(dsd, "firmware-name", config->firmware_name);
+		printk(BIOS_INFO, "%s: Set firmware-name: %s\n",
+		       acpi_device_path(root), config->firmware_name);
+	}
+
+	if (config->add_acpi_dma_property)
+		acpi_device_add_dma_property(dsd);
+
 	acpi_dp_write(dsd);
 
 	acpigen_pop_len();	/* Scope */
-
-	printk(BIOS_INFO, "%s: Set firmware-name: %s\n",
-	       acpi_device_path(root), config->firmware_name);
 }
 
 static struct device_operations intel_ish_ops = {
@@ -57,6 +63,7 @@ static const unsigned short pci_device_ids[] = {
 	PCI_DID_INTEL_TGL_ISHB,
 	PCI_DID_INTEL_TGL_H_ISHB,
 	PCI_DID_INTEL_ADL_N_ISHB,
+	PCI_DID_INTEL_ADL_P_ISHB,
 	0
 };
 

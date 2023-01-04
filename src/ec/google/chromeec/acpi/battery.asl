@@ -7,33 +7,33 @@ Mutex (BATM, 0)
 
 // Wait for desired battery index to be presented in shared memory
 //   Arg0 = battery index
-//   Returns Zero on success, One on error.
+//   Returns 0 on success, 1 on error.
 Method (BTSW, 1)
 {
 #ifdef EC_ENABLE_SECOND_BATTERY_DEVICE
 	If (BTIX == Arg0) {
-		Return (Zero)
+		Return (0)
 	}
 	If (Arg0 >= BTCN) {
-		Return (One)
+		Return (1)
 	}
-	Store (Arg0, \_SB.PCI0.LPCB.EC0.BTID)
-	Store (5, Local0)      // Timeout 5 msec
+	\_SB.PCI0.LPCB.EC0.BTID = Arg0
+	Local0 = 5      // Timeout 5 msec
 	While (BTIX != Arg0)
 	{
 		Sleep (1)
 		Local0--
 		If (Local0 == 0)
 		{
-			Return (One)
+			Return (1)
 		}
 	}
 #else
 	If (Arg0 != 0) {
-		Return (One)
+		Return (1)
 	}
 #endif
-	Return (Zero)
+	Return (0)
 }
 
 // _STA implementation.
@@ -41,13 +41,13 @@ Method (BTSW, 1)
 Method (BSTA, 1, Serialized)
 {
 	If (Acquire (^BATM, 1000)) {
-		Return (Zero)
+		Return (0)
 	}
 
-	If (And(Not(BTSW (Arg0)), BTEX)) {
-		Store (0x1F, Local0)
+	If (~BTSW (Arg0) & BTEX) {
+		Local0 = 0x1F
 	} Else {
-		Store (0x0F, Local0)
+		Local0 = 0x0F
 	}
 
 	Release (^BATM)
@@ -68,27 +68,27 @@ Method (BBIF, 2, Serialized)
 		Return (Arg1)
 	}
 	// Last Full Charge Capacity
-	Store (BTDF, Arg1[2])
+	Arg1[2] = BTDF
 
 	// Design Voltage
-	Store (BTDV, Arg1[4])
+	Arg1[4] = BTDV
 
 	// Design Capacity
-	Store (BTDA, Local0)
-	Store (Local0, Arg1[1])
+	Local0 = BTDA
+	Arg1[1] = Local0
 
 	// Design Capacity of Warning
 	Local2 = Local0 * DWRN / 100
-	Store (Local2, Arg1[5])
+	Arg1[5] = Local2
 
 	// Design Capacity of Low
 	Local2 = Local0 * DLOW / 100
-	Store (Local2, Arg1[6])
+	Arg1[6] = Local2
 
 	// Get battery info from mainboard
-	Store (ToString(Concatenate(BMOD, 0x00)), Arg1[9])
-	Store (ToString(Concatenate(BSER, 0x00)), Arg1[10])
-	Store (ToString(Concatenate(BMFG, 0x00)), Arg1[12])
+	Arg1[9] = ToString(Concatenate(BMOD, 0x00))
+	Arg1[10] = ToString(Concatenate(BSER, 0x00))
+	Arg1[12] = ToString(Concatenate(BMFG, 0x00))
 
 	Release (^BATM)
 	Return (Arg1)
@@ -108,30 +108,30 @@ Method (BBIX, 2, Serialized)
 		Return (Arg1)
 	}
 	// Last Full Charge Capacity
-	Store (BTDF, Arg1[3])
+	Arg1[3] = BTDF
 
 	// Design Voltage
-	Store (BTDV, Arg1[5])
+	Arg1[5] = BTDV
 
 	// Design Capacity
-	Store (BTDA, Local0)
-	Store (Local0, Arg1[2])
+	Local0 = BTDA
+	Arg1[2] = Local0
 
 	// Design Capacity of Warning
 	Local2 = Local0 * DWRN / 100
-	Store (Local2, Arg1[6])
+	Arg1[6] = Local2
 
 	// Design Capacity of Low
 	Local2 = Local0 * DLOW / 100
-	Store (Local2, Arg1[7])
+	Arg1[7] = Local2
 
 	// Cycle Count
-	Store (BTCC, Arg1[8])
+	Arg1[8] = BTCC
 
 	// Get battery info from mainboard
-	Store (ToString(Concatenate(BMOD, 0x00)), Arg1[16])
-	Store (ToString(Concatenate(BSER, 0x00)), Arg1[17])
-	Store (ToString(Concatenate(BMFG, 0x00)), Arg1[19])
+	Arg1[16] = ToString(Concatenate(BMOD, 0x00))
+	Arg1[17] = ToString(Concatenate(BSER, 0x00))
+	Arg1[19] = ToString(Concatenate(BMFG, 0x00))
 
 	Release (^BATM)
 	Return (Arg1)
@@ -159,29 +159,29 @@ Method (BBST, 4, Serialized)
 	// bit 1 = charging
 	// bit 2 = critical level
 	//
-	Store (Zero, Local1)
+	Local1 = 0
 
 	// Check if AC is present
 	If (ACEX) {
 		If (BFCG) {
-			Store (0x02, Local1)
+			Local1 = 0x02
 		} ElseIf (BFDC) {
-			Store (0x01, Local1)
+			Local1 = 0x01
 		}
 	} Else {
 		// Always discharging when on battery power
-		Store (0x01, Local1)
+		Local1 = 0x01
 	}
 
 	// Check for critical battery level
 	If (BFCR) {
-		Or (Local1, 0x04, Local1)
+		Local1 |= 4
 	}
-	Store (Local1, Arg1[0])
+	Arg1[0] = Local1
 
 	// Notify if battery state has changed since last time
 	If (Local1 != DeRefOf (Arg2)) {
-		Store (Local1, Arg2)
+		Arg2 = Local1
 		If (Arg0 == 0) {
 			Notify (BAT0, 0x80)
 		}
@@ -195,32 +195,32 @@ Method (BBST, 4, Serialized)
 	//
 	// 1: BATTERY PRESENT RATE
 	//
-	Store (BTPR, Arg1[1])
+	Arg1[1] = BTPR
 
 	//
 	// 2: BATTERY REMAINING CAPACITY
 	//
-	Store (BTRA, Local1)
+	Local1 = BTRA
 	If (Arg3 && ACEX && !(BFDC && BFCG)) {
 		// On AC power and battery is neither charging
 		// nor discharging.  Linux expects a full battery
 		// to report same capacity as last full charge.
 		// https://bugzilla.kernel.org/show_bug.cgi?id=12632
-		Store (BTDF, Local2)
+		Local2 = BTDF
 
 		// See if within ~6% of full
-		ShiftRight (Local2, 4, Local3)
+		Local3 = Local2 >> 4
 		If (Local1 > Local2 - Local3 && Local1 < Local2 + Local3)
 		{
-			Store (Local2, Local1)
+			Local1 = Local2
 		}
 	}
-	Store (Local1, Arg1[2])
+	Arg1[2] = Local1
 
 	//
 	// 3: BATTERY PRESENT VOLTAGE
 	//
-	Store (BTVO, Arg1[3])
+	Arg1[3] = BTVO
 
 	Release (^BATM)
 	Return (Arg1)
@@ -277,21 +277,21 @@ Device (BAT0)
 		0xFFFFFFFF,  // 0x02: Battery Remaining Capacity
 		0xFFFFFFFF,  // 0x03: Battery Present Voltage
 	})
-	Name (BSTP, Zero)
+	Name (BSTP, 0)
 
 	// Workaround for full battery status, disabled by default
-	Name (BFWK, Zero)
+	Name (BFWK, 0)
 
 	// Method to enable full battery workaround
 	Method (BFWE)
 	{
-		Store (One, BFWK)
+		BFWK = 1
 	}
 
 	// Method to disable full battery workaround
 	Method (BFWD)
 	{
-		Store (Zero, BFWK)
+		BFWK = 0
 	}
 
 	Method (_STA, 0, Serialized)
@@ -367,21 +367,21 @@ Device (BAT1)
 		0xFFFFFFFF,  // 0x02: Battery Remaining Capacity
 		0xFFFFFFFF,  // 0x03: Battery Present Voltage
 	})
-	Name (BSTP, Zero)
+	Name (BSTP, 0)
 
 	// Workaround for full battery status, disabled by default
-	Name (BFWK, Zero)
+	Name (BFWK, 0)
 
 	// Method to enable full battery workaround
 	Method (BFWE)
 	{
-		Store (One, BFWK)
+		BFWK = 1
 	}
 
 	// Method to disable full battery workaround
 	Method (BFWD)
 	{
-		Store (Zero, BFWK)
+		BFWK = 0
 	}
 
 	Method (_STA, 0, Serialized)

@@ -43,15 +43,15 @@ Device (LPEA)
 	{
 		/* Update BAR0 from NVS */
 		CreateDwordField (^RBUF, ^BAR0._BAS, BAS0)
-		Store (\LPB0, BAS0)
+		BAS0 = \LPB0
 
 		/* Update BAR1 from NVS */
 		CreateDwordField (^RBUF, ^BAR1._BAS, BAS1)
-		Store (\LPB1, BAS1)
+		BAS1 = \LPB1
 
 		/* Update LPE FW from NVS */
 		CreateDwordField (^RBUF, ^BAR2._BAS, BAS2)
-		Store (\LPFW, BAS2)
+		BAS2 = \LPFW
 
 		/* Append any Mainboard defined GPIOs */
 		If (CondRefOf (^GBUF)) {
@@ -64,7 +64,7 @@ Device (LPEA)
 
 	Method (_STA)
 	{
-		If (LEqual (\LPEN, 1)) {
+		If (\LPEN == 1) {
 			Return (0xF)
 		} Else {
 			Return (0x0)
@@ -87,14 +87,14 @@ Device (LPEA)
 
 		Method (_OFF)
 		{
-			Or (PSAT, 0x00000003, PSAT)
-			Or (PSAT, 0x00000000, PSAT)
+			PSAT |= 3
+			PSAT |= 0
 		}
 
 		Method (_ON)
 		{
-			And (PSAT, 0xfffffffc, PSAT)
-			Or (PSAT, 0x00000000, PSAT)
+			PSAT &= 0xfffffffc
+			PSAT |= 0
 		}
 	}
 }

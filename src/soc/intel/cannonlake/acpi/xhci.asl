@@ -19,7 +19,7 @@ Method (UPWE, 3, Serialized)
 	Local0 = Arg1 + ((Arg0 - 1) * 0x10)
 
 	/* Map ((XMEM << 16) + Local0 in PSCR */
-	OperationRegion (PSCR, SystemMemory, ShiftLeft (Arg2, 16) + Local0, 0x10)
+	OperationRegion (PSCR, SystemMemory, (Arg2 << 16) + Local0, 0x10)
 	Field (PSCR, DWordAcc, NoLock, Preserve)
 	{
 		PSCT, 32,
@@ -46,9 +46,9 @@ Method (UWES, 3, Serialized)
 {
 	Local0 = Arg0
 
-	While (One) {
+	While (1) {
 		FindSetRightBit (Local0, Local1)
-		If (Local1 == Zero) {
+		If (Local1 == 0) {
 			Break
 		}
 		UPWE (Local1, Arg1, Arg2)
@@ -102,7 +102,7 @@ Device (XHCI)
 	/* Root Hub for Cannonlake-LP PCH */
 	Device (RHUB)
 	{
-		Name (_ADR, Zero)
+		Name (_ADR, 0)
 
 		/* USB2 */
 		Device (HS01) { Name (_ADR, 1) }

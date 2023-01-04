@@ -1,16 +1,16 @@
 fw_config
-	field KB_BL 7 7
+	field KB_BL 0 0
 		option KB_BL_ABSENT			0
 		option KB_BL_PRESENT			1
 	end
-	field AUDIO 8 10
+	field AUDIO 1 3
 		option AUDIO_UNKNOWN			0
 		option ALC1019_ALC5682I_VD_I2S		1
 		option ALC1019_ALC5682I_VS_I2S		2
 	end
-	field THERMAL 18 18
-		option THERMAL_6W			0
-		option THERMAL_15W			1
+	field UFC 4 4
+		option UFC_USB				0
+		option UFC_MIPI				1
 	end
 	field STORAGE 30 31
 		option STORAGE_UNKNOWN			0
@@ -36,21 +36,52 @@ chip soc/intel/alderlake
 	register "common_soc_config" = "{
 		.i2c[0] = {
 			.speed = I2C_SPEED_FAST,
+			.rise_time_ns = 650,
+			.fall_time_ns = 400,
+			.data_hold_time_ns = 50,
 		},
 		.i2c[1] = {
 			.early_init = 1,
 			.speed = I2C_SPEED_FAST,
+			.rise_time_ns = 600,
+			.fall_time_ns = 400,
+			.data_hold_time_ns = 50,
 		},
 		.i2c[3] = {
 			.speed = I2C_SPEED_FAST,
+			.rise_time_ns = 650,
+			.fall_time_ns = 400,
+			.data_hold_time_ns = 50,
 		},
 		.i2c[5] = {
 			.speed = I2C_SPEED_FAST,
+			.rise_time_ns = 650,
+			.fall_time_ns = 400,
+			.data_hold_time_ns = 50,
 		},
 	}"
 	register "sagv" = "SaGv_Enabled"
+
+	register "ext_fivr_settings" = "{
+		.configure_ext_fivr = 1,
+		.v1p05_enable_bitmap = FIVR_ENABLE_ALL_SX,
+		.vnn_enable_bitmap = FIVR_ENABLE_ALL_SX,
+		.v1p05_supported_voltage_bitmap = FIVR_VOLTAGE_NORMAL |
+							FIVR_VOLTAGE_MIN_ACTIVE |
+							FIVR_VOLTAGE_MIN_RETENTION,
+		.vnn_supported_voltage_bitmap = FIVR_VOLTAGE_NORMAL |
+							FIVR_VOLTAGE_MIN_ACTIVE |
+							FIVR_VOLTAGE_MIN_RETENTION,
+		.v1p05_icc_max_ma = 500,
+		.vnn_sx_voltage_mv = 1250,
+	}"
 	register "serial_io_i2c_mode" = "{
+		[PchSerialIoIndexI2C0] = PchSerialIoPci,
+		[PchSerialIoIndexI2C1] = PchSerialIoPci,
 		[PchSerialIoIndexI2C2] = PchSerialIoDisabled,
+		[PchSerialIoIndexI2C3] = PchSerialIoPci,
+		[PchSerialIoIndexI2C4] = PchSerialIoDisabled,
+		[PchSerialIoIndexI2C5] = PchSerialIoPci,
 	}"
 
 	register "usb2_ports[0]" = "USB2_PORT_TYPE_C(OC0)"	# USB2_C0
@@ -118,37 +149,52 @@ chip soc/intel/alderlake
 			end
 		end #I2C1
 		device ref i2c3 on
-			chip drivers/i2c/hid
-				register "generic.hid" = ""ELAN9008""
-				register "generic.desc" = ""ELAN Touchscreen""
-				register "generic.irq" = "ACPI_IRQ_LEVEL_LOW(GPP_C7_IRQ)"
-				register "generic.probed" = "1"
-				register "generic.reset_gpio" =
-							"ACPI_GPIO_OUTPUT_ACTIVE_LOW(GPP_C1)"
-				register "generic.reset_delay_ms" = "300"
-				register "generic.reset_off_delay_ms" = "1"
-				register "generic.enable_gpio" =
+			chip drivers/i2c/generic
+				register "hid" = ""ELAN0001""
+				register "desc" = ""ELAN Touchscreen""
+				register "irq" = "ACPI_IRQ_LEVEL_LOW(GPP_C7_IRQ)"
+				register "probed" = "1"
+				register "reset_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_LOW(GPP_C1)"
+				register "reset_delay_ms" = "300"
+				register "reset_off_delay_ms" = "1"
+				register "enable_gpio" =
 							"ACPI_GPIO_OUTPUT_ACTIVE_HIGH(GPP_C0)"
-				register "generic.enable_delay_ms" = "6"
-				register "generic.stop_gpio" =
-							"ACPI_GPIO_OUTPUT_ACTIVE_LOW(GPP_C6)"
-				register "generic.stop_off_delay_ms" = "1"
-				register "generic.has_power_resource" = "1"
-				register "generic.disable_gpio_export_in_crs" = "1"
-				register "hid_desc_reg_offset" = "0x01"
+				register "enable_delay_ms" = "6"
+				register "stop_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_LOW(GPP_C6)"
+				register "stop_off_delay_ms" = "1"
+				register "has_power_resource" = "1"
 				device i2c 10 on end
 			end
 		end #I2C3
 		device ref i2c5 on
-			chip drivers/i2c/generic
-				register "hid" = ""PIXA2342""
-				register "desc" = ""PIXART Touchpad""
-				register "irq" = "ACPI_IRQ_WAKE_LEVEL_LOW(GPP_F14_IRQ)"
-				register "wake" = "GPE0_DW2_14"
-				register "detect" = "1"
+			chip drivers/i2c/hid
+				register "generic.hid" = ""PIXA2342""
+				register "generic.desc" = ""PIXA Touchpad""
+				register "generic.irq" = "ACPI_IRQ_WAKE_LEVEL_LOW(GPP_F14_IRQ)"
+				register "generic.wake" = "GPE0_DW2_14"
+				register "hid_desc_reg_offset" = "0x1"
 				device i2c 15 on end
 			end
 		end #I2C5
+		device ref pcie_rp5 on
+			# Enable wlan PCIe 5 using clk 2
+			register "pch_pcie_rp[PCH_RP(5)]" = "{
+				.clk_src = 2,
+				.clk_req = 2,
+				.flags = PCIE_RP_LTR | PCIE_RP_AER,
+			}"
+			chip drivers/wifi/generic
+				register "wake" = "GPE0_DW1_03"
+				device pci 00.0 on end
+			end
+			chip soc/intel/common/block/pcie/rtd3
+				register "enable_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_HIGH(GPP_B11)"
+				register "reset_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_LOW(GPP_H20)"
+				register "srcclk_pin" = "2"
+				device generic 0 on end
+			end
+		end
+		device ref pcie_rp8 off end
 		device ref pcie_rp11 on
 			# Enable NVMe SSD PCIe 11-12 using clk 1
 			register "pch_pcie_rp[PCH_RP(11)]" = "{
@@ -161,7 +207,7 @@ chip soc/intel/alderlake
 		end
 		device ref ish on
 			chip drivers/intel/ish
-				register "firmware_name" = ""adl_ish_lite.bin""
+				register "add_acpi_dma_property" = "true"
 				device generic 0 on end
 			end
 			probe STORAGE STORAGE_UFS

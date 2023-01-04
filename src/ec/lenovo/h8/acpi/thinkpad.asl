@@ -34,35 +34,35 @@ Device (HKEY)
 	/* Retrieve event. */
 	Method (MHKP, 0, NotSerialized)
 	{
-		Store (BTN, Local0)
+		Local0 = BTN
 		If (Local0 != 0) {
-			Store (Zero, BTN)
+			BTN = 0
 			Local0 += 0x1000
 			Return (Local0)
 		}
-		Store (BTAB, Local0)
+		Local0 = BTAB
 		If (Local0 != 0) {
-			Store (Zero, BTAB)
+			BTAB = 0
 			Local0 += 0x5000
 			Return (Local0)
 		}
-		Return (Zero)
+		Return (0)
 	}
 
 	/* Report event  */
 	Method (RHK, 1, NotSerialized) {
-		ShiftLeft (One, Arg0 - 1, Local0)
+		Local0 = 1 << (Arg0 - 1)
 		If (EMSK & Local0) {
-			Store (Arg0, BTN)
+			BTN = Arg0
 			Notify (HKEY, 0x80)
 		}
 	}
 
 	/* Report tablet  */
 	Method (RTAB, 1, NotSerialized) {
-		ShiftLeft (One, Arg0 - 1, Local0)
+		Local0 = 1 << (Arg0 - 1)
 		If (ETAB & Local0) {
-			Store (Arg0, BTAB)
+			BTAB = Arg0
 			Notify (HKEY, 0x80)
 		}
 	}
@@ -70,24 +70,24 @@ Device (HKEY)
 	/* Enable/disable all events.  */
 	Method (MHKC, 1, NotSerialized) {
 		If (Arg0) {
-			Store (DHKN, EMSK)
-			Store (Ones, ETAB)
+			EMSK = DHKN
+			ETAB = Ones
 		}
 		Else
 		{
-			Store (Zero, EMSK)
-			Store (Zero, ETAB)
+			EMSK = 0
+			ETAB = 0
 		}
-		Store (Arg0, EN)
+		EN = Arg0
 	}
 
 	/* Enable/disable event.  */
 	Method (MHKM, 2, NotSerialized) {
 		If (Arg0 <= 0x20) {
-			ShiftLeft (One, Arg0 - 1, Local0)
+			Local0 = 1 << (Arg0 - 1)
 			If (Arg1)
 			{
-				Or (DHKN, Local0, DHKN)
+				DHKN |= Local0
 			}
 			Else
 			{
@@ -95,7 +95,7 @@ Device (HKEY)
 			}
 			If (EN)
 			{
-				Store (DHKN, EMSK)
+				EMSK = DHKN
 			}
 		}
 	}
@@ -109,13 +109,13 @@ Device (HKEY)
 	/* Report tablet mode switch state */
 	Method (MHKG, 0, NotSerialized)
 	{
-		Return (ShiftLeft(TBSW, 3))
+		Return (TBSW << 3)
 	}
 
 	/* Mute audio */
 	Method (SSMS, 1, NotSerialized)
 	{
-		Store(Arg0, ALMT)
+		ALMT = Arg0
 	}
 
 	/* Control mute microphone LED */
@@ -159,15 +159,15 @@ Device (HKEY)
 	 */
 	Method (GBDC, 0)
 	{
-		Store (One, HAST)
+		HAST = 1
 
 		If (HBDC) {
-			Store(One, Local0)
+			Local0 = 1
 			If(\_SB.PCI0.LPCB.EC.BTEB)
 			{
-				Or(Local0, 2, Local0)
+				Local0 |= 2
 			}
-			Or(Local0, ShiftLeft(WBDC, 2), Local0)
+			Local0 |= WBDC << 2
 			Return (Local0)
 		} Else {
 			Return (0)
@@ -181,13 +181,13 @@ Device (HKEY)
 	 */
 	Method (SBDC, 1)
 	{
-		Store (One, HAST)
+		HAST = 1
 
 		If (HBDC) {
-			ShiftRight (Arg0 & 2, 1, Local0)
-			Store (Local0, \_SB.PCI0.LPCB.EC.BTEB)
-			ShiftRight (Arg0 & 4, 2, Local0)
-			Store (Local0, WBDC)
+			Local0 = (Arg0 & 2) >> 1
+			\_SB.PCI0.LPCB.EC.BTEB = Local0
+			Local0 = (Arg0 & 4) >> 2
+			WBDC = Local0
 		}
 	}
 
@@ -201,15 +201,15 @@ Device (HKEY)
 	 */
 	Method (GWAN, 0)
 	{
-		Store (One, HAST)
+		HAST = 1
 
 		If (HWAN) {
-			Store(One, Local0)
+			Local0 = 1
 			If(\_SB.PCI0.LPCB.EC.WWEB)
 			{
-				Or(Local0, 2, Local0)
+				Local0 |= 2
 			}
-			Or(Local0, ShiftLeft(WWAN, 2), Local0)
+			Local0 |= WWAN << 2
 			Return (Local0)
 		} Else {
 			Return (0)
@@ -223,12 +223,12 @@ Device (HKEY)
 	 */
 	Method (SWAN, 1)
 	{
-		Store (One, HAST)
+		HAST = 1
 
 		If (HWAN) {
-			ShiftRight (Arg0 & 2, 1, Local0)
-			Store (Local0, \_SB.PCI0.LPCB.EC.WWEB)
-			ShiftRight (Arg0 & 4, 2, WWAN)
+			Local0 = (Arg0 & 2) >> 1
+			\_SB.PCI0.LPCB.EC.WWEB = Local0
+			WWAN = (Arg0 & 4) >> 2
 		}
 	}
 
@@ -241,9 +241,9 @@ Device (HKEY)
 	Method (MLCG, 1)
 	{
 		If (HKBL) {
-			Store (0x200, Local0)
+			Local0 = 0x200
 			/* FIXME: Support 2bit brightness control */
-			Or (Local0, \_SB.PCI0.LPCB.EC.KBLT, Local0)
+			Local0 |= \_SB.PCI0.LPCB.EC.KBLT
 			Return (Local0)
 		} Else {
 			Return (0)
@@ -258,7 +258,7 @@ Device (HKEY)
 	{
 		If (HKBL) {
 			/* FIXME: Support 2bit brightness control */
-			Store (Arg0 & 1, \_SB.PCI0.LPCB.EC.WWEB)
+			\_SB.PCI0.LPCB.EC.WWEB = Arg0 & 1
 		}
 	}
 
@@ -270,10 +270,10 @@ Device (HKEY)
 	Method (GUWB, 0)
 	{
 		If (HUWB) {
-			Store (One, Local0)
+			Local0 = 1
 			If(\_SB.PCI0.LPCB.EC.UWBE)
 			{
-				Or(Local0, 2, Local0)
+				Local0 |= 2
 			}
 			Return (Local0)
 		} Else {
@@ -288,8 +288,8 @@ Device (HKEY)
 	Method (SUWB, 1)
 	{
 		If (HUWB) {
-			ShiftRight (Arg0 & 2, 1, Local0)
-			Store (Local0, \_SB.PCI0.LPCB.EC.UWBE)
+			Local0 = (Arg0 & 2) >> 1
+			\_SB.PCI0.LPCB.EC.UWBE = Local0
 		}
 	}
 
@@ -299,8 +299,8 @@ Device (HKEY)
 	Method (WAKE, 1)
 	{
 		If (HAST) {
-			Store (WBDC, \_SB.PCI0.LPCB.EC.BTEB)
-			Store (WWAN, \_SB.PCI0.LPCB.EC.WWEB)
+			\_SB.PCI0.LPCB.EC.BTEB = WBDC
+			\_SB.PCI0.LPCB.EC.WWEB = WWAN
 		}
 	}
 

@@ -3,8 +3,6 @@
 #ifndef TIS_H_
 #define TIS_H_
 
-#include <stddef.h>
-#include <stdint.h>
 #include <types.h>
 
 enum tis_access {
@@ -44,21 +42,11 @@ int tis_init(void);
 /*
  * tis_open()
  *
- * Requests access to locality 0 for the caller. After all commands have been
- * completed the caller is supposed to call tis_close().
+ * Requests access to locality 0 for the caller.
  *
  * Returns 0 on success, -1 on failure.
  */
 int tis_open(void);
-
-/*
- * tis_close()
- *
- * terminate the current session with the TPM by releasing the locked
- * locality. Returns 0 on success of -1 on failure (in case lock
- * removal did not succeed).
- */
-int tis_close(void);
 
 /*
  * tis_sendrecv()

@@ -12,11 +12,11 @@ Name (DCAT, Package (0x10) {
 	0xFF,
 	0xFF,
 	0xFF,
-	One,	/* KBC */
+	1,	/* KBC */
 	0xFF,
 	0xFF,
 	0xFF,
-	One,	/* KBC */
+	1,	/* KBC */
 	0xFF
 })
 
@@ -41,10 +41,10 @@ Method (DSTA, 1, NotSerialized)
 	Local0 = PNP_DEVICE_ACTIVE
 	If (Local0 == 0xFF)
 	{
-		Return (Zero)
+		Return (0)
 	}
 
-	Local0 &= One
+	Local0 &= 1
 	If (Arg0 < 0x10)
 	{
 		IOST |= (Local0 << Arg0)
@@ -54,13 +54,13 @@ Method (DSTA, 1, NotSerialized)
 	{
 		Return (DEVICE_PRESENT_ACTIVE)
 	}
-	ElseIf ((One << Arg0) & IOST)
+	ElseIf ((1 << Arg0) & IOST)
 	{
 		Return (DEVICE_PRESENT_INACTIVE)
 	}
 	Else
 	{
-		Return (Zero)
+		Return (0)
 	}
 
 	EXIT_CONFIG_MODE ()
@@ -154,7 +154,7 @@ Method (GIOB, 1, NotSerialized)
 		Return (Local0)
 	}
 
-	Return (Zero)
+	Return (0)
 }
 
 /* Read IRQ resource */
@@ -169,7 +169,7 @@ Method (GIRQ, 1, NotSerialized)
 		Local1 = PNP_DATA_REG
 		If (CGLD (Arg0) == Local1)
 		{
-			Local1 = One
+			Local1 = 1
 			Local0 = (Local1 << Local0)
 			Return (Local0)
 		}
@@ -187,13 +187,13 @@ Method (GDMA, 1, NotSerialized)
 	Local0 = 0x03	/* Only DMA Channels 0-3 */
 	While (Local0)
 	{
-		Local1 = (Local0 << One)
+		Local1 = (Local0 << 1)
 		Local1 += 0x51	/* DMA regs begin at offset 0x50 */
 		PNP_ADDR_REG = Local1
 		Local1 = PNP_DATA_REG
 		If ((0x80 | CGLD (Arg0)) == Local1)
 		{
-			Local1 = One
+			Local1 = 1
 			Local0 = (Local1 << Local0)
 			Return (Local0)
 		}
@@ -212,7 +212,7 @@ Method (STIO, 2, NotSerialized)
 	PNP_ADDR_REG = Arg0
 	PNP_DATA_REG = Local0
 	Local0 = (Arg1 >> 0x08)
-	Local1 = (Arg0 + One)
+	Local1 = (Arg0 + 1)
 	PNP_ADDR_REG = Local1
 	PNP_DATA_REG = Local0
 }
@@ -222,7 +222,7 @@ Method (SIRQ, 2, NotSerialized)
 {
 	SWITCH_LDN (SUPERIO_LPC_LDN)
 	FindSetRightBit (Arg1, Local0)
-	Local0 -= One
+	Local0 -= 1
 	Local1 = 0x0F
 	While (Local1)
 	{
@@ -239,7 +239,7 @@ Method (SIRQ, 2, NotSerialized)
 			}
 			Else
 			{
-				Return (Zero)
+				Return (0)
 			}
 		}
 
@@ -257,11 +257,11 @@ Method (SDMA, 2, NotSerialized)
 {
 	SWITCH_LDN (SUPERIO_LPC_LDN)
 	FindSetRightBit (Arg1, Local0)
-	Local0 -= One
+	Local0 -= 1
 	Local1 = 0x03
 	While (Local1)
 	{
-		Local2 = (Local1 << One)
+		Local2 = (Local1 << 1)
 		Local3 = (0x51 + Local2)
 		PNP_ADDR_REG = Local3
 		Local4 = PNP_DATA_REG
@@ -270,23 +270,23 @@ Method (SDMA, 2, NotSerialized)
 			If (Local0 != Local1)
 			{
 				PNP_ADDR_REG = Local3
-				PNP_DATA_REG = Zero
+				PNP_DATA_REG = 0
 				Break
 			}
 			Else
 			{
-				Return (Zero)
+				Return (0)
 			}
 		}
 
 		Local1--
 	}
 
-	Local0 <<= One
+	Local0 <<= 1
 	Local0 += 0x51
 	PNP_ADDR_REG = Local0
 	PNP_DATA_REG = (0x80 | CGLD (Arg0))
-	Return (Zero)
+	Return (0)
 }
 
 /* Device Current Resource Settings */
@@ -299,9 +299,9 @@ Method (DCRS, 2, NotSerialized)
 		IO12 = IO11
 		LEN1 = 0x08
 		IRQM = GIRQ (Arg0)
-		If ((GDMA (Arg0) > 0x03) || (Arg1 == Zero))
+		If ((GDMA (Arg0) > 0x03) || (Arg1 == 0))
 		{
-			DMAM = Zero
+			DMAM = 0
 		}
 		Else
 		{
@@ -319,9 +319,9 @@ Method (DCRS, 2, NotSerialized)
 		IO12 = IO11
 		LEN1 = 0x08
 		IRQM = GIRQ (Arg0)
-		If ((GDMA (Arg0) > 0x03) || (Arg1 == Zero))
+		If ((GDMA (Arg0) > 0x03) || (Arg1 == 0))
 		{
-			DMAM = Zero
+			DMAM = 0
 		}
 		Else
 		{
@@ -353,9 +353,9 @@ Method (DCRS, 2, NotSerialized)
 			}
 
 			IRQE = GIRQ (Arg0)
-			If ((GDMA (Arg0) > 0x03) || (Arg1 == Zero))
+			If ((GDMA (Arg0) > 0x03) || (Arg1 == 0))
 			{
-				DMAM = Zero
+				DMAM = 0
 			}
 			Else
 			{
@@ -393,11 +393,11 @@ Method (DCRS, 2, NotSerialized)
 		LEN2 = 0x06
 		IO31 = (IO21 + 0x07)
 		IO32 = IO31 /* \_SB_.PCI0.LPCB.SIO1.IO31 */
-		LEN3 = One
+		LEN3 = 1
 		IRQE = GIRQ (Arg0)
-		If ((GDMA (Arg0) > 0x03) || (Arg1 == Zero))
+		If ((GDMA (Arg0) > 0x03) || (Arg1 == 0))
 		{
-			DMAM = Zero
+			DMAM = 0
 		}
 		Else
 		{

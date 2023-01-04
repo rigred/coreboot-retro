@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 
 /* Wake status package */
-Name (WKST, Package() { Zero, Zero })
+Name (WKST, Package() { 0, 0 })
 
 /*
 * \_PTS - Prepare to Sleep method
@@ -29,10 +29,10 @@ Method (_PTS, 1)
 	\_SB.PCI0.FPTS ()
 
 	/* Clear wake status structure. */
-	Store (0, PEWD)
-	Store (0, WKST[0])
-	Store (0, WKST[1])
-	Store (7, UPWS)
+	PEWD = 0
+	WKST[0] = 0
+	WKST[1] = 0
+	UPWS = 7
 }
 
 /*

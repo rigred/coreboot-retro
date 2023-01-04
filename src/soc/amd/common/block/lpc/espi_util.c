@@ -374,10 +374,6 @@ enum cb_err espi_open_mmio_window(uint32_t base, size_t size)
 static const struct espi_config *espi_get_config(void)
 {
 	const struct soc_amd_common_config *soc_cfg = soc_get_common_config();
-
-	if (!soc_cfg)
-		die("Common config structure is NULL!\n");
-
 	return &soc_cfg->espi_config;
 }
 
@@ -680,8 +676,8 @@ static enum cb_err espi_get_general_configuration(uint32_t *config)
 	return CB_SUCCESS;
 }
 
-static void espi_set_io_mode_config(enum espi_io_mode mb_io_mode, uint32_t slave_caps,
-				    uint32_t *slave_config, uint32_t *ctrlr_config)
+static enum cb_err espi_set_io_mode_cfg(enum espi_io_mode mb_io_mode, uint32_t slave_caps,
+					uint32_t *slave_config, uint32_t *ctrlr_config)
 {
 	switch (mb_io_mode) {
 	case ESPI_IO_MODE_QUAD:
@@ -706,12 +702,14 @@ static void espi_set_io_mode_config(enum espi_io_mode mb_io_mode, uint32_t slave
 		*ctrlr_config |= ESPI_IO_MODE_SINGLE;
 		break;
 	default:
-		die("No supported eSPI I/O modes!\n");
+		printk(BIOS_ERR, "No supported eSPI I/O modes!\n");
+		return CB_ERR;
 	}
+	return CB_SUCCESS;
 }
 
-static void espi_set_op_freq_config(enum espi_op_freq mb_op_freq, uint32_t slave_caps,
-				    uint32_t *slave_config, uint32_t *ctrlr_config)
+static enum cb_err espi_set_op_freq_cfg(enum espi_op_freq mb_op_freq, uint32_t slave_caps,
+					uint32_t *slave_config, uint32_t *ctrlr_config)
 {
 	int slave_max_speed_mhz = espi_slave_max_speed_mhz_supported(slave_caps);
 
@@ -744,30 +742,35 @@ static void espi_set_op_freq_config(enum espi_op_freq mb_op_freq, uint32_t slave
 		}
 		__fallthrough;
 	default:
-		die("No supported eSPI Operating Frequency!\n");
+		printk(BIOS_ERR, "No supported eSPI Operating Frequency!\n");
+		return CB_ERR;
 	}
+	return CB_SUCCESS;
 }
 
-static void espi_set_alert_pin_config(enum espi_alert_pin alert_pin, uint32_t slave_caps,
-				    uint32_t *slave_config, uint32_t *ctrlr_config)
+static enum cb_err espi_set_alert_pin_cfg(enum espi_alert_pin alert_pin, uint32_t slave_caps,
+					  uint32_t *slave_config, uint32_t *ctrlr_config)
 {
 	switch (alert_pin) {
 	case ESPI_ALERT_PIN_IN_BAND:
 		*slave_config |= ESPI_SLAVE_ALERT_MODE_IO1;
-		return;
+		return CB_SUCCESS;
 	case ESPI_ALERT_PIN_PUSH_PULL:
 		*slave_config |= ESPI_SLAVE_ALERT_MODE_PIN | ESPI_SLAVE_PUSH_PULL_ALERT_SEL;
 		*ctrlr_config |= ESPI_ALERT_MODE;
-		return;
+		return CB_SUCCESS;
 	case ESPI_ALERT_PIN_OPEN_DRAIN:
-		if (!(slave_caps & ESPI_SLAVE_OPEN_DRAIN_ALERT_SUPP))
-			die("eSPI peripheral does not support open drain alert!");
+		if (!(slave_caps & ESPI_SLAVE_OPEN_DRAIN_ALERT_SUPP)) {
+			printk(BIOS_ERR, "eSPI peripheral does not support open drain alert!");
+			return CB_ERR;
+		}
 
 		*slave_config |= ESPI_SLAVE_ALERT_MODE_PIN | ESPI_SLAVE_OPEN_DRAIN_ALERT_SEL;
 		*ctrlr_config |= ESPI_ALERT_MODE;
-		return;
+		return CB_SUCCESS;
 	default:
-		die("Unknown espi alert config: %u!\n", alert_pin);
+		printk(BIOS_ERR, "Unknown espi alert config: %u!\n", alert_pin);
+		return CB_ERR;
 	}
 }
 
@@ -782,9 +785,15 @@ static enum cb_err espi_set_general_configuration(const struct espi_config *mb_c
 		ctrlr_config |= ESPI_CRC_CHECKING_EN;
 	}
 
-	espi_set_alert_pin_config(mb_cfg->alert_pin, slave_caps, &slave_config, &ctrlr_config);
-	espi_set_io_mode_config(mb_cfg->io_mode, slave_caps, &slave_config, &ctrlr_config);
-	espi_set_op_freq_config(mb_cfg->op_freq_mhz, slave_caps, &slave_config, &ctrlr_config);
+	if (espi_set_alert_pin_cfg(mb_cfg->alert_pin, slave_caps, &slave_config, &ctrlr_config)
+			!= CB_SUCCESS)
+		return CB_ERR;
+	if (espi_set_io_mode_cfg(mb_cfg->io_mode, slave_caps, &slave_config, &ctrlr_config)
+			!= CB_SUCCESS)
+		return CB_ERR;
+	if (espi_set_op_freq_cfg(mb_cfg->op_freq_mhz, slave_caps, &slave_config, &ctrlr_config)
+			!= CB_SUCCESS)
+		return CB_ERR;
 
 	if (CONFIG(ESPI_DEBUG))
 		printk(BIOS_INFO, "Setting general configuration: slave: 0x%x controller: 0x%x\n",
@@ -949,7 +958,7 @@ static enum cb_err espi_setup_flash_channel(const struct espi_config *mb_cfg,
 					      ESPI_FLASH_CH_EN);
 }
 
-static void espi_set_initial_config(const struct espi_config *mb_cfg)
+static enum cb_err espi_set_initial_config(const struct espi_config *mb_cfg)
 {
 	uint32_t espi_initial_mode = ESPI_OP_FREQ_16_MHZ | ESPI_IO_MODE_SINGLE;
 
@@ -961,10 +970,12 @@ static void espi_set_initial_config(const struct espi_config *mb_cfg)
 		espi_initial_mode |= ESPI_ALERT_MODE;
 		break;
 	default:
-		die("Unknown espi alert config: %u!\n", mb_cfg->alert_pin);
+		printk(BIOS_ERR, "Unknown espi alert config: %u!\n", mb_cfg->alert_pin);
+		return CB_ERR;
 	}
 
 	espi_write32(ESPI_SLAVE0_CONFIG, espi_initial_mode);
+	return CB_SUCCESS;
 }
 
 static void espi_setup_subtractive_decode(const struct espi_config *mb_cfg)
@@ -1000,7 +1011,8 @@ enum cb_err espi_setup(void)
 	 * Set correct initial configuration to talk to the slave:
 	 * Set clock frequency to 16.7MHz and single IO mode.
 	 */
-	espi_set_initial_config(cfg);
+	if (espi_set_initial_config(cfg) != CB_SUCCESS)
+		return CB_ERR;
 
 	/*
 	 * Boot sequence: Step 2
@@ -1011,7 +1023,9 @@ enum cb_err espi_setup(void)
 		printk(BIOS_ERR, "In-band reset failed!\n");
 		return CB_ERR;
 	}
-	espi_set_initial_config(cfg);
+
+	if (espi_set_initial_config(cfg) != CB_SUCCESS)
+		return CB_ERR;
 
 	/*
 	 * Boot sequence: Step 3

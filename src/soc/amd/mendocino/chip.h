@@ -74,6 +74,9 @@ struct soc_amd_mendocino_config {
 	uint32_t vrm_maximum_current_limit_throttle_mA;
 	uint32_t vrm_soc_current_limit_throttle_mA;
 
+	/* tablet mode.*/
+	uint32_t sustained_power_limit_mW_tablet;
+
 	/* Thermal profile B*/
 	uint32_t fast_ppt_limit_mW_B;
 	uint32_t slow_ppt_limit_mW_B;
@@ -161,6 +164,9 @@ struct soc_amd_mendocino_config {
 
 	uint8_t usb_phy_custom;
 	struct usb_phy_config usb_phy;
+	/* Set for PCIe optimization w/a and a double confirming on the result of PCIe Signal
+	   Integrity is highly recommended. */
+	uint8_t dxio_tx_vboost_enable;
 };
 
 #endif /* MENDOCINO_CHIP_H */

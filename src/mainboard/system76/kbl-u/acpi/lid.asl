@@ -6,16 +6,16 @@ Device (LID0)
 	Name (_PRW, Package () { 0x13 /* GPP_C19 */, 3 })
 
 	Method (_LID, 0, NotSerialized) {
-		DEBUG = "LID: _LID"
+		Printf ("LID: _LID")
 		If (^^PCI0.LPCB.EC0.ECOK) {
 			Return (^^PCI0.LPCB.EC0.LSTE)
 		} Else {
-			Return (One)
+			Return (1)
 		}
 	}
 
 	Method (_PSW, 1, NotSerialized) {
-		DEBUG = Concatenate("LID: _PSW: ", ToHexString(Arg0))
+		Printf ("LID: _PSW: %o", ToHexString(Arg0))
 		If (^^PCI0.LPCB.EC0.ECOK) {
 			^^PCI0.LPCB.EC0.LWKE = Arg0
 		}

@@ -11,6 +11,7 @@
 #include <intelblocks/systemagent.h>
 #include <intelblocks/tcss.h>
 #include <inttypes.h>
+#include <lib.h>
 #include <security/vboot/vboot_common.h>
 #include <soc/pci_devs.h>
 #include <soc/pcr_ids.h>
@@ -19,8 +20,6 @@
 
 #define BIAS_CTRL_VW_INDEX_SHIFT		16
 #define BIAS_CTRL_BIT_POS_SHIFT			8
-#define WAIT_FOR_DISPLAYPORT_TIMEOUT_MS		1000
-#define WAIT_FOR_HPD_TIMEOUT_MS			3000
 
 static uint32_t tcss_make_conn_cmd(int u, int u3, int u2, int ufp, int hsl,
 					int sbu, int acc)
@@ -204,6 +203,21 @@ static int send_pmc_dp_hpd_request(int port, const struct usbc_mux_info *mux_dat
 	return send_pmc_req(HPD_REQ, &req, &rsp, PMC_IPC_HPD_REQ_SIZE);
 }
 
+static uint8_t get_dp_mode(uint8_t dp_pin_mode)
+{
+	switch (dp_pin_mode) {
+	case MODE_DP_PIN_A:
+	case MODE_DP_PIN_B:
+	case MODE_DP_PIN_C:
+	case MODE_DP_PIN_D:
+	case MODE_DP_PIN_E:
+	case MODE_DP_PIN_F:
+		return log2(dp_pin_mode) + 1;
+	default:
+		return 0;
+	}
+}
+
 static int send_pmc_dp_mode_request(int port, const struct usbc_mux_info *mux_data,
 					const struct tcss_port_map *port_map)
 {
@@ -227,30 +241,7 @@ static int send_pmc_dp_mode_request(int port, const struct usbc_mux_info *mux_da
 		GET_TCSS_ALT_FIELD(USB3, cmd),
 		GET_TCSS_ALT_FIELD(MODE, cmd));
 
-	switch (mux_data->dp_pin_mode) {
-	case MODE_DP_PIN_A:
-		dp_mode = 1;
-		break;
-	case MODE_DP_PIN_B:
-		dp_mode = 2;
-		break;
-	case MODE_DP_PIN_C:
-		dp_mode = 3;
-		break;
-	case MODE_DP_PIN_D:
-		dp_mode = 4;
-		break;
-	case MODE_DP_PIN_E:
-		dp_mode = 5;
-		break;
-	case MODE_DP_PIN_F:
-		dp_mode = 6;
-		break;
-	default:
-		dp_mode = 0;
-		break;
-	}
-
+	dp_mode = get_dp_mode(mux_data->dp_pin_mode);
 	cmd = tcss_make_alt_mode_cmd_buf_1(
 		mux_data->polarity,
 		mux_data->cable,
@@ -409,14 +400,14 @@ void tcss_configure(const struct typec_aux_bias_pads aux_bias_pads[MAX_TYPE_C_PO
 	if (!platform_is_resuming()) {
 		for (i = 0; i < num_ports; i++)
 			tcss_init_mux(i, &port_map[i]);
+
+		/* This should be performed before alternate modes are entered */
+		if (tcss_ops.configure_aux_bias_pads)
+			tcss_ops.configure_aux_bias_pads(aux_bias_pads);
+
+		if (CONFIG(ENABLE_TCSS_DISPLAY_DETECTION))
+			tcss_configure_dp_mode(port_map, num_ports);
 	}
-
-	/* This should be performed before alternate modes are entered */
-	if (tcss_ops.configure_aux_bias_pads)
-		tcss_ops.configure_aux_bias_pads(aux_bias_pads);
-
-	if (CONFIG(ENABLE_TCSS_DISPLAY_DETECTION))
-		tcss_configure_dp_mode(port_map, num_ports);
 }
 
 bool tcss_valid_tbt_auth(void)

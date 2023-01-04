@@ -37,9 +37,9 @@ Device (LPCB)
 		{
 			CreateDwordField (^RBUF, ^FBAR._BAS, FBAS)
 			CreateDwordField (^RBUF, ^FBAR._LEN, FLEN)
-			Multiply(CONFIG_COREBOOT_ROMSIZE_KB, 1024, Local0)
-			Store(Local0, FLEN)
-			Add(Subtract(0xffffffff, Local0), 1, FBAS)
+			Local0 = CONFIG_COREBOOT_ROMSIZE_KB * 1024
+			FLEN = Local0
+			FBAS = 0xffffffff - Local0 + 1
 			Return (^RBUF)
 		}
 	}

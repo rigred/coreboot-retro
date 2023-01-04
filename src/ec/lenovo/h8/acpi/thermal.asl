@@ -13,7 +13,7 @@ Scope(\_TZ)
 	{
 		Local0 = Arg0 * 10
 		Local0 += 2732
-		if (LLessEqual(Local0, 2732)) {
+		if (Local0 <= 2732) {
 			Return (3000)
 		}
 
@@ -46,7 +46,7 @@ External (\PPKG, MethodObj)
 
 		/* Get critical temperature in degree celsius */
 		Method (GCRT, 0, NotSerialized) {
-			Store (\TCRT, Local0)
+			Local0 = \TCRT
 			if (Local0 > 0) {
 				Return (Local0)
 			}
@@ -55,7 +55,7 @@ External (\PPKG, MethodObj)
 
 		/* Get passive temperature in degree celsius */
 		Method (GPSV, 0, NotSerialized) {
-			Store (\TPSV, Local0)
+			Local0 = \TPSV
 			if (Local0 > 0) {
 				Return (Local0)
 			}
@@ -76,13 +76,13 @@ External (\PPKG, MethodObj)
 			If (!MEB1 && \_SB.PCI0.LPCB.EC.TMP0 == 128) {
 				Return (C2K(40))
 			}
-			Store (1, MEB1)
+			MEB1 = 1
 #endif
 			Return (C2K(\_SB.PCI0.LPCB.EC.TMP0))
 		}
 
 		Method (_AC0) {
-			Store (GPSV (), Local0)
+			Local0 = GPSV ()
 
 			/* Active fan 10 degree below passive threshold */
 			Local0 -= 10
@@ -112,14 +112,14 @@ External (\PPKG, MethodObj)
 			 * in another ACPI scope. Call a method that does it!
 			 */
 			Method (_ON) {
-				\_SB.PCI0.LPCB.EC.FANE(One)
-				Store (One, \FLVL)
+				\_SB.PCI0.LPCB.EC.FANE(1)
+				\FLVL = 1
 				Notify (\_TZ.THM0, NOTIFY_TZ_TRIPPTCHG)
 			}
 
 			Method (_OFF) {
-				\_SB.PCI0.LPCB.EC.FANE(Zero)
-				Store (Zero, \FLVL)
+				\_SB.PCI0.LPCB.EC.FANE(0)
+				\FLVL = 0
 				Notify (\_TZ.THM0, NOTIFY_TZ_TRIPPTCHG)
 			}
 		}
@@ -163,7 +163,7 @@ External (\PPKG, MethodObj)
 			If (!MEB2 && \_SB.PCI0.LPCB.EC.TMP1 == 128) {
 				Return (C2K(40))
 			}
-			Store (1, MEB2)
+			MEB2 = 1
 #endif
 			Return (C2K(\_SB.PCI0.LPCB.EC.TMP1))
 		}

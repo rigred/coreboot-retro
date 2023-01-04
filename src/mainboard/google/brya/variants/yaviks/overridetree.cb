@@ -1,3 +1,13 @@
+fw_config
+	field DB_USB 0 1
+		option DB_NONE			0
+		option DB_1C_1A			1
+        end
+	field WIFI_SAR_ID 2 3
+		option SAR_ID_0			0
+        end
+end
+
 chip soc/intel/alderlake
 	register "sagv" = "SaGv_Enabled"
 
@@ -14,16 +24,6 @@ chip soc/intel/alderlake
 	# Configure external V1P05/Vnn/VnnSx Rails
 	register "ext_fivr_settings" = "{
 		.configure_ext_fivr = 1,
-		.v1p05_enable_bitmap = FIVR_ENABLE_ALL_SX & ~FIVR_ENABLE_S0,
-		.vnn_enable_bitmap = FIVR_ENABLE_ALL_SX,
-		.vnn_sx_enable_bitmap = FIVR_ENABLE_ALL_SX,
-		.v1p05_supported_voltage_bitmap = FIVR_VOLTAGE_NORMAL,
-		.vnn_supported_voltage_bitmap = FIVR_VOLTAGE_MIN_ACTIVE,
-		.v1p05_voltage_mv = 1050,
-		.vnn_voltage_mv = 780,
-		.vnn_sx_voltage_mv = 1050,
-		.v1p05_icc_max_ma = 500,
-		.vnn_icc_max_ma = 500,
 	}"
 
 	# Intel Common SoC Config
@@ -54,7 +54,7 @@ chip soc/intel/alderlake
 				.speed = I2C_SPEED_FAST,
 				.scl_lcnt = 158,
 				.scl_hcnt = 79,
-				.sda_hold = 7,
+				.sda_hold = 30,
 			}
 		},
 		.i2c[3] = {
@@ -72,7 +72,7 @@ chip soc/intel/alderlake
 				.speed = I2C_SPEED_FAST,
 				.scl_lcnt = 158,
 				.scl_hcnt = 79,
-				.sda_hold = 7,
+				.sda_hold = 40,
 			}
 		},
 	}"
@@ -212,7 +212,12 @@ chip soc/intel/alderlake
 			end
 		end
 		device ref emmc on end
-		device ref ish on end
+		device ref ish on
+			chip drivers/intel/ish
+				register "add_acpi_dma_property" = "true"
+				device generic 0 on end
+			end
+		end
 		device ref ufs on end
 		device ref pch_espi on
 			chip ec/google/chromeec

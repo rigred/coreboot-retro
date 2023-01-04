@@ -34,7 +34,7 @@
 		 * Request back-light brightness change through mailbox 3
 		 *
 		 * @param Arg0 The brightness level to set in percent
-		 * @Return Zero on success, Ones on failure
+		 * @Return 0 on success, Ones on failure
 		 * Errors: * ASLS is zero
 		 *         * Mailbox 3 support not advertised
 		 *         * Driver not loaded or not ready
@@ -46,19 +46,19 @@
 			{
 				Return (Ones)
 			}
-			If (And(MBOX, 0x4) == 0)
+			If (MBOX & 4 == 0)
 			{
 				Return (Ones)
 			}
 
 			/* Always keep BCLP up to date, even if driver is not ready.
 			   It requires a full 8-bit brightness value. 255 = 100% */
-			Store (Arg0 * 255 / 100, Local1)
+			Local1 = Arg0 * 255 / 100
 			If (Local1 > 255) {
-				Store (255, Local1)
+				Local1 = 255
 			}
 			/* also set valid bit */
-			Store (Or (Local1, 0x80000000), BCLP)
+			BCLP = Local1 | 0x80000000
 
 			If (ARDY == 0)
 			{
@@ -66,19 +66,19 @@
 			}
 
 			/* Request back-light change */
-			Store (0x2, ASLC)
+			ASLC = 0x2
 			/* Trigger IRQ */
-			Store (0x1, ASLE)
+			ASLE = 0x1
 
-			Store (0x20, Local0)
+			Local0 = 0x20
 			While (Local0 > 0)
 			{
 				Sleep (1)
-				If (And (ASLC, 0x2) == 0) {
+				If (ASLC & 2 == 0) {
 					/* Request has been processed, check status: */
-					And (ShiftRight (ASLC, 12), 0x3, Local1)
+					Local1 = (ASLC >> 12) & 3
 					If (Local1 == 0) {
-						Return (Zero)
+						Return (0)
 					} Else {
 						Return (Ones)
 					}
@@ -105,7 +105,7 @@
 
 		Method (XBCM, 1, NotSerialized)
 		{
-			Store (DRCL (Arg0 * BCLM, 100), BCLV)
+			BCLV = DRCL (Arg0 * BCLM, 100)
 		}
 
 		/* Find value closest to BCLV in BRIG (which must be ordered) */
@@ -114,17 +114,17 @@
 			/* Prevent DivideByZero if backlight control isn't enabled */
 			If (BCLM == 0)
 			{
-				Return (Zero)
+				Return (0)
 			}
 			/* Local0: current percentage */
-			Store (DRCL (BCLV * 100, BCLM), Local0)
+			Local0 = DRCL (BCLV * 100, BCLM)
 
 			/* Local1: loop index (selectable values start at 2 in BRIG) */
-			Store (2, Local1)
+			Local1 = 2
 			While (Local1 < SizeOf (BRIG) - 1) {
 				/* Local[23]: adjacent values in BRIG */
-				Store (DeRefOf (BRIG[Local1]), Local2)
-				Store (DeRefOf (BRIG[Local1 + 1]), Local3)
+				Local2 = DeRefOf (BRIG[Local1])
+				Local3 = DeRefOf (BRIG[Local1 + 1])
 
 				If (Local0 < Local3) {
 					If (Local0 < Local2 || Local0 - Local2 < Local3 - Local0) {

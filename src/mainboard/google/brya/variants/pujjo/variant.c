@@ -2,6 +2,7 @@
 
 #include <fw_config.h>
 #include <baseboard/variants.h>
+#include <sar.h>
 
 void variant_update_soc_chip_config(struct soc_intel_alderlake_config *config)
 {
@@ -30,4 +31,9 @@ void variant_update_soc_chip_config(struct soc_intel_alderlake_config *config)
 		config->ext_fivr_settings.v1p05_icc_max_ma = 500;
 		config->ext_fivr_settings.vnn_icc_max_ma = 500;
 	}
+}
+
+const char *get_wifi_sar_cbfs_filename(void)
+{
+	return get_wifi_sar_fw_config_filename(FW_CONFIG_FIELD(WIFI_SAR_ID));
 }

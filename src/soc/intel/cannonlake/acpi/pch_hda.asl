@@ -37,9 +37,9 @@ Device (HDAS)
 				 * if NHLT address and length are set in NVS.
 				 */
 				If (Arg1 == 1 && NHLA != 0 && NHLL != 0) {
-					Return (Buffer (One) { 0x03 })
+					Return (Buffer (1) { 0x03 })
 				} Else {
-					Return (Buffer (One) { 0x01 })
+					Return (Buffer (1) { 0x01 })
 				}
 			}
 
@@ -55,14 +55,14 @@ Device (HDAS)
 				CreateQWordField (NBUF, ^NHLT._MAX, NMAS)
 				CreateQWordField (NBUF, ^NHLT._LEN, NLEN)
 
-				Store (NHLA, NBAS)
-				Store (NHLA, NMAS)
-				Store (NHLL, NLEN)
+				NBAS = NHLA
+				NMAS = NHLA
+				NLEN = NHLL
 
 				Return (NBUF)
 			}
 		}
 
-		Return (Buffer (One) { 0x00 })
+		Return (Buffer (1) { 0x00 })
 	}
 }

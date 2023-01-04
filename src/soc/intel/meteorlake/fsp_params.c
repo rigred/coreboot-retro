@@ -4,14 +4,18 @@
 #include <cbfs.h>
 #include <console/console.h>
 #include <cpu/intel/cpu_ids.h>
+#include <cpu/intel/microcode.h>
 #include <device/device.h>
 #include <device/pci.h>
 #include <fsp/api.h>
 #include <fsp/fsp_debug_event.h>
 #include <fsp/ppi/mp_service_ppi.h>
 #include <fsp/util.h>
+#include <option.h>
 #include <intelblocks/cse.h>
 #include <intelblocks/lpss.h>
+#include <intelblocks/mp_init.h>
+#include <intelblocks/systemagent.h>
 #include <intelblocks/xdci.h>
 #include <intelpch/lockdown.h>
 #include <security/vboot/vboot_common.h>
@@ -24,6 +28,7 @@
 #include <soc/soc_chip.h>
 #include <soc/soc_info.h>
 #include <string.h>
+#include <types.h>
 
 /* THC assignment definition */
 #define THC_NONE	0
@@ -81,9 +86,26 @@ static const pci_devfn_t uart_dev[] = {
  */
 static int get_l1_substate_control(enum L1_substates_control ctl)
 {
-	if ((ctl > L1_SS_L1_2) || (ctl == L1_SS_FSP_DEFAULT))
+	if (CONFIG(SOC_INTEL_COMPLIANCE_TEST_MODE))
+		ctl = L1_SS_DISABLED;
+	else if ((ctl > L1_SS_L1_2) || (ctl == L1_SS_FSP_DEFAULT))
 		ctl = L1_SS_L1_2;
 	return ctl - 1;
+}
+
+/*
+ * get_aspm_control() ensures that the right UPD value is set in fsp_params.
+ * 0: Disable ASPM
+ * 1: L0s only
+ * 2: L1 only
+ * 3: L0s and L1
+ * 4: Auto configuration
+ */
+static unsigned int get_aspm_control(enum ASPM_control ctl)
+{
+	if (ctl > ASPM_AUTO)
+		ctl = ASPM_AUTO;
+	return ctl;
 }
 
 __weak void mainboard_update_soc_chip_config(struct soc_intel_meteorlake_config *config)
@@ -117,36 +139,43 @@ static void fill_fsps_lpss_params(FSP_S_CONFIG *s_cfg,
 	}
 }
 
-static void fill_fsps_cpu_params(FSP_S_CONFIG *s_cfg,
+static void fill_fsps_microcode_params(FSP_S_CONFIG *s_cfg,
 		const struct soc_intel_meteorlake_config *config)
 {
 	const struct microcode *microcode_file;
 	size_t microcode_len;
 
 	/* Locate microcode and pass to FSP-S for 2nd microcode loading */
-	microcode_file = cbfs_map("cpu_microcode_blob.bin", &microcode_len);
+	microcode_file = intel_microcode_find();
 
-	if ((microcode_file) && (microcode_len != 0)) {
-		/* Update CPU Microcode patch base address/size */
-		s_cfg->MicrocodeRegionBase = (uint32_t)microcode_file;
-		s_cfg->MicrocodeRegionSize = (uint32_t)microcode_len;
+	if (microcode_file != NULL) {
+		microcode_len = get_microcode_size(microcode_file);
+		if (microcode_len != 0) {
+			/* Update CPU Microcode patch base address/size */
+			s_cfg->MicrocodeRegionBase = (uint32_t)(uintptr_t)microcode_file;
+			s_cfg->MicrocodeRegionSize = (uint32_t)microcode_len;
+		}
 	}
+}
 
-	if (CONFIG(MTL_USE_FSP_MP_INIT)) {
-		/*
-		 * Use FSP running MP PPI services to perform CPU feature programming
-		 * if Kconfig is enabled
-		 */
-		s_cfg->CpuMpPpi = (uintptr_t)mp_fill_ppi_services_data();
-	} else {
-		/* Use coreboot native driver to perform MP init by default */
-		s_cfg->CpuMpPpi = (uintptr_t)NULL;
-		/*
-		 * FIXME: Bring back SkipMpInit UPD in MTL FSP to let coreboot perform
-		 * AP programming independently.
-		 */
-		// s_cfg->SkipMpInit = !CONFIG(USE_INTEL_FSP_MP_INIT);
-	}
+static void fill_fsps_cpu_params(FSP_S_CONFIG *s_cfg,
+		const struct soc_intel_meteorlake_config *config)
+{
+	/*
+	 * FIXME: FSP assumes ownership of the APs (Application Processors)
+	 * upon passing `NULL` pointer to the CpuMpPpi FSP-S UPD.
+	 * Hence, pass a valid pointer to the CpuMpPpi UPD unconditionally.
+	 * This would avoid APs from getting hijacked by FSP while coreboot
+	 * decides to set SkipMpInit UPD.
+	 */
+	s_cfg->CpuMpPpi = (uintptr_t) mp_fill_ppi_services_data();
+
+	/*
+	 * Fill `2nd microcode loading FSP UPD` if FSP is running CPU feature
+	 * programming.
+	 */
+	if (CONFIG(MTL_USE_FSP_MP_INIT))
+		fill_fsps_microcode_params(s_cfg, config);
 }
 
 
@@ -345,8 +374,9 @@ static void fill_fsps_8254_params(FSP_S_CONFIG *s_cfg,
 		const struct soc_intel_meteorlake_config *config)
 {
 	/* Legacy 8254 timer support */
-	s_cfg->Enable8254ClockGating = !CONFIG(USE_LEGACY_8254_TIMER);
-	s_cfg->Enable8254ClockGatingOnS3 = !CONFIG(USE_LEGACY_8254_TIMER);
+	bool use_8254 = get_uint_option("legacy_8254_timer", CONFIG(USE_LEGACY_8254_TIMER));
+	s_cfg->Enable8254ClockGating = !use_8254;
+	s_cfg->Enable8254ClockGatingOnS3 = !use_8254;
 }
 
 static void fill_fsps_pm_timer_params(FSP_S_CONFIG *s_cfg,
@@ -375,9 +405,13 @@ static void fill_fsps_pcie_params(FSP_S_CONFIG *s_cfg,
 				get_l1_substate_control(rp_cfg->PcieRpL1Substates);
 		s_cfg->PcieRpLtrEnable[i] = !!(rp_cfg->flags & PCIE_RP_LTR);
 		s_cfg->PcieRpAdvancedErrorReporting[i] = !!(rp_cfg->flags & PCIE_RP_AER);
-		s_cfg->PcieRpHotPlug[i] = !!(rp_cfg->flags & PCIE_RP_HOTPLUG);
+		s_cfg->PcieRpHotPlug[i] = !!(rp_cfg->flags & PCIE_RP_HOTPLUG)
+				|| CONFIG(SOC_INTEL_COMPLIANCE_TEST_MODE);
 		s_cfg->PcieRpClkReqDetect[i] = !!(rp_cfg->flags & PCIE_RP_CLK_REQ_DETECT);
+		if (rp_cfg->pcie_rp_aspm)
+			s_cfg->PcieRpAspm[i] = get_aspm_control(rp_cfg->pcie_rp_aspm);
 	}
+	s_cfg->PcieComplianceTestMode = CONFIG(SOC_INTEL_COMPLIANCE_TEST_MODE);
 }
 
 static void fill_fsps_misc_power_params(FSP_S_CONFIG *s_cfg,
@@ -475,6 +509,7 @@ void platform_fsp_silicon_init_params_cb(FSPS_UPD *supd)
  * Phase   |  FSP return point                                |  Purpose
  * ------- + ------------------------------------------------ + -------------------------------
  *   1     |  After TCSS initialization completed             |  for TCSS specific init
+ *   2     |  Before BIOS Reset CPL is set by FSP-S           |  for CPU specific init
  */
 void platform_fsp_multi_phase_init_cb(uint32_t phase_index)
 {
@@ -488,6 +523,14 @@ void platform_fsp_multi_phase_init_cb(uint32_t phase_index)
 			const config_t *config = config_of_soc();
 			tcss_configure(config->typec_aux_bias_pads);
 		}
+		break;
+	case 2:
+		/* CPU specific initialization here */
+		printk(BIOS_DEBUG, "FSP MultiPhaseSiInit %s/%s called\n",
+			__FILE__, __func__);
+		before_post_cpus_init();
+		/* Enable BIOS Reset CPL */
+		enable_bios_reset_cpl();
 		break;
 	default:
 		break;

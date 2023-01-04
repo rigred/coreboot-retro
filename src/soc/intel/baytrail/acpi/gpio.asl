@@ -22,9 +22,11 @@ Device (GPSC)
 	Method (_CRS)
 	{
 		CreateDwordField (^RBUF, ^RMEM._BAS, RBAS)
-		Add (IO_BASE_ADDRESS, IO_BASE_OFFSET_GPSCORE, RBAS)
+		RBAS = IO_BASE_ADDRESS + IO_BASE_OFFSET_GPSCORE
 		Return (^RBUF)
 	}
+
+	Method (_HRV, 0, NotSerialized) { Return (0x06) }
 
 	Method (_STA)
 	{
@@ -51,9 +53,11 @@ Device (GPNC)
 	Method (_CRS)
 	{
 		CreateDwordField (^RBUF, ^RMEM._BAS, RBAS)
-		Add (IO_BASE_ADDRESS, IO_BASE_OFFSET_GPNCORE, RBAS)
+		RBAS = IO_BASE_ADDRESS + IO_BASE_OFFSET_GPNCORE
 		Return (^RBUF)
 	}
+
+	Method (_HRV, 0, NotSerialized) { Return (0x06) }
 
 	Method (_STA)
 	{
@@ -80,9 +84,11 @@ Device (GPSS)
 	Method (_CRS)
 	{
 		CreateDwordField (^RBUF, ^RMEM._BAS, RBAS)
-		Add (IO_BASE_ADDRESS, IO_BASE_OFFSET_GPSSUS, RBAS)
+		RBAS = IO_BASE_ADDRESS + IO_BASE_OFFSET_GPSSUS
 		Return (^RBUF)
 	}
+
+	Method (_HRV, 0, NotSerialized) { Return (0x06) }
 
 	Method (_STA)
 	{

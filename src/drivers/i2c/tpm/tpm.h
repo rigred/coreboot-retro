@@ -37,22 +37,16 @@ enum tpm_timeout {
 #define	TPM_DATA_FIFO(l)		(0x0005 | ((l) << 4))
 #define	TPM_DID_VID(l)			(0x0006 | ((l) << 4))
 
-struct tpm_chip;
-
-struct tpm_vendor_specific {
+struct tpm_chip {
+	int is_open;
 	uint8_t req_complete_mask;
 	uint8_t req_complete_val;
 	uint8_t req_canceled;
-	int (*recv)(struct tpm_chip *, uint8_t *, size_t);
-	int (*send)(struct tpm_chip *, uint8_t *, size_t);
-	void (*cancel)(struct tpm_chip *);
-	uint8_t (*status)(struct tpm_chip *);
-	int locality;
-};
 
-struct tpm_chip {
-	int is_open;
-	struct tpm_vendor_specific vendor;
+	int (*recv)(uint8_t *buf, size_t len);
+	int (*send)(uint8_t *buf, size_t len);
+	void (*cancel)(void);
+	uint8_t (*status)(void);
 };
 
 /* ---------- Interface for TPM vendor ------------ */
@@ -60,7 +54,5 @@ struct tpm_chip {
 int tpm_vendor_probe(unsigned int bus, uint32_t addr);
 
 int tpm_vendor_init(struct tpm_chip *chip, unsigned int bus, uint32_t dev_addr);
-
-void tpm_vendor_cleanup(struct tpm_chip *chip);
 
 #endif /* __DRIVERS_TPM_SLB9635_I2C_TPM_H__ */

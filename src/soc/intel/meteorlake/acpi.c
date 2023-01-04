@@ -3,6 +3,7 @@
 #include <acpi/acpi.h>
 #include <acpi/acpi_gnvs.h>
 #include <acpi/acpigen.h>
+#include <arch/ioapic.h>
 #include <device/mmio.h>
 #include <arch/smp/mpspec.h>
 #include <console/console.h>
@@ -168,19 +169,18 @@ void soc_fill_fadt(acpi_fadt_t *fadt)
 
 uint32_t soc_read_sci_irq_select(void)
 {
-	return read32((void *)soc_read_pmc_base() + IRQ_REG);
+	return read32p(soc_read_pmc_base() + IRQ_REG);
 }
 
 static unsigned long soc_fill_dmar(unsigned long current)
 {
 	unsigned long tmp;
-	const struct device *const igfx_dev = pcidev_path_on_root(PCI_DEVFN_IGD);
 	const uint64_t gfxvtbar = MCHBAR64(GFXVTBAR) & VTBAR_MASK;
 	const bool gfxvten = MCHBAR32(GFXVTBAR) & VTBAR_ENABLED;
 
 	printk(BIOS_DEBUG, "%s - gfxvtbar:0x%llx  0x%x\n",
 		__func__, gfxvtbar, MCHBAR32(GFXVTBAR));
-	if (is_dev_enabled(igfx_dev) && gfxvtbar && gfxvten) {
+	if (is_devfn_enabled(PCI_DEVFN_IGD) && gfxvtbar && gfxvten) {
 		tmp = current;
 		current += acpi_create_dmar_drhd(current, 0, 0, gfxvtbar);
 		current += acpi_create_dmar_ds_pci(current, 0, PCI_DEV_SLOT_IGD, 0);
@@ -191,8 +191,8 @@ static unsigned long soc_fill_dmar(unsigned long current)
 	tmp = current;
 	current += acpi_create_dmar_drhd(current,
 			DRHD_INCLUDE_PCI_ALL, 0, VTVC0_BASE_ADDRESS);
-	current += acpi_create_dmar_ds_ioapic(current,
-			2, V_P2SB_CFG_IBDF_BUS, V_P2SB_CFG_IBDF_DEV,
+	current += acpi_create_dmar_ds_ioapic_from_hw(current,
+			IO_APIC_ADDR, V_P2SB_CFG_IBDF_BUS, V_P2SB_CFG_IBDF_DEV,
 			V_P2SB_CFG_IBDF_FUNC);
 	current += acpi_create_dmar_ds_msi_hpet(current,
 			0, V_P2SB_CFG_HBDF_BUS, V_P2SB_CFG_HBDF_DEV,
@@ -200,7 +200,7 @@ static unsigned long soc_fill_dmar(unsigned long current)
 	acpi_dmar_drhd_fixup(tmp, current);
 
 	/* Add RMRR entry */
-	if (is_dev_enabled(igfx_dev) && gfxvtbar && gfxvten) {
+	if (is_devfn_enabled(PCI_DEVFN_IGD) && gfxvtbar && gfxvten) {
 		tmp = current;
 		current += acpi_create_dmar_rmrr(current, 0,
 				sa_get_gsm_base(), sa_get_tolud_base() - 1);

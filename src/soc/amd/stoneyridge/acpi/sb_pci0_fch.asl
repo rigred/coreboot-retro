@@ -336,10 +336,10 @@ Method(FDDC, 2, Serialized)
 	if (Arg1 == 0) {
 		Switch(ToInteger(Arg0)) {
 			Case(Package() {5, 15, 24}) {
-				PG1A = One
+				PG1A = 1
 			}
 			Case(Package() {6, 7, 8, 11, 12, 18}) {
-				PG2_ = One
+				PG2_ = 1
 			}
 		}
 		/* put device into D0 */
@@ -347,7 +347,7 @@ Method(FDDC, 2, Serialized)
 		{
 			Case(5) {
 				I0TD = 0x00
-				I0PD = One
+				I0PD = 1
 				Local0 = I0DS
 				while(Local0 != 0x7) {
 					Local0 = I0DS
@@ -355,7 +355,7 @@ Method(FDDC, 2, Serialized)
 			}
 			Case(6) {
 				I1TD = 0x00
-				I1PD = One
+				I1PD = 1
 				Local0 = I1DS
 				while(Local0 != 0x7) {
 					Local0 = I1DS
@@ -363,7 +363,7 @@ Method(FDDC, 2, Serialized)
 			}
 			Case(7) {
 				I2TD = 0x00
-				I2PD = One
+				I2PD = 1
 				Local0 = I2DS
 				while(Local0 != 0x7) {
 					Local0 = I2DS
@@ -371,7 +371,7 @@ Method(FDDC, 2, Serialized)
 			}
 			Case(8) {
 				I3TD = 0x00
-				I3PD = One
+				I3PD = 1
 				Local0 = I3DS
 				while(Local0 != 0x7) {
 					Local0 = I3DS
@@ -379,7 +379,7 @@ Method(FDDC, 2, Serialized)
 			}
 			Case(11) {
 				U0TD = 0x00
-				U0PD = One
+				U0PD = 1
 				Local0 = U0DS
 				while(Local0 != 0x7) {
 					Local0 = U0DS
@@ -387,7 +387,7 @@ Method(FDDC, 2, Serialized)
 			}
 			Case(12) {
 				U1TD = 0x00
-				U1PD = One
+				U1PD = 1
 				Local0 = U1DS
 				while(Local0 != 0x7) {
 					Local0 = U1DS
@@ -398,7 +398,7 @@ Method(FDDC, 2, Serialized)
 			Case(23) { U3D0()} /* XHCI */
 			Case(24) { /* SD */
 				SDTD = 0x00
-				SDPD = One
+				SDPD = 1
 				Local0 = SDDS
 				while(Local0 != 0x7) {
 					Local0 = SDDS
@@ -410,7 +410,7 @@ Method(FDDC, 2, Serialized)
 		Switch(ToInteger(Arg0))
 		{
 			Case(5) {
-				I0PD = Zero
+				I0PD = 0
 				Local0 = I0DS
 				while(Local0 != 0x0) {
 					Local0 = I0DS
@@ -418,7 +418,7 @@ Method(FDDC, 2, Serialized)
 				I0TD = 0x03
 			}
 			Case(6) {
-				I1PD = Zero
+				I1PD = 0
 				Local0 = I1DS
 				while(Local0 != 0x0) {
 					Local0 = I1DS
@@ -426,7 +426,7 @@ Method(FDDC, 2, Serialized)
 				I1TD = 0x03
 			}
 			Case(7) {
-				I2PD = Zero
+				I2PD = 0
 				Local0 = I2DS
 				while(Local0 != 0x0) {
 					Local0 = I2DS
@@ -434,7 +434,7 @@ Method(FDDC, 2, Serialized)
 				I2TD = 0x03
 			}
 			Case(8) {
-				I3PD = Zero
+				I3PD = 0
 				Local0 = I3DS
 				while(Local0 != 0x0) {
 					Local0 = I3DS
@@ -442,7 +442,7 @@ Method(FDDC, 2, Serialized)
 				I3TD = 0x03
 			}
 			Case(11) {
-				U0PD = Zero
+				U0PD = 0
 				Local0 = U0DS
 				while(Local0 != 0x0) {
 					Local0 = U0DS
@@ -450,7 +450,7 @@ Method(FDDC, 2, Serialized)
 				U0TD = 0x03
 			}
 			Case(12) {
-				U1PD = Zero
+				U1PD = 0
 				Local0 = U1DS
 				while(Local0 != 0x0) {
 					Local0 = U1DS
@@ -461,7 +461,7 @@ Method(FDDC, 2, Serialized)
 			Case(18) { U2D3()} /* EHCI */
 			Case(23) { U3D3()} /* XHCI */
 			Case(24) { /* SD */
-				SDPD = Zero
+				SDPD = 0
 				Local0 = SDDS
 				while(Local0 != 0x0) {
 					Local0 = SDDS
@@ -472,7 +472,7 @@ Method(FDDC, 2, Serialized)
 		/* Turn off Power */
 		if (I0TD == 3) {
 			if (SATD == 3) {
-				if (SDTD == 3) { PG1A = Zero }
+				if (SDTD == 3) { PG1A = 0 }
 			}
 		}
 		if (I1TD == 3) {
@@ -481,7 +481,7 @@ Method(FDDC, 2, Serialized)
 					if (U0TD == 3) {
 						if (U1TD == 3) {
 							if (U2TD == 3) {
-								PG2_ = Zero
+								PG2_ = 0
 							}
 						}
 					}

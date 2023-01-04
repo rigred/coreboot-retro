@@ -182,9 +182,16 @@ static asmlinkage void ap_init(unsigned int index)
 	enable_lapic();
 	setup_lapic_interrupts();
 
-	struct device *dev = g_cpu_bus->children;
-	for (unsigned int i = index; i > 0; i--)
-		dev = dev->sibling;
+	struct device *dev;
+	int i = 0;
+	for (dev = g_cpu_bus->children; dev; dev = dev->sibling)
+		if (i++ == index)
+			break;
+
+	if (!dev) {
+		printk(BIOS_ERR, "Could not find allocated device for index %u\n", index);
+		return;
+	}
 
 	set_cpu_info(index, dev);
 
@@ -208,6 +215,8 @@ static asmlinkage void ap_init(unsigned int index)
 	park_this_cpu(NULL);
 }
 
+static __aligned(16) uint8_t ap_stack[CONFIG_AP_STACK_SIZE * CONFIG_MAX_CPUS];
+
 static void setup_default_sipi_vector_params(struct sipi_params *sp)
 {
 	sp->gdt = (uintptr_t)&gdt;
@@ -215,8 +224,8 @@ static void setup_default_sipi_vector_params(struct sipi_params *sp)
 	sp->idt_ptr = (uintptr_t)&idtarg;
 	sp->per_cpu_segment_descriptors = (uintptr_t)&per_cpu_segment_descriptors;
 	sp->per_cpu_segment_selector = per_cpu_segment_selector;
-	sp->stack_size = CONFIG_STACK_SIZE;
-	sp->stack_top = ALIGN_DOWN((uintptr_t)&_estack, CONFIG_STACK_SIZE);
+	sp->stack_size = CONFIG_AP_STACK_SIZE;
+	sp->stack_top = (uintptr_t)ap_stack + ARRAY_SIZE(ap_stack);
 }
 
 static const unsigned int fixed_mtrrs[NUM_FIXED_MTRRS] = {
@@ -626,14 +635,6 @@ static enum cb_err mp_init(struct bus *cpu_bus, struct mp_params *p)
 
 	/* Walk the flight plan for the BSP. */
 	return bsp_do_flight_plan(p);
-}
-
-/* Calls cpu_initialize(info->index) which calls the coreboot CPU drivers. */
-static void mp_initialize_cpu(void)
-{
-	/* Call back into driver infrastructure for the AP initialization.   */
-	struct cpu_info *info = cpu_info();
-	cpu_initialize(info->index);
 }
 
 void smm_initiate_relocation_parallel(void)
@@ -1078,7 +1079,7 @@ static struct mp_flight_record mp_steps[] = {
 	/* Perform SMM relocation. */
 	MP_FR_NOBLOCK_APS(trigger_smm_relocation, trigger_smm_relocation),
 	/* Initialize each CPU through the driver framework. */
-	MP_FR_BLOCK_APS(mp_initialize_cpu, mp_initialize_cpu),
+	MP_FR_BLOCK_APS(cpu_initialize, cpu_initialize),
 	/* Wait for APs to finish then optionally start looking for work. */
 	MP_FR_BLOCK_APS(ap_wait_for_instruction, NULL),
 };

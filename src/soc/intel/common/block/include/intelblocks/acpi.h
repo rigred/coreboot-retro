@@ -93,17 +93,11 @@ void soc_power_states_generation(int core_id, int cores_per_package);
  */
 int common_calculate_power_ratio(int tdp, int p1_ratio, int ratio);
 
-struct madt_ioapic_info {
-	u8  id;
-	u32 addr;
-	u32 gsi_base;
-};
 
 /*
- * Returns a table of MADT ioapic_info entries and the number of entries
- * If the SOC doesn't implement this hook a default ioapic setting is used.
+ * Return the number of table entries and takes a pointer to an array of ioapic bases.
  */
-const struct madt_ioapic_info *soc_get_ioapic_info(size_t *entries);
+size_t soc_get_ioapic_info(const uintptr_t *ioapic_bases[]);
 
 struct soc_pmc_lpm {
 	unsigned int num_substates;
@@ -133,4 +127,31 @@ enum core_type get_soc_cpu_type(void);
 
 /* Check if CPU supports Nominal frequency or not */
 bool soc_is_nominal_freq_supported(void);
+
+/* Min sleep state per device*/
+struct min_sleep_state {
+	uint8_t pci_dev;
+	enum acpi_device_sleep_states min_sleep_state;
+};
+
+/*
+ * This SOC callback returns an array that maps devices to their min sleep state.
+ * Example:
+ *
+ * static struct min_sleep_state min_pci_sleep_states[] = {
+ *	{ SA_DEVFN_ROOT,	ACPI_DEVICE_SLEEP_D3 },
+ *	{ SA_DEVFN_CPU_PCIE1_0,	ACPI_DEVICE_SLEEP_D3 },
+ *	{ SA_DEVFN_IGD,		ACPI_DEVICE_SLEEP_D3 },
+ *	...
+ * };
+ *
+ * const struct pad_config *variant_early_gpio_table(size_t *num)
+ * {
+ *	*num = ARRAY_SIZE(early_gpio_table);
+ *	return early_gpio_table;
+ * }
+ *
+ */
+struct min_sleep_state *soc_get_min_sleep_state_array(size_t *size);
+
 #endif				/* _SOC_INTEL_COMMON_BLOCK_ACPI_H_ */

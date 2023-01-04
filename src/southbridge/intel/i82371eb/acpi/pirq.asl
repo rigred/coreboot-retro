@@ -24,14 +24,14 @@ Device(intx) {						\
 	Name(_UID, uid)					\
 							\
 	Method(_STA, 0) {				\
-		If (And(pinx, 0x80)) {			\
+		If (pinx & 0x80) {			\
 			Return(0x09)			\
 		}					\
 		Return(0x0B)				\
 	}						\
 							\
 	Method(_DIS ,0) {				\
-		Store(0x80, pinx)			\
+		pinx = 0x80			\
 	}						\
 							\
 	Method(_PRS ,0) {				\
@@ -40,7 +40,7 @@ Device(intx) {						\
 							\
 	Method(_CRS ,0) {				\
 		CreateWordField(IRQB, 1, IRQN)		\
-		ShiftLeft(1, And(pinx, 0x0f), IRQN)	\
+		IRQN = 1 << (pinx & 0x0f)		\
 		Return(IRQB)				\
 	}						\
 							\
@@ -52,7 +52,7 @@ Device(intx) {						\
 		if (Local0) {				\
 			Local0--			\
 		}					\
-		Store(Local0, pinx)			\
+		pinx = Local0			\
 	}						\
 }							\
 

@@ -17,7 +17,7 @@ Method (UPWE, 3, Serialized)
 	Local0 = Arg1 + ((Arg0 - 1) * 0x10)
 
 	/* Map ((XMEM << 16) + Local0 in PSCR */
-	OperationRegion (PSCR, SystemMemory, ShiftLeft (Arg2, 16) + Local0, 0x10)
+	OperationRegion (PSCR, SystemMemory, (Arg2 << 16) + Local0, 0x10)
 	Field (PSCR, DWordAcc, NoLock, Preserve)
 	{
 		PSCT, 32,
@@ -44,9 +44,9 @@ Method (UWES, 3, Serialized)
 {
 	Local0 = Arg0
 
-	While (One) {
+	While (1) {
 		FindSetRightBit (Local0, Local1)
-		If (Local1 == Zero) {
+		If (Local1 == 0) {
 			Break
 		}
 		UPWE (Local1, Arg1, Arg2)
@@ -100,7 +100,7 @@ Device (XHCI)
 		D3HE, 1,	/* D3_hot_en */
 	}
 
-	OperationRegion (XREG, SystemMemory, ShiftLeft (XMEM, 16) + 0x8000, 0x200)
+	OperationRegion (XREG, SystemMemory, (XMEM << 16) + 0x8000, 0x200)
 	Field (XREG, DWordAcc, Lock, Preserve)
 	{
 		Offset (0x1c4),	/* USB2PMCTRL */
@@ -209,7 +209,7 @@ Device (XHCI)
 	/* Root Hub for Skylake-LP PCH */
 	Device (RHUB)
 	{
-		Name (_ADR, Zero)
+		Name (_ADR, 0)
 
 		// GPLD: Generate Port Location Data (PLD)
 		Method (GPLD, 1, Serialized)
@@ -221,11 +221,11 @@ Device (XHCI)
 			})
 
 			// REV: Revision 0x02 for ACPI 5.0
-			CreateField (DerefOf (PCKG[0]), Zero, 0x07, REV)
+			CreateField (DerefOf (PCKG[0]), 0, 0x07, REV)
 			REV = 0x02
 
 			// VISI: Port visibility to user per port
-			CreateField (DerefOf (PCKG[0]), 0x40, One, VISI)
+			CreateField (DerefOf (PCKG[0]), 0x40, 1, VISI)
 			VISI = Arg0
 
 			Return (PCKG)

@@ -211,4 +211,15 @@ bool is_tme_supported(void);
  */
 void set_tme_core_activate(void);
 
+/*
+ * This function checks if the CPU supports SGX feature.
+ * Returns true if SGX feature is supported otherwise false.
+ */
+bool is_sgx_supported(void);
+
+/*
+ * This function checks if the CPU supports Key Locker feature.
+ * Returns true if Key Locker feature is supported otherwise false.
+ */
+bool is_keylocker_supported(void);
 #endif	/* SOC_INTEL_COMMON_BLOCK_CPULIB_H */

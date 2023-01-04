@@ -1,39 +1,23 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 
-#include <types.h>
 #include <arch/io.h>
-#include <device/pci_ops.h>
-#include <console/console.h>
 #include <commonlib/region.h>
-#include <device/pci_def.h>
-#include <cpu/x86/smm.h>
+#include <console/console.h>
 #include <cpu/intel/em64t101_save_state.h>
+#include <cpu/intel/model_206ax/model_206ax.h>
+#include <cpu/x86/smm.h>
+#include <device/mmio.h>
+#include <device/pci_def.h>
+#include <device/pci_ops.h>
 #include <northbridge/intel/sandybridge/sandybridge.h>
 #include <soc/nvs.h>
 #include <southbridge/intel/bd82x6x/me.h>
-#include <southbridge/intel/common/gpio.h>
-#include <cpu/intel/model_206ax/model_206ax.h>
-#include <southbridge/intel/common/pmutil.h>
 #include <southbridge/intel/common/finalize.h>
+#include <southbridge/intel/common/gpio.h>
+#include <southbridge/intel/common/pmutil.h>
+#include <types.h>
 
 #include "pch.h"
-
-int southbridge_io_trap_handler(int smif)
-{
-	switch (smif) {
-	case 0x32:
-		printk(BIOS_DEBUG, "OS Init\n");
-		/* gnvs->smif:
-		 *  On success, the IO Trap Handler returns 0
-		 *  On failure, the IO Trap Handler returns a value != 0
-		 */
-		gnvs->smif = 0;
-		return 1; /* IO trap handled */
-	}
-
-	/* Not handled */
-	return 0;
-}
 
 static void southbridge_gate_memory_reset_real(int offset,
 					       u16 use, u16 io, u16 lvl)
@@ -99,7 +83,7 @@ void southbridge_smi_monitor(void)
 	trap_cycle = RCBA32(0x1e10);
 	for (i=16; i<20; i++) {
 		if (trap_cycle & (1 << i))
-			mask |= (0xff << ((i - 16) << 2));
+			mask |= (0xff << ((i - 16) << 3));
 	}
 
 	/* IOTRAP(3) SMI function call */
@@ -168,7 +152,7 @@ static void xhci_a0_suspend_smm_workaround(void)
 
 	/* Steps 3 to 6: If USB3 PORTSC current connect status (bit 0) is set, do IOBP magic */
 	for (unsigned int port = 0; port < 4; port++) {
-		if (read32((void *)(xhci_bar + XHCI_PORTSC_x_USB3(port))) & (1 << 0))
+		if (read32p((xhci_bar + XHCI_PORTSC_x_USB3(port))) & (1 << 0))
 			pch_iobp_update(0xec000082 + 0x100 * port, ~0, 3 << 2);
 	}
 

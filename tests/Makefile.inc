@@ -8,6 +8,8 @@ else
 testobj := $(obj)/tests
 endif
 
+objutil := $(testobj)/util
+
 include $(top)/tests/Makefile.common
 
 # Enable GDB debug build if requested
@@ -51,6 +53,8 @@ $(call evaluate_subdirs)
 $(foreach test, $(alltests), \
 	$(eval $(test)-srcobjs := $(addprefix $(testobj)/$(test)/, \
 		$(patsubst %.c,%.o,$(filter src/%,$($(test)-srcs))))) \
+	$(eval $(test)-sysobjs := $(addprefix $(testobj)/$(test)/, \
+		$(patsubst %.c,%.o,$($(test)-syssrcs)))) \
 	$(eval $(test)-objs := $(addprefix $(testobj)/$(test)/, \
 		$(patsubst %.c,%.o,$($(test)-srcs)))))
 $(foreach test, $(alltests), \

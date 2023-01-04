@@ -29,6 +29,15 @@ bool cpu_soc_is_in_untrusted_mode(void)
 	return !!(msr.lo & ENABLE_IA_UNTRUSTED);
 }
 
+void cpu_soc_bios_done(void)
+{
+	msr_t msr;
+
+	msr = rdmsr(MSR_BIOS_DONE);
+	msr.lo |= ENABLE_IA_UNTRUSTED;
+	wrmsr(MSR_BIOS_DONE, msr);
+}
+
 uint8_t get_supported_lpm_mask(void)
 {
 	return LPM_S0i2_0 | LPM_S0i2_1 | LPM_S0i2_2;
@@ -80,7 +89,7 @@ enum core_type get_soc_cpu_type(void)
 
 void soc_get_scaling_factor(u16 *big_core_scal_factor, u16 *small_core_scal_factor)
 {
-	*big_core_scal_factor = 127;
+	*big_core_scal_factor = 125;
 	*small_core_scal_factor = 100;
 }
 

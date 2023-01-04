@@ -36,26 +36,26 @@ Device (MBRS)
 		CreateQWordField (MSBF, \_SB.MBRS._Y1C._MAX, MEMM)
 		CreateQWordField (MSBF, \_SB.MBRS._Y1C._LEN, LELM)
 
-		And (\_SB.PCI0.RLAR, 0x03FF, Local1)
+		Local1 = \_SB.PCI0.RLAR & 0x03FF
 		Local1++
 		If (Local1 > 0x40)
 		{
-			ShiftLeft (Local1, 0x1A, LELM)
+			LELM = Local1 << 0x1A
 		}
 
 
 		CreateDWordField (MSBF, \_SB.MBRS._Y1D._MIN, MS00)
 		CreateDWordField (MSBF, \_SB.MBRS._Y1D._MAX, MS01)
 		CreateDWordField (MSBF, \_SB.MBRS._Y1D._LEN, MEM2)
-		And (\_SB.PCI0.TOLM, 0xF800, Local1)
-		ShiftRight (Local1, 0x04, Local1)
+		Local1 = \_SB.PCI0.TOLM & 0xF800
+		Local1 >>= 4
 		Local1--
 		If (Local1 > 0x10)
 		{
 			Local1 -= 0x0F
-			Store (ShiftLeft (Local1, 0x14), MEM2)
-			Store (0x01000000, MS00)
-			Store (MS00, MS01)
+			MEM2 = Local1 << 0x14
+			MS00 = 0x01000000
+			MS01 = MS00
 		}
 
 		Return (MSBF)

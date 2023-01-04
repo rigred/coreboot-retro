@@ -1,6 +1,0 @@
-chip soc/intel/meteorlake
-
-	device domain 0 on
-		device ref igpu on end
-	end
-end

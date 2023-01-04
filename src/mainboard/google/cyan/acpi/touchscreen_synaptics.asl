@@ -14,42 +14,41 @@ Scope (\_SB.PCI0.I2C1)
 		 */
 		Method (_DSM, 4, NotSerialized)
 		{
-			If (LEqual (Arg0, ToUUID (
-				"3cdff6f7-4267-4555-ad05-b30a3d8938de")))
+			If (Arg0 == ToUUID ("3cdff6f7-4267-4555-ad05-b30a3d8938de"))
 			{
 				// DSM Revision
-				If (LEqual (Arg2, Zero))
+				If (Arg2 == 0)
 				{
-					If (LEqual (Arg1, One))
+					If (Arg1 == 1)
 					{
-						Return (Buffer (One)
+						Return (Buffer (1)
 						{
 							0x03
 						})
 					}
 					Else
 					{
-						Return (Buffer (One)
+						Return (Buffer (1)
 						{
 							0x00
 						})
 					}
 				}
 				// HID Function
-				If (LEqual (Arg2, One))
+				If (Arg2 == 1)
 				{
 					Return (0x20)
 				}
 			}
 			Else
 			{
-				Return (Buffer (One)
+				Return (Buffer (1)
 				{
 					0x00
 				})
 			}
 
-			Return (Zero)
+			Return (0)
 		}
 
 		Method(_CRS, 0x0, NotSerialized)
@@ -71,7 +70,7 @@ Scope (\_SB.PCI0.I2C1)
 
 		Method (_STA)
 		{
-			If (LEqual (\S1EN, 1)) {
+			If (\S1EN == 1) {
 				Return (0xF)
 			} Else {
 				Return (0x0)

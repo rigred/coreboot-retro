@@ -47,7 +47,7 @@ chip soc/intel/tigerlake
 				register "generic.hid" = ""ELAN90FC""
 				register "generic.desc" = ""ELAN Touchscreen""
 				register "generic.irq" = "ACPI_IRQ_LEVEL_LOW(GPP_E7_IRQ)"
-				register "generic.probed" = "1"
+				register "generic.detect" = "1"
 				register "generic.reset_gpio" =
 							"ACPI_GPIO_OUTPUT_ACTIVE_LOW(GPP_C10)"
 				register "generic.enable_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_HIGH(GPP_A8)"
@@ -60,8 +60,8 @@ chip soc/intel/tigerlake
 			chip drivers/i2c/generic
 				register "hid" = ""RAYD0001""
 				register "desc" = ""Raydium Touchscreen""
-				register "irq" = "ACPI_IRQ_EDGE_LOW(GPP_E7_IRQ)"
-				register "probed" = "1"
+				register "irq" = "ACPI_IRQ_LEVEL_LOW(GPP_E7_IRQ)"
+				register "detect" = "1"
 				register "reset_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_LOW(GPP_C10)"
 				register "reset_delay_ms" = "1"
 				register "reset_off_delay_ms" = "2"
@@ -75,7 +75,7 @@ chip soc/intel/tigerlake
 				register "generic.hid" = ""GTCH7503""
 				register "generic.desc" = ""G2TOUCH Touchscreen""
 				register "generic.irq" = "ACPI_IRQ_LEVEL_LOW(GPP_E7_IRQ)"
-				register "generic.probed" = "1"
+				register "generic.detect" = "1"
 				register "generic.reset_gpio" =
 							"ACPI_GPIO_OUTPUT_ACTIVE_LOW(GPP_C10)"
 				register "generic.reset_delay_ms" = "50"
@@ -115,7 +115,8 @@ chip soc/intel/tigerlake
 				device i2c 15 on end
 			end
 			chip drivers/i2c/hid
-				register "generic.hid" = ""PNP0C50""
+				register "generic.hid" = ""SYNA0000""
+				register "generic.cid" = ""ACPI0C50""
 				register "generic.desc" = ""Synaptics Touchpad""
 				register "generic.irq" = "ACPI_IRQ_WAKE_LEVEL_LOW(GPP_E15_IRQ)"
 				register "generic.wake" = "GPE0_DW2_15"
@@ -137,6 +138,7 @@ chip soc/intel/tigerlake
 			probe AUDIO MAX98373_ALC5682_SNDW
 			probe AUDIO MAX98373_ALC5682I_I2S_UP4
 			probe AUDIO MAX98360_ALC5682I_I2S
+			probe AUDIO RT1011_ALC5682I_I2S
 		end
 		device ref pcie_rp9 on
 			chip soc/intel/common/block/pcie/rtd3

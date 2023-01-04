@@ -23,23 +23,6 @@
 #include <drivers/intel/gma/i915_reg.h>
 #include <smmstore.h>
 
-int southbridge_io_trap_handler(int smif)
-{
-	switch (smif) {
-	case 0x32:
-		printk(BIOS_DEBUG, "OS Init\n");
-		/* gnvs->smif:
-		 *  On success, the IO Trap Handler returns 0
-		 *  On failure, the IO Trap Handler returns a value != 0
-		 */
-		gnvs->smif = 0;
-		return 1; /* IO trap handled */
-	}
-
-	/* Not handled */
-	return 0;
-}
-
 /**
  * @brief Set the EOS bit
  */
@@ -429,7 +412,7 @@ static void southbridge_smi_monitor(void)
 	trap_cycle = RCBA32(0x1e10);
 	for (i = 16; i < 20; i++) {
 		if (trap_cycle & (1 << i))
-			mask |= (0xff << ((i - 16) << 2));
+			mask |= (0xff << ((i - 16) << 3));
 	}
 
 	/* IOTRAP(3) SMI function call */

@@ -58,16 +58,16 @@ Device (EC0)
 	Method (_REG, 2, NotSerialized)
 	{
 		// Initialize AC power state
-		Store (ACEX, \PWRS)
+		\PWRS = ACEX
 
 		// Initialize LID switch state
-		Store (LIDS, \LIDS)
+		\LIDS = LIDS
 
 		// Enable OS control of fan speed
-		Store (One, FCOS)
+		FCOS = 1
 
 		// Force a read of CPU temperature
-		Store (CPUT, Local0)
+		Local0 = CPUT
 		/* So that we don't get a warning that Local0 is unused.  */
 		Local0++
 	}
@@ -76,22 +76,22 @@ Device (EC0)
 	{
 		Method (_STA) {
 			If (\FLVL <= 0) {
-				Return (One)
+				Return (1)
 			} Else {
-				Return (Zero)
+				Return (0)
 			}
 		}
 		Method (_ON)  {
 			If (FCOS) {
-				Store (One, FSL0)
-				Store (0, \FLVL)
+				FSL0 = 1
+				\FLVL = 0
 				Notify (\_TZ.THRM, 0x81)
 			}
 		}
 		Method (_OFF) {
 			If (FCOS) {
-				Store (Zero, FSL0)
-				Store (1, \FLVL)
+				FSL0 = 0
+				\FLVL = 1
 				Notify (\_TZ.THRM, 0x81)
 			}
 		}
@@ -101,22 +101,22 @@ Device (EC0)
 	{
 		Method (_STA) {
 			If (\FLVL <= 1) {
-				Return (One)
+				Return (1)
 			} Else {
-				Return (Zero)
+				Return (0)
 			}
 		}
 		Method (_ON)  {
 			If (FCOS) {
-				Store (One, FSL1)
-				Store (1, \FLVL)
+				FSL1 = 1
+				\FLVL = 1
 				Notify (\_TZ.THRM, 0x81)
 			}
 		}
 		Method (_OFF) {
 			If (FCOS) {
-				Store (Zero, FSL1)
-				Store (2, \FLVL)
+				FSL1 = 0
+				\FLVL = 2
 				Notify (\_TZ.THRM, 0x81)
 			}
 		}
@@ -126,22 +126,22 @@ Device (EC0)
 	{
 		Method (_STA) {
 			If (\FLVL <= 2) {
-				Return (One)
+				Return (1)
 			} Else {
-				Return (Zero)
+				Return (0)
 			}
 		}
 		Method (_ON)  {
 			If (FCOS) {
-				Store (One, FSL2)
-				Store (2, \FLVL)
+				FSL2 = 1
+				\FLVL = 2
 				Notify (\_TZ.THRM, 0x81)
 			}
 		}
 		Method (_OFF) {
 			If (FCOS) {
-				Store (Zero, FSL2)
-				Store (3, \FLVL)
+				FSL2 = 0
+				\FLVL = 3
 				Notify (\_TZ.THRM, 0x81)
 			}
 		}
@@ -151,22 +151,22 @@ Device (EC0)
 	{
 		Method (_STA) {
 			If (\FLVL <= 3) {
-				Return (One)
+				Return (1)
 			} Else {
-				Return (Zero)
+				Return (0)
 			}
 		}
 		Method (_ON)  {
 			If (FCOS) {
-				Store (One, FSL3)
-				Store (3, \FLVL)
+				FSL3 = 1
+				\FLVL = 3
 				Notify (\_TZ.THRM, 0x81)
 			}
 		}
 		Method (_OFF) {
 			If (FCOS) {
-				Store (Zero, FSL3)
-				Store (4, \FLVL)
+				FSL3 = 0
+				\FLVL = 4
 				Notify (\_TZ.THRM, 0x81)
 			}
 		}
@@ -176,22 +176,22 @@ Device (EC0)
 	{
 		Method (_STA) {
 			If (\FLVL <= 4) {
-				Return (One)
+				Return (1)
 			} Else {
-				Return (Zero)
+				Return (0)
 			}
 		}
 		Method (_ON)  {
 			If (FCOS) {
-				Store (One, FSL4)
-				Store (4, \FLVL)
+				FSL4 = 1
+				\FLVL = 4
 				Notify (\_TZ.THRM, 0x81)
 			}
 		}
 		Method (_OFF) {
 			If (FCOS) {
-				Store (Zero, FSL4)
-				Store (5, \FLVL)
+				FSL4 = 0
+				\FLVL = 5
 				Notify (\_TZ.THRM, 0x81)
 			}
 		}
@@ -235,7 +235,7 @@ Device (EC0)
 	// AC Power Connected
 	Method (_Q51, 0, NotSerialized)
 	{
-		Store (One, \PWRS)
+		\PWRS = 1
 		Notify (AC, 0x80)
 		\PNOT ()
 	}
@@ -243,7 +243,7 @@ Device (EC0)
 	// AC Power Removed
 	Method (_Q52, 0, NotSerialized)
 	{
-		Store (Zero, \PWRS)
+		\PWRS = 0
 		Notify (AC, 0x80)
 		\PNOT ()
 	}
@@ -271,14 +271,14 @@ Device (EC0)
 	// Lid Switch Event
 	Method (_Q5E, 0, NotSerialized)
 	{
-		Store (LIDS, \LIDS)
+		\LIDS = LIDS
 		Notify (\_SB.LID0, 0x80)
 	}
 
 	// Lid Switch Event
 	Method (_Q5F, 0, NotSerialized)
 	{
-		Store (LIDS, \LIDS)
+		\LIDS = LIDS
 		Notify (\_SB.LID0, 0x80)
 	}
 

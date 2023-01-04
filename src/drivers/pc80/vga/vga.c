@@ -60,7 +60,7 @@ vga_fb_clear(void)
 static void
 vga_palette_init(void)
 {
-	unsigned int i;
+	size_t i;
 
 	/* set up attribute registers */
 	for (i = 0; i < 0x10; i++)
@@ -168,7 +168,7 @@ static void
 vga_font_8x16_load(void)
 {
 	unsigned char *p;
-	int i, j;
+	size_t i, j;
 	unsigned char sr2, sr4, gr5, gr6;
 
 #define height 16
@@ -236,7 +236,7 @@ vga_cursor_reset(void)
 void
 vga_cursor_set(unsigned int line, unsigned int character)
 {
-	unsigned int offset = (80 * line + character) & 0xFFFF;
+	unsigned int offset = (VGA_COLUMNS * line + character) & 0xFFFF;
 
 	vga_cr_write(0x0A, 0x0E);
 	vga_cr_write(0x0B, 0x0E);
@@ -250,10 +250,27 @@ vga_cursor_set(unsigned int line, unsigned int character)
 void
 vga_frame_set(unsigned int line, unsigned int character)
 {
-	unsigned int offset = (80 * line + character) & 0xFFFF;
+	unsigned int offset = (VGA_COLUMNS * line + character) & 0xFFFF;
 
 	vga_cr_write(0x0C, offset >> 8);
 	vga_cr_write(0x0D, offset & 0xFF);
+}
+
+static void
+vga_write_at_offset(unsigned int line, unsigned int offset, const char *string)
+{
+	if (!string)
+		return;
+
+	unsigned short *p = (unsigned short *)VGA_FB + (VGA_COLUMNS * line) + offset;
+	size_t i, len = strlen(string);
+
+	for (i = 0; i < (VGA_COLUMNS - offset); i++) {
+		if (i < len)
+			p[i] = 0x0F00 | string[i];
+		else
+			p[i] = 0x0F00;
+	}
 }
 
 /*
@@ -262,14 +279,32 @@ vga_frame_set(unsigned int line, unsigned int character)
 void
 vga_line_write(unsigned int line, const char *string)
 {
-	unsigned short *p = (unsigned short *)VGA_FB + (80 * line);
-	int i, len = strlen(string);
+	vga_write_at_offset(line, 0, string);
+}
 
-	for (i = 0; i < 80; i++) {
-		if (i < len)
-			p[i] = 0x0F00 | string[i];
-		else
-			p[i] = 0x0F00;
+void
+vga_write_text(enum VGA_TEXT_ALIGNMENT alignment, unsigned int line, const char *string)
+{
+	char str[VGA_COLUMNS * VGA_LINES] = {0};
+	memcpy(str, string, strnlen(string, sizeof(str) - 1));
+
+	char *token = strtok(str, "\n");
+
+	while (token != NULL) {
+		size_t offset = VGA_COLUMNS - strnlen(token, VGA_COLUMNS);
+		switch (alignment) {
+		case VGA_TEXT_CENTER:
+			vga_write_at_offset(line++, offset/2, token);
+			break;
+		case VGA_TEXT_RIGHT:
+			vga_write_at_offset(line++, offset, token);
+			break;
+		case VGA_TEXT_LEFT:
+		default:
+			vga_write_at_offset(line++, 0, token);
+			break;
+		}
+		token = strtok(NULL, "\n");
 	}
 }
 

@@ -27,7 +27,6 @@ romstage-y += cpu.c
 ramstage-y += acpi.c
 ramstage-y += chip.c
 ramstage-y += cpu.c
-ramstage-y += dptf.c
 ramstage-y += elog.c
 ramstage-y += espi.c
 ramstage-y += finalize.c
@@ -47,7 +46,6 @@ ramstage-y += tcss.c
 ramstage-y += vr_config.c
 ramstage-y += xhci.c
 ramstage-$(CONFIG_SOC_INTEL_CRASHLOG) += crashlog.c
-ramstage-y += smbios.c
 
 smm-y += elog.c
 smm-y += p2sb.c

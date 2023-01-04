@@ -2,12 +2,12 @@
 
 Scope (_GPE)
 {
-	Name (PDET, Zero)
+	Name (PDET, 0)
 	Method (PNOT, 2, Serialized) {
-		ShiftLeft (Arg0, Arg1, Local0)
-		Not( ShiftLeft (One, Arg1), Local1)
-		Or (Local0, And (Local1, PDET), PDET)
-		If (LEqual (PDET, Zero)) {
+		Local0 = Arg0 << Arg1
+		Local1 = ~(1 << Arg1)
+		PDET = Local0 | (Local1 & PDET)
+		If (PDET == 0) {
 			// Palm removed
 			\_SB.PCI0.LPCB.EC0.HKEY.MHKQ (0x60B1)
 		} Else {
@@ -17,12 +17,12 @@ Scope (_GPE)
 	}
 
 	Method (TINV, 2, Serialized) {
-		ShiftLeft (One, Arg1, Local0)
-		If (LEqual (Arg0, Zero)) {
-			Not (Local0, Local0)
-			And (GIV0, Local0, GIV0)
+		Local0 = 1 << Arg1
+		If (Arg0 == 0) {
+			Local0 = ~Local0
+			GIV0 &= Local0
 		} Else {
-			Or (GIV0, Local0, GIV0)
+			GIV0 |= Local0
 		}
 	}
 

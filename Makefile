@@ -69,6 +69,9 @@ endif
 HOSTCFLAGS := -g
 HOSTCXXFLAGS := -g
 
+HOSTPKG_CONFIG ?= pkg-config
+COREBOOT_EXPORTS += HOSTPKG_CONFIG
+
 PREPROCESS_ONLY := -E -P -x assembler-with-cpp -undef -I .
 
 export $(COREBOOT_EXPORTS)
@@ -148,13 +151,14 @@ include $(TOPLEVEL)/payloads/Makefile.inc
 include $(TOPLEVEL)/util/testing/Makefile.inc
 -include $(TOPLEVEL)/site-local/Makefile.inc
 include $(TOPLEVEL)/tests/Makefile.inc
-real-all:
+printall real-all:
 	@echo "Error: Trying to build, but NOCOMPILE is set." >&2
 	@echo "  Please file a bug with the following information:"
 	@echo "- MAKECMDGOALS: $(MAKECMDGOALS)" >&2
 	@echo "- HAVE_DOTCONFIG: $(HAVE_DOTCONFIG)" >&2
 	@echo "- HAVE_KCONFIG_MAKEFILE_REAL: $(HAVE_KCONFIG_MAKEFILE_REAL)" >&2
 	@exit 1
+
 else
 
 ifneq ($(UNIT_TEST),1)
@@ -312,6 +316,9 @@ $(eval $(postinclude-hooks))
 $(foreach class,$(classes),$(eval $(class)-srcs:=$(sort $($(class)-srcs))))
 
 # Build Kconfig .ads if necessary
+ifeq ($(CONFIG_ROMSTAGE_ADA),y)
+romstage-srcs += $(obj)/romstage/$(notdir $(KCONFIG_AUTOADS))
+endif
 ifeq ($(CONFIG_RAMSTAGE_ADA),y)
 ramstage-srcs += $(obj)/ramstage/$(notdir $(KCONFIG_AUTOADS))
 endif
