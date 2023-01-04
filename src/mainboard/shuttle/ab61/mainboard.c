@@ -36,7 +36,7 @@ static void mainboard_init(void *chip_info)
 	u16 reg;
 
 	reg = pci_s_read_config16(px73, XBCS);
-	printk(BIOS_DEBUG, "XBCS: %u", reg);
+	printk(BIOS_DEBUG, "XBCS: %u\n", reg);
 }
 
 
