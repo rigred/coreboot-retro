@@ -1,63 +1,44 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
-# TODO: Check if this is still correct
-
 ifeq ($(CONFIG_SOC_AMD_MENDOCINO),y)
 
 subdirs-$(CONFIG_VBOOT_STARTS_BEFORE_BOOTBLOCK) += psp_verstage
 
 # Beware that all-y also adds the compilation unit to verstage on PSP
-all-y		+= config.c
 all-y		+= aoac.c
+all-y		+= config.c
+all-y		+= i2c.c
+
+# all_x86-y adds the compilation unit to all stages that run on the x86 cores
+all_x86-y	+= gpio.c
+all_x86-y	+= uart.c
 
 bootblock-y	+= early_fch.c
 bootblock-y	+= espi_util.c
-bootblock-y	+= gpio.c
-bootblock-y	+= i2c.c
-bootblock-y	+= reset.c
-bootblock-y	+= uart.c
 
-verstage-y	+= i2c.c
 verstage-y	+= espi_util.c
-verstage_x86-y	+= gpio.c
-verstage_x86-y	+= reset.c
-verstage_x86-y	+= uart.c
 
 romstage-y	+= fsp_m_params.c
-romstage-y	+= gpio.c
-romstage-y	+= i2c.c
-romstage-y	+= reset.c
 romstage-y	+= romstage.c
-romstage-y	+= uart.c
 
 ramstage-y	+= acpi.c
 ramstage-y	+= agesa_acpi.c
 ramstage-y	+= chip.c
 ramstage-y	+= cpu.c
 ramstage-y	+= fch.c
+ramstage-y	+= fsp_misc_data_hob.c
 ramstage-y	+= fsp_s_params.c
-ramstage-y	+= gpio.c
-ramstage-y	+= i2c.c
 ramstage-y	+= mca.c
-ramstage-y	+= preload.c
-ramstage-y	+= reset.c
 ramstage-y	+= root_complex.c
-ramstage-y	+= uart.c
 ramstage-y	+= xhci.c
 
 smm-y		+= gpio.c
 smm-y		+= smihandler.c
-smm-y		+= smu.c
 smm-$(CONFIG_DEBUG_SMI) += uart.c
 
 CPPFLAGS_common += -I$(src)/soc/amd/mendocino/include
 CPPFLAGS_common += -I$(src)/soc/amd/mendocino/acpi
 CPPFLAGS_common += -I$(src)/vendorcode/amd/fsp/mendocino
-
-# allow site-local Makefile to override blobs location
-ifeq ($(MAINBOARD_BLOBS_DIR),)
-MAINBOARD_BLOBS_DIR:=$(top)/3rdparty/blobs/mainboard/$(MAINBOARDDIR)
-endif
 
 # ROMSIG Normally At ROMBASE + 0x20000
 # Overridden by CONFIG_AMD_FWM_POSITION_INDEX
@@ -153,6 +134,16 @@ PSP_BIOSBIN_DEST=$(shell $(READELF_bootblock) -Wl $(PSP_ELF_FILE) | grep LOAD | 
 APOB_NV_SIZE=$(shell awk '$$2 == "FMAP_SECTION_RW_MRC_CACHE_SIZE" {print $$3}' $(obj)/fmap_config.h)
 APOB_NV_BASE=$(shell awk '$$2 == "FMAP_SECTION_RW_MRC_CACHE_START" {print $$3}' $(obj)/fmap_config.h)
 
+ifeq ($(CONFIG_HAS_RECOVERY_MRC_CACHE),y)
+# On boards with recovery MRC cache, point type 0x63 entry to RECOVERY_MRC_CACHE.
+# Else use RW_MRC_CACHE. This entry will be added in the RO section.
+APOB_NV_RO_SIZE=$(shell awk '$$2 == "FMAP_SECTION_RECOVERY_MRC_CACHE_SIZE" {print $$3}' $(obj)/fmap_config.h)
+APOB_NV_RO_BASE=$(shell awk '$$2 == "FMAP_SECTION_RECOVERY_MRC_CACHE_START" {print $$3}' $(obj)/fmap_config.h)
+else
+APOB_NV_RO_SIZE=$(APOB_NV_SIZE)
+APOB_NV_RO_BASE=$(APOB_NV_BASE)
+endif
+
 ifeq ($(CONFIG_VBOOT_STARTS_BEFORE_BOOTBLOCK),y)
 # type = 0x6B - PSP Shared memory location
 ifneq ($(CONFIG_PSP_SHAREDMEM_SIZE),0x0)
@@ -172,8 +163,8 @@ SIGNED_AMDFW_A_POSITION=$(call int-subtract, \
 SIGNED_AMDFW_B_POSITION=$(call int-subtract, \
 	$(shell awk '$$2 == "FMAP_SECTION_SIGNED_AMDFW_B_START" {print $$3}' $(obj)/fmap_config.h) \
 	$(shell awk '$$2 == "FMAP_SECTION_FLASH_START" {print $$3}' $(obj)/fmap_config.h))
-SIGNED_AMDFW_A_FILE=$(obj)/amdfw_a.rom.signed
-SIGNED_AMDFW_B_FILE=$(obj)/amdfw_b.rom.signed
+SIGNED_AMDFW_A_FILE=$(obj)/amdfw_a.rom.body.signed
+SIGNED_AMDFW_B_FILE=$(obj)/amdfw_b.rom.body.signed
 endif # CONFIG_SEPARATE_SIGNED_PSPFW
 
 # Helper function to return a value with given bit set
@@ -205,6 +196,8 @@ OPT_PSP_SHAREDMEM_BASE=$(call add_opt_prefix, $(PSP_SHAREDMEM_BASE), --sharedmem
 OPT_PSP_SHAREDMEM_SIZE=$(call add_opt_prefix, $(PSP_SHAREDMEM_SIZE), --sharedmem-size)
 OPT_APOB_NV_SIZE=$(call add_opt_prefix, $(APOB_NV_SIZE), --apob-nv-size)
 OPT_APOB_NV_BASE=$(call add_opt_prefix, $(APOB_NV_BASE),--apob-nv-base)
+OPT_APOB_NV_RO_SIZE=$(call add_opt_prefix, $(APOB_NV_RO_SIZE), --apob-nv-size)
+OPT_APOB_NV_RO_BASE=$(call add_opt_prefix, $(APOB_NV_RO_BASE),--apob-nv-base)
 OPT_EFS_SPI_READ_MODE=$(call add_opt_prefix, $(CONFIG_EFS_SPI_READ_MODE), --spi-read-mode)
 OPT_EFS_SPI_SPEED=$(call add_opt_prefix, $(CONFIG_EFS_SPI_SPEED), --spi-speed)
 OPT_EFS_SPI_MICRON_FLAG=$(call add_opt_prefix, $(CONFIG_EFS_SPI_MICRON_FLAG), --spi-micron-flag)
@@ -225,14 +218,13 @@ OPT_RECOVERY_AB_SINGLE_COPY=$(if $(CONFIG_VBOOT_SLOTS_RW_AB), --recovery-ab-sing
 
 AMDFW_COMMON_ARGS=$(OPT_PSP_APCB_FILES) \
 		$(OPT_APOB_ADDR) \
+		$(OPT_DEBUG_AMDFWTOOL) \
 		$(OPT_PSP_BIOSBIN_FILE) \
 		$(OPT_PSP_BIOSBIN_DEST) \
 		$(OPT_PSP_BIOSBIN_SIZE) \
 		$(OPT_PSP_SOFTFUSE) \
-		$(OPT_PSP_LOAD_MP2_FW) \
 		--use-pspsecureos \
 		--load-s0i3 \
-		--combo-capable \
 		$(OPT_TOKEN_UNLOCK) \
 		$(OPT_WHITELIST_FILE) \
 		$(OPT_PSP_SHAREDMEM_BASE) \
@@ -241,9 +233,14 @@ AMDFW_COMMON_ARGS=$(OPT_PSP_APCB_FILES) \
 		$(OPT_EFS_SPI_SPEED) \
 		$(OPT_EFS_SPI_MICRON_FLAG) \
 		--config $(CONFIG_AMDFW_CONFIG_FILE) \
-		--soc-name "Mendocino" \
 		--flashsize $(CONFIG_ROM_SIZE) \
 		$(OPT_RECOVERY_AB_SINGLE_COPY)
+
+# If vBOOT is not enabled, we want the MP2 firmware in the common AMDFW
+ifeq ($(CONFIG_VBOOT),)
+AMDFW_COMMON_ARGS += $(OPT_PSP_LOAD_MP2_FW)
+OPT_PSP_LOAD_MP2_FW =
+endif
 
 $(obj)/amdfw.rom:	$(call strip_quotes, $(PSP_BIOSBIN_FILE)) \
 			$(PSP_VERSTAGE_FILE) \
@@ -253,13 +250,12 @@ $(obj)/amdfw.rom:	$(call strip_quotes, $(PSP_BIOSBIN_FILE)) \
 			$(AMDFWTOOL) \
 			$(obj)/fmap_config.h \
 			$(objcbfs)/bootblock.elf # this target also creates the .map file
-	$(if $(PSP_APCB_FILES), ,$(error APCB_SOURCES is not set))
 	rm -f $@
 	@printf "    AMDFWTOOL  $(subst $(obj)/,,$(@))\n"
 	$(AMDFWTOOL) \
 		$(AMDFW_COMMON_ARGS) \
-		$(OPT_APOB_NV_SIZE) \
-		$(OPT_APOB_NV_BASE) \
+		$(OPT_APOB_NV_RO_SIZE) \
+		$(OPT_APOB_NV_RO_BASE) \
 		$(OPT_VERSTAGE_FILE) \
 		$(OPT_VERSTAGE_SIG_FILE) \
 		$(OPT_SPL_TABLE_FILE) \
@@ -288,6 +284,7 @@ $(obj)/amdfw_a.rom: $(obj)/amdfw.rom
 		$(OPT_SPL_RW_AB_TABLE_FILE) \
 		$(OPT_SIGNED_AMDFW_A_POSITION) \
 		$(OPT_SIGNED_AMDFW_A_FILE) \
+		$(OPT_PSP_LOAD_MP2_FW) \
 		--location $(shell printf "%#x" $(MENDOCINO_FW_A_POSITION)) \
 		--body-location $(shell printf "%#x" $$(($(MENDOCINO_FW_A_POSITION) + $(MENDOCINO_FW_BODY_OFFSET)))) \
 		--anywhere \
@@ -303,46 +300,47 @@ $(obj)/amdfw_b.rom: $(obj)/amdfw.rom
 		$(OPT_SPL_RW_AB_TABLE_FILE) \
 		$(OPT_SIGNED_AMDFW_B_POSITION) \
 		$(OPT_SIGNED_AMDFW_B_FILE) \
+		$(OPT_PSP_LOAD_MP2_FW) \
 		--location $(shell printf "%#x" $(MENDOCINO_FW_B_POSITION)) \
 		--body-location $(shell printf "%#x" $$(($(MENDOCINO_FW_B_POSITION) + $(MENDOCINO_FW_BODY_OFFSET)))) \
 		--anywhere \
 		--output $@
 
-$(obj)/amdfw_a.rom.efs: $(obj)/amdfw_a.rom
-$(obj)/amdfw_b.rom.efs: $(obj)/amdfw_b.rom
+$(obj)/amdfw_a.rom.body: $(obj)/amdfw_a.rom
+$(obj)/amdfw_b.rom.body: $(obj)/amdfw_b.rom
 
 ifeq ($(CONFIG_VBOOT_SLOTS_RW_A)$(CONFIG_VBOOT_STARTS_BEFORE_BOOTBLOCK),yy)
 cbfs-files-y += apu/amdfw_a
-apu/amdfw_a-file := $(obj)/amdfw_a.rom.efs
+apu/amdfw_a-file := $(obj)/amdfw_a.rom
 apu/amdfw_a-position := $(AMD_FW_AB_POSITION)
 apu/amdfw_a-type := raw
 
 cbfs-files-y += apu/amdfw_a_body
-apu/amdfw_a_body-file := $(obj)/amdfw_a.rom
+apu/amdfw_a_body-file := $(obj)/amdfw_a.rom.body
 apu/amdfw_a_body-position := $(call int-add, $(AMD_FW_AB_POSITION) $(MENDOCINO_FW_BODY_OFFSET))
 apu/amdfw_a_body-type := raw
 endif
 
 ifeq ($(CONFIG_VBOOT_SLOTS_RW_AB)$(CONFIG_VBOOT_STARTS_BEFORE_BOOTBLOCK),yy)
 cbfs-files-y += apu/amdfw_b
-apu/amdfw_b-file := $(obj)/amdfw_b.rom.efs
+apu/amdfw_b-file := $(obj)/amdfw_b.rom
 apu/amdfw_b-position := $(AMD_FW_AB_POSITION)
 apu/amdfw_b-type := raw
 
 cbfs-files-y += apu/amdfw_b_body
-apu/amdfw_b_body-file := $(obj)/amdfw_b.rom
+apu/amdfw_b_body-file := $(obj)/amdfw_b.rom.body
 apu/amdfw_b_body-position := $(call int-add, $(AMD_FW_AB_POSITION) $(MENDOCINO_FW_BODY_OFFSET))
 apu/amdfw_b_body-type := raw
 endif
 
 ifeq ($(CONFIG_SEPARATE_SIGNED_PSPFW)$(CONFIG_VBOOT_STARTS_BEFORE_BOOTBLOCK),yy)
-build_complete:: $(obj)/amdfw_a.rom $(obj)/amdfw_b.rom
+build_complete:: $(obj)/amdfw_a.rom.body $(obj)/amdfw_b.rom.body
 	@printf "    Adding Signed ROM and HASH\n"
-	$(CBFSTOOL) $(obj)/coreboot.rom write -u -r SIGNED_AMDFW_A -i 0 -f $(obj)/amdfw_a.rom.signed
-	$(CBFSTOOL) $(obj)/coreboot.rom write -u -r SIGNED_AMDFW_B -i 0 -f $(obj)/amdfw_b.rom.signed
-	$(CBFSTOOL) $(obj)/coreboot.rom add -r FW_MAIN_A -f $(obj)/amdfw_a.rom.signed.hash \
+	$(CBFSTOOL) $(obj)/coreboot.rom write -u -r SIGNED_AMDFW_A -i 0 -f $(obj)/amdfw_a.rom.body.signed
+	$(CBFSTOOL) $(obj)/coreboot.rom write -u -r SIGNED_AMDFW_B -i 0 -f $(obj)/amdfw_b.rom.body.signed
+	$(CBFSTOOL) $(obj)/coreboot.rom add -r FW_MAIN_A -f $(obj)/amdfw_a.rom.body.signed.hash \
 		-n apu/amdfw_a_hash -t raw
-	$(CBFSTOOL) $(obj)/coreboot.rom add -r FW_MAIN_B -f $(obj)/amdfw_b.rom.signed.hash \
+	$(CBFSTOOL) $(obj)/coreboot.rom add -r FW_MAIN_B -f $(obj)/amdfw_b.rom.body.signed.hash \
 		-n apu/amdfw_b_hash -t raw
 endif
 

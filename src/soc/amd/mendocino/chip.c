@@ -1,7 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 
-/* TODO: Check if this is still correct */
-
 #include <amdblocks/data_fabric.h>
 #include <console/console.h>
 #include <device/device.h>
@@ -13,13 +11,6 @@
 #include <soc/southbridge.h>
 #include <types.h>
 #include "chip.h"
-
-struct device_operations mendocino_cpu_bus_ops = {
-	.read_resources	= noop_read_resources,
-	.set_resources	= noop_set_resources,
-	.init		= mp_cpu_bus_init,
-	.acpi_fill_ssdt	= generate_cpu_entries,
-};
 
 static const char *soc_acpi_name(const struct device *dev)
 {

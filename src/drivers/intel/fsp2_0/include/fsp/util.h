@@ -129,7 +129,7 @@ const void *fsp_get_hob_list(void);
 void *fsp_get_hob_list_ptr(void);
 const void *fsp_find_extension_hob_by_guid(const uint8_t *guid, size_t *size);
 const void *fsp_find_nv_storage_data(size_t *size);
-int fsp_find_range_hob(struct range_entry *re, const uint8_t guid[16]);
+enum cb_err fsp_find_range_hob(struct range_entry *re, const uint8_t guid[16]);
 void fsp_display_fvi_version_hob(void);
 void fsp_find_reserved_memory(struct range_entry *re);
 const struct hob_resource *fsp_hob_header_to_resource(
@@ -137,12 +137,19 @@ const struct hob_resource *fsp_hob_header_to_resource(
 const struct hob_header *fsp_next_hob(const struct hob_header *parent);
 bool fsp_guid_compare(const uint8_t guid1[16], const uint8_t guid2[16]);
 void fsp_find_bootloader_tolum(struct range_entry *re);
+bool fsp_display_error_info(void);
+void display_fsp_error_info_hob(const void *hob);
 void fsp_get_version(char *buf);
 /* fsp_verify_upd_header_signature calls die() on signature mismatch */
 void fsp_verify_upd_header_signature(uint64_t upd_signature, uint64_t expected_signature);
 void lb_string_platform_blob_version(struct lb_header *header);
 void report_fspt_output(void);
 void soc_validate_fspm_header(const struct fsp_header *hdr);
+/*
+ * This function finds the FSP resource HOB for the given GUID.
+ * Returns the pointer to the HOB if found, otherwise NULL
+ */
+const void *fsp_find_resource_hob_by_guid(const uint8_t *guid);
 
 /* Fill in header and validate a loaded FSP component. */
 enum cb_err fsp_validate_component(struct fsp_header *hdr, void *fsp_blob, size_t size);

@@ -5,8 +5,33 @@
  * Chapter number: 5.1
  */
 
+#include <assert.h>
 #include <device/mmio.h>
 #include <gpio.h>
+
+enum {
+	SPI0_CLK_A = 0,
+	SPI0_CSB_A = 1,
+	SPI0_MO_A = 2,
+	SPI0_MI_A = 3,
+	TDM_RX_BCK = 4,
+	TDM_RX_MCLK = 5,
+	TDM_RX_DATA0 = 6,
+	TDM_RX_DATA1 = 7,
+};
+
+static const struct gpio_drv_info bootblock_gpio_driving_info[] = {
+	/* GPIO 36~39 */
+	[SPI0_CLK_A] = { 0x0, 9, 3, },
+	[SPI0_CSB_A] = { 0x0, 9, 3, },
+	[SPI0_MO_A] = { 0x0, 12, 3, },
+	[SPI0_MI_A] = { 0x0, 9, 3, },
+	/* GPIO 61~64 */
+	[TDM_RX_BCK] = { 0x0, 24, 3, },
+	[TDM_RX_MCLK] = { 0x0, 24, 3, },
+	[TDM_RX_DATA0] = { 0x0, 24, 3, },
+	[TDM_RX_DATA1] = { 0x0, 27, 3, },
+};
 
 static const struct gpio_drv_info gpio_driving_info[] = {
 	[0] = { 0x0, 27, 3, },
@@ -253,97 +278,56 @@ void *gpio_find_reg_addr(gpio_t gpio)
 	return reg_addr;
 }
 
-static inline bool is_valid_drv(uint8_t drv)
+const struct gpio_drv_info *get_gpio_driving_info(uint32_t raw_id)
 {
-	return drv <= GPIO_DRV_16_MA;
+	if (ENV_BOOTBLOCK) {
+		uint32_t id;
+
+		switch (raw_id) {
+		case GPIO_ID(SPI0_CLK):
+			id = SPI0_CLK_A;
+			break;
+		case GPIO_ID(SPI0_CSB):
+			id = SPI0_CSB_A;
+			break;
+		case GPIO_ID(SPI0_MO):
+			id = SPI0_MO_A;
+			break;
+		case GPIO_ID(SPI0_MI):
+			id = SPI0_MI_A;
+			break;
+		case GPIO_ID(TDM_RX_BCK):
+			id = TDM_RX_BCK;
+			break;
+		case GPIO_ID(TDM_RX_MCLK):
+			id = TDM_RX_MCLK;
+			break;
+		case GPIO_ID(TDM_RX_DATA0):
+			id = TDM_RX_DATA0;
+			break;
+		case GPIO_ID(TDM_RX_DATA1):
+			id = TDM_RX_DATA1;
+			break;
+		default:
+			return NULL;
+		}
+
+		assert(id < ARRAY_SIZE(bootblock_gpio_driving_info));
+		return &bootblock_gpio_driving_info[id];
+	} else {
+		if (raw_id >= ARRAY_SIZE(gpio_driving_info))
+			return NULL;
+		return &gpio_driving_info[raw_id];
+	}
 }
 
-static inline bool is_valid_drv_adv(enum gpio_drv_adv drv)
+const struct gpio_drv_info *get_gpio_driving_adv_info(uint32_t raw_id)
 {
-	return drv <= GPIO_DRV_ADV_1_MA && drv >= GPIO_DRV_ADV_125_UA;
-}
-
-int gpio_set_driving(gpio_t gpio, uint8_t drv)
-{
-	uint32_t mask;
-	const struct gpio_drv_info *info = &gpio_driving_info[gpio.id];
-	const struct gpio_drv_info *adv_info = &gpio_driving_adv_info[gpio.id];
-	void *reg, *reg_adv;
-
-	if (!is_valid_drv(drv))
-		return -1;
-
-	reg = gpio_find_reg_addr(gpio) + info->offset;
-	reg_adv = gpio_find_reg_addr(gpio) + adv_info->offset;
-
-	if (info->width == 0)
-		return -1;
-
-	mask = BIT(info->width) - 1;
-	/* Check setting value is not beyond width */
-	if ((uint32_t)drv > mask)
-		return -1;
-
-	clrsetbits32(reg, mask << info->shift, drv << info->shift);
-
-	/* Disable EH if supported */
-	if (adv_info->width != 0)
-		clrbits32(reg_adv, BIT(adv_info->shift));
-
-	return 0;
-}
-
-int gpio_get_driving(gpio_t gpio)
-{
-	const struct gpio_drv_info *info = &gpio_driving_info[gpio.id];
-	void *reg;
-
-	reg = gpio_find_reg_addr(gpio) + info->offset;
-	if (info->width == 0)
-		return -1;
-
-	return (read32(reg) >> info->shift) & (BIT(info->width) - 1);
-}
-
-int gpio_set_driving_adv(gpio_t gpio, enum gpio_drv_adv drv)
-{
-	uint32_t mask;
-	const struct gpio_drv_info *adv_info = &gpio_driving_adv_info[gpio.id];
-	void *reg_adv;
-
-	if (!is_valid_drv_adv(drv))
-		return -1;
-
-	reg_adv = gpio_find_reg_addr(gpio) + adv_info->offset;
-
-	if (adv_info->width == 0)
-		return -1;
-
-	/* Not include EH bit (the lowest bit) */
-	if ((uint32_t)drv > (BIT(adv_info->width - 1) - 1))
-		return -1;
-
-	mask = BIT(adv_info->width) - 1;
-	/* EH enable */
-	drv = (drv << 1) | BIT(0);
-
-	clrsetbits32(reg_adv, mask << adv_info->shift, drv << adv_info->shift);
-
-	return 0;
-}
-
-int gpio_get_driving_adv(gpio_t gpio)
-{
-	const struct gpio_drv_info *adv_info = &gpio_driving_adv_info[gpio.id];
-	void *reg_adv;
-	uint32_t drv;
-
-	reg_adv = gpio_find_reg_addr(gpio) + adv_info->offset;
-	if (adv_info->width == 0)
-		return -1;
-
-	drv = (read32(reg_adv) >> adv_info->shift) & (BIT(adv_info->width) - 1);
-
-	/* Drop EH bit */
-	return drv >> 1;
+	if (ENV_BOOTBLOCK) {
+		return NULL;
+	} else {
+		if (raw_id >= ARRAY_SIZE(gpio_driving_adv_info))
+			return NULL;
+		return &gpio_driving_adv_info[raw_id];
+	}
 }

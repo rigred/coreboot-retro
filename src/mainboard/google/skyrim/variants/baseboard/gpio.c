@@ -73,8 +73,8 @@ static const struct soc_amd_gpio base_gpio_table[] = {
 	/* WWAN_RST_L */
 	PAD_GPO(GPIO_42, HIGH),
 	/* GPIO_43 - GPIO_66: Not available */
-	/* GPIO_67 */
-	PAD_GPI(GPIO_67, PULL_NONE),
+	/* GPIO_67 (Unused) */
+	PAD_NC(GPIO_67),
 	/* ESPI1_DATA2 */
 	PAD_NF(GPIO_68, SPI1_DAT2, PULL_NONE),
 	/* ESPI1_DATA3 */
@@ -168,11 +168,6 @@ static const struct soc_amd_gpio tpm_gpio_table[] = {
 	PAD_INT(GPIO_18, PULL_NONE, EDGE_LOW, STATUS_DELIVERY),
 };
 
-/* GPIO configuration for sleep */
-static const struct soc_amd_gpio sleep_gpio_table[] = {
-	/* TODO: Fill sleep gpio configuration */
-};
-
 /* GPIO configuration in bootblock */
 static const struct soc_amd_gpio bootblock_gpio_table[] = {
 	/* Enable WLAN */
@@ -201,6 +196,8 @@ static const struct soc_amd_gpio romstage_gpio_table[] = {
 	PAD_NFO(GPIO_27, PCIE_RST1_L, HIGH),
 	/* SSD_AUX_RESET_L */
 	PAD_GPO(GPIO_6, HIGH),
+	/* CLK_REQ0_L / SSD */
+	PAD_NF(GPIO_92, CLK_REQ0_L, PULL_NONE),
 	/* Enable touchscreen, hold in reset */
 	/* EN_PP3300_TCHSCR */
 	PAD_GPO(GPIO_131, HIGH),
@@ -248,12 +245,6 @@ __weak void variant_early_override_gpio_table(const struct soc_amd_gpio **gpio, 
 {
 	*size = 0;
 	*gpio = NULL;
-}
-
-__weak void variant_sleep_gpio_table(const struct soc_amd_gpio **gpio, size_t *size)
-{
-	*size = ARRAY_SIZE(sleep_gpio_table);
-	*gpio = sleep_gpio_table;
 }
 
 __weak void variant_espi_gpio_table(const struct soc_amd_gpio **gpio, size_t *size)

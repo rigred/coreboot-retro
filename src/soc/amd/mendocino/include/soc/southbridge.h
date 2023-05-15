@@ -1,7 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 
-/* TODO: Check if this is still correct */
-
 #ifndef AMD_MENDOCINO_SOUTHBRIDGE_H
 #define AMD_MENDOCINO_SOUTHBRIDGE_H
 
@@ -13,7 +11,7 @@
 #define PM_PCI_CTRL			0x08
 #define   FORCE_SLPSTATE_RETRY		BIT(25)
 #define PWR_RESET_CFG			0x10
-#define   TOGGLE_ALL_PWR_GOOD		(1 << 1)
+#define   TOGGLE_ALL_PWR_GOOD		BIT(1)
 #define PM_SERIRQ_CONF			0x54
 #define   PM_SERIRQ_NUM_BITS_17		0x0000
 #define   PM_SERIRQ_NUM_BITS_18		0x0004

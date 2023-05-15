@@ -15,7 +15,6 @@
 #include <intelblocks/cpulib.h>
 #include <intelblocks/mp_init.h>
 #include <intelpch/lockdown.h>
-#include <soc/cpu.h>
 #include <soc/msr.h>
 #include <soc/pci_devs.h>
 #include <soc/pm.h>
@@ -79,8 +78,9 @@ static void each_cpu_init(struct device *cpu)
 {
 	msr_t msr;
 
-	printk(BIOS_SPEW, "%s dev: %s, cpu: %lu, apic_id: 0x%x\n",
-		__func__, dev_path(cpu), cpu_index(), cpu->path.apic.apic_id);
+	printk(BIOS_SPEW, "%s dev: %s, cpu: %lu, apic_id: 0x%x, package_id: 0x%x\n",
+	       __func__, dev_path(cpu), cpu_index(), cpu->path.apic.apic_id,
+	       cpu->path.apic.package_id);
 
 	/*
 	 * Set HWP base feature, EPP reg enumeration, lock thermal and msr
@@ -127,9 +127,9 @@ static struct device_operations cpu_dev_ops = {
 };
 
 static const struct cpu_device_id cpu_table[] = {
-	{X86_VENDOR_INTEL, CPUID_COOPERLAKE_SP_A0},
-	{X86_VENDOR_INTEL, CPUID_COOPERLAKE_SP_A1},
-	{0, 0},
+	{X86_VENDOR_INTEL, CPUID_COOPERLAKE_SP_A0, CPUID_EXACT_MATCH_MASK },
+	{X86_VENDOR_INTEL, CPUID_COOPERLAKE_SP_A1, CPUID_EXACT_MATCH_MASK },
+	CPU_TABLE_END
 };
 
 static const struct cpu_driver driver __cpu_driver = {
@@ -211,7 +211,7 @@ static const struct mp_ops mp_ops = {
 	.post_mp_init = post_mp_init,
 };
 
-void cpx_init_cpus(struct device *dev)
+void mp_init_cpus(struct bus *bus)
 {
 	microcode_patch = intel_microcode_find();
 
@@ -221,14 +221,11 @@ void cpx_init_cpus(struct device *dev)
 	intel_microcode_load_unlocked(microcode_patch);
 
 	/* TODO: Handle mp_init_with_smm failure? */
-	mp_init_with_smm(dev->link_list, &mp_ops);
+	mp_init_with_smm(bus, &mp_ops);
 
 	/*
 	 * chip_config is used in cpu device callback. Other than cpu 0,
 	 * rest of the CPU devices do not have chip_info updated.
 	 */
-	chip_config = dev->chip_info;
-
-	/* update numa domain for all cpu devices */
-	xeonsp_init_cpu_config();
+	chip_config = bus->dev->chip_info;
 }

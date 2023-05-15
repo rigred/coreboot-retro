@@ -15,10 +15,9 @@ enum {
 	/* RAM IDs */
 	RAM_ID_LOW_CHANNEL = 2,
 	RAM_ID_HIGH_CHANNEL = 3,
-	/* SKU ID */
-	SKU_ID_CHANNEL = 4,
-	/* PANEL ID */
-	PANEL_ID_CHANNEL = 5,
+	/* PANEL IDs */
+	PANEL_ID_HIGH_CHANNEL = 4,
+	PANEL_ID_LOW_CHANNEL = 5,
 };
 
 static const unsigned int ram_voltages[ADC_LEVELS] = {
@@ -56,8 +55,8 @@ static const unsigned int panel_voltages[ADC_LEVELS] = {
 static const unsigned int *adc_voltages[] = {
 	[RAM_ID_LOW_CHANNEL] = ram_voltages,
 	[RAM_ID_HIGH_CHANNEL] = ram_voltages,
-	[SKU_ID_CHANNEL] = ram_voltages,
-	[PANEL_ID_CHANNEL] = panel_voltages,
+	[PANEL_ID_HIGH_CHANNEL] = panel_voltages,
+	[PANEL_ID_LOW_CHANNEL] = panel_voltages,
 };
 
 static uint32_t get_adc_index(unsigned int channel)
@@ -84,7 +83,8 @@ uint32_t panel_id(void)
 	static uint32_t cached_panel_id = BOARD_ID_INIT;
 
 	if (cached_panel_id == BOARD_ID_INIT)
-		cached_panel_id = get_adc_index(PANEL_ID_CHANNEL);
+		cached_panel_id = get_adc_index(PANEL_ID_HIGH_CHANNEL) << 4 |
+				  get_adc_index(PANEL_ID_LOW_CHANNEL);
 
 	return cached_panel_id;
 }
@@ -96,9 +96,13 @@ uint32_t sku_id(void)
 	if (cached_sku_code == BOARD_ID_INIT) {
 		cached_sku_code = google_chromeec_get_board_sku();
 
-		if (cached_sku_code == CROS_SKU_UNKNOWN) {
-			printk(BIOS_WARNING, "Failed to get SKU code from EC\n");
-			cached_sku_code = get_adc_index(SKU_ID_CHANNEL);
+		if (cached_sku_code == CROS_SKU_UNKNOWN ||
+		    cached_sku_code == CROS_SKU_UNPROVISIONED) {
+			printk(BIOS_WARNING, "SKU code from EC: %s\n",
+			       (cached_sku_code == CROS_SKU_UNKNOWN) ?
+			       "CROS_SKU_UNKNOWN" : "CROS_SKU_UNPROVISIONED");
+			/* Reserve last 8 bits to report PANEL_IDs */
+			cached_sku_code = 0x7FFFFF00UL | panel_id();
 		}
 		printk(BIOS_DEBUG, "SKU Code: %#02x\n", cached_sku_code);
 	}

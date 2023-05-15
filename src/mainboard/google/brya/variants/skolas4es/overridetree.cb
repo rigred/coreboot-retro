@@ -46,6 +46,10 @@ chip soc/intel/alderlake
 
 	register "sagv" = "SaGv_Enabled"
 
+	# As per Intel Advisory doc#723158, the change is required to prevent possible
+	# display flickering issue.
+	register "disable_dynamic_tccold_handshake" = "true"
+
 	register "platform_pmax" = "145"
 
 	register "usb2_ports[7]" = "USB2_PORT_MID(OC_SKIP)"	# Type-A MLB Port
@@ -258,6 +262,7 @@ chip soc/intel/alderlake
 				register "srcclk_pin" = "5"
 				register "ext_pm_support" = "ACPI_PCIE_RP_EMIT_ALL"
 				register "skip_on_off_support" = "true"
+				register "use_rp_mutex" = "true"
 				device generic 0 alias rp6_rtd3 on
 					probe DB_LTE LTE_PCIE
 				end
@@ -786,6 +791,7 @@ chip soc/intel/alderlake
 						register "type" = "UPC_TYPE_C_USB2_SS_SWITCH"
 						register "use_custom_pld" = "true"
 						register "custom_pld" = "ACPI_PLD_TYPE_C(RIGHT, LEFT, ACPI_PLD_GROUP(2, 1))"
+						register "usb_lpm_incapable" = "true"
 						device ref tcss_usb3_port2 on end
 					end
 					chip drivers/usb/acpi

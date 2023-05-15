@@ -16,7 +16,6 @@
 #include <cbmem.h>
 #include <commonlib/helpers.h>
 #include <device/pci_ids.h>
-#include <device/pci_def.h>
 #include <device/pci.h>
 #include <drivers/vpd/vpd.h>
 #include <stdlib.h>
@@ -46,7 +45,7 @@ int smbios_add_string(u8 *start, const char *str)
 	 * Return 0 as required for empty strings.
 	 * See Section 6.1.3 "Text Strings" of the SMBIOS specification.
 	 */
-	if (*str == '\0')
+	if (str == NULL || *str == '\0')
 		return 0;
 
 	for (;;) {
@@ -121,8 +120,8 @@ static int smbios_processor_name(u8 *start)
 	const char *str = "Unknown Processor Name";
 	if (cpu_have_cpuid()) {
 		int i;
-		struct cpuid_result res = cpuid(0x80000000);
-		if (res.eax >= 0x80000004) {
+		struct cpuid_result res;
+		if (cpu_cpuid_extended_level() >= 0x80000004) {
 			int j = 0;
 			for (i = 0; i < 3; i++) {
 				res = cpuid(0x80000002 + i);
@@ -401,17 +400,23 @@ static int smbios_write_type0(unsigned long *current, int handle)
 static int get_socket_type(void)
 {
 	if (CONFIG(CPU_INTEL_SLOT_1))
-		return 0x08;
+		return PROCESSOR_UPGRADE_SLOT_1;
 	if (CONFIG(CPU_INTEL_SOCKET_MPGA604))
-		return 0x13;
+		return PROCESSOR_UPGRADE_SOCKET_MPGA604;
 	if (CONFIG(CPU_INTEL_SOCKET_LGA775))
-		return 0x15;
-	if (CONFIG(XEON_SP_COMMON_BASE))
-		return 0x36;
+		return PROCESSOR_UPGRADE_SOCKET_LGA775;
 	if (CONFIG(SOC_INTEL_ALDERLAKE))
-		return 0x40;
+		return PROCESSOR_UPGRADE_SOCKET_LGA1700;
+	if (CONFIG(SOC_INTEL_METEORLAKE))
+		return PROCESSOR_UPGRADE_OTHER;
+	if (CONFIG(SOC_INTEL_SKYLAKE_SP))
+		return PROCESSOR_UPGRADE_SOCKET_LGA3647_1;
+	if (CONFIG(SOC_INTEL_COOPERLAKE_SP))
+		return PROCESSOR_UPGRADE_SOCKET_LGA4189;
+	if (CONFIG(SOC_INTEL_SAPPHIRERAPIDS_SP))
+		return PROCESSOR_UPGRADE_SOCKET_LGA4677;
 
-	return 0x02; /* Unknown */
+	return PROCESSOR_UPGRADE_UNKNOWN;
 }
 
 unsigned int __weak smbios_processor_external_clock(void)

@@ -5,6 +5,7 @@
 #include <cpu/x86/lapic_def.h>
 #include <device/pci.h>
 #include <device/pci_ids.h>
+#include <drivers/ocp/include/vpd.h>
 #include <soc/acpi.h>
 #include <soc/iomap.h>
 #include <soc/pci_devs.h>
@@ -13,7 +14,14 @@
 #include <fsp/util.h>
 #include <security/intel/txt/txt_platform.h>
 #include <security/intel/txt/txt.h>
+#include <soc/numa.h>
+#include <soc/soc_util.h>
 #include <stdint.h>
+
+struct proximity_domains pds = {
+	.num_pds = 0,
+	.pds = NULL,
+};
 
 struct map_entry {
 	uint32_t    reg;
@@ -29,6 +37,9 @@ enum {
 	MMCFG_BASE_REG,
 	MMCFG_LIMIT_REG,
 	TOLM_REG,
+	/* NCMEM and ME ranges are mutually exclusive */
+	NCMEM_BASE_REG,
+	NCMEM_LIMIT_REG,
 	ME_BASE_REG,
 	ME_LIMIT_REG,
 	TSEG_BASE_REG,
@@ -43,8 +54,13 @@ static struct map_entry memory_map[NUM_MAP_ENTRIES] = {
 		[MMCFG_BASE_REG] = MAP_ENTRY_BASE_64(VTD_MMCFG_BASE_CSR, "MMCFG_BASE"),
 		[MMCFG_LIMIT_REG] = MAP_ENTRY_LIMIT_64(VTD_MMCFG_LIMIT_CSR, 26, "MMCFG_LIMIT"),
 		[TOLM_REG] = MAP_ENTRY_LIMIT_32(VTD_TOLM_CSR, 26, "TOLM"),
+#if CONFIG(SOC_INTEL_HAS_NCMEM)
+		[NCMEM_BASE_REG] = MAP_ENTRY_BASE_64(VTD_NCMEM_BASE_CSR, "NCMEM_BASE"),
+		[NCMEM_LIMIT_REG] = MAP_ENTRY_LIMIT_64(VTD_NCMEM_LIMIT_CSR, 19, "NCMEM_LIMIT"),
+#else
 		[ME_BASE_REG] = MAP_ENTRY_BASE_64(VTD_ME_BASE_CSR, "ME_BASE"),
 		[ME_LIMIT_REG] = MAP_ENTRY_LIMIT_64(VTD_ME_LIMIT_CSR, 19, "ME_LIMIT"),
+#endif
 		[TSEG_BASE_REG] = MAP_ENTRY_BASE_32(VTD_TSEG_BASE_CSR, "TSEGMB_BASE"),
 		[TSEG_LIMIT_REG] = MAP_ENTRY_LIMIT_32(VTD_TSEG_LIMIT_CSR, 20, "TSEGMB_LIMIT"),
 };
@@ -146,6 +162,8 @@ static void configure_dpr(struct device *dev)
  * |     Tseg (relocatable)   | N x 8MB (0x70000000 - 0x77ffffff, 0x20000)
  * +--------------------------+
  * |     DPR                  |
+ * +--------------------------+ 1M aligned DPR base
+ * |     Unused memory        |
  * +--------------------------+ cbmem_top
  * |     Reserved - CBMEM     | (0x6fffe000 - 0x6fffffff, 0x2000)
  * +--------------------------+
@@ -168,7 +186,9 @@ static void mc_add_dram_resources(struct device *dev, int *res_count)
 {
 	const struct resource *res;
 	uint64_t mc_values[NUM_MAP_ENTRIES];
+	uint64_t top_of_ram;
 	int index = *res_count;
+	struct range_entry fsp_mem;
 
 	/* Only add dram resources once. */
 	if (dev->bus->secondary != 0)
@@ -182,32 +202,93 @@ static void mc_add_dram_resources(struct device *dev, int *res_count)
 	res = ram_from_to(dev, index++, 0, 0xa0000);
 	LOG_RESOURCE("legacy_ram", dev, res);
 
-	/* 1MB -> top_of_ram i.e., cbmem_top */
-	res = ram_from_to(dev, index++, 1 * MiB, (uintptr_t)cbmem_top());
+	/* 1MB -> top_of_ram */
+	fsp_find_reserved_memory(&fsp_mem);
+	top_of_ram = range_entry_base(&fsp_mem) - 1;
+	res = ram_from_to(dev, index++, 1 * MiB, top_of_ram);
 	LOG_RESOURCE("low_ram", dev, res);
+
+	/* top_of_ram -> cbmem_top */
+	res = ram_from_to(dev, index++, top_of_ram, (uintptr_t)cbmem_top());
+	LOG_RESOURCE("cbmem_ram", dev, res);
 
 	/* Mark TSEG/SMM region as reserved */
 	res = reserved_ram_from_to(dev, index++, mc_values[TSEG_BASE_REG],
 				   mc_values[TSEG_LIMIT_REG] + 1);
 	LOG_RESOURCE("mmio_tseg", dev, res);
 
-	/* Reserve and set up DPR */
-	configure_dpr(dev);
+	/* Reserve DPR region */
 	union dpr_register dpr = { .raw = pci_read_config32(dev, VTD_LTDPR) };
 	if (dpr.size) {
+		/*
+		 * cbmem_top -> DPR base:
+		 * DPR has a 1M granularity so it's possible if cbmem_top is not 1M
+		 * aligned that some memory does not get marked as assigned.
+		 */
+		res = reserved_ram_from_to(dev, index++, (uintptr_t)cbmem_top(),
+			(dpr.top - dpr.size) * MiB);
+		LOG_RESOURCE("unused_dram", dev, res);
+
+		/* DPR base -> DPR top */
 		res = reserved_ram_from_to(dev, index++, (dpr.top - dpr.size) * MiB,
 					   dpr.top * MiB);
 		LOG_RESOURCE("dpr", dev, res);
+
 	}
+
+	/* Mark TSEG/SMM region as reserved */
+	res = reserved_ram_from_to(dev, index++, mc_values[TSEG_BASE_REG],
+				   mc_values[TSEG_LIMIT_REG] + 1);
+	LOG_RESOURCE("mmio_tseg", dev, res);
 
 	/* Mark region between TSEG - TOLM (eg. MESEG) as reserved */
 	res = reserved_ram_from_to(dev, index++, mc_values[TSEG_LIMIT_REG] + 1,
 				   mc_values[TOLM_REG]);
 	LOG_RESOURCE("mmio_tolm", dev, res);
 
-	/* 4GiB -> TOHM */
-	res = upper_ram_end(dev, index++, mc_values[TOHM_REG] + 1);
-	LOG_RESOURCE("high_ram", dev, res);
+	if (CONFIG(SOC_INTEL_HAS_CXL)) {
+		/* 4GiB -> CXL Memory */
+		uint32_t gi_mem_size;
+		gi_mem_size = get_generic_initiator_mem_size(); /* unit: 64MB */
+		/*
+		 * Memory layout when there is CXL HDM (Host-managed Device Memory):
+		 * --------------  <- TOHM
+		 * CXL memory regions (pds global variable records the base/size of them)
+		 * Processor attached high memory
+		 * --------------  <- 0x100000000 (4GB)
+		 */
+		res = upper_ram_end(dev, index++,
+			mc_values[TOHM_REG] - ((uint64_t)gi_mem_size << 26) + 1);
+		LOG_RESOURCE("high_ram", dev, res);
+
+		/* CXL Memory */
+		uint8_t i;
+		for (i = 0; i < pds.num_pds; i++) {
+			if (pds.pds[i].pd_type == PD_TYPE_PROCESSOR)
+				continue;
+
+			if (CONFIG(OCP_VPD)) {
+				unsigned long flags = IORESOURCE_CACHEABLE;
+				int cxl_mode = get_cxl_mode_from_vpd();
+				if (cxl_mode == CXL_SPM)
+					flags |= IORESOURCE_SOFT_RESERVE;
+				else
+					flags |= IORESOURCE_STORED;
+
+				res = fixed_mem_range_flags(dev, index++,
+					(uint64_t)pds.pds[i].base << 26,
+					(uint64_t)pds.pds[i].size << 26, flags);
+				if (cxl_mode == CXL_SPM)
+					LOG_RESOURCE("specific_purpose_memory", dev, res);
+				else
+					LOG_RESOURCE("CXL_memory", dev, res);
+			}
+		}
+	} else {
+		/* 4GiB -> TOHM */
+		res = upper_ram_end(dev, index++, mc_values[TOHM_REG] + 1);
+		LOG_RESOURCE("high_ram", dev, res);
+	}
 
 	/* add MMIO CFG resource */
 	res = mmio_from_to(dev, index++, mc_values[MMCFG_BASE_REG],
@@ -238,8 +319,19 @@ static void mmapvtd_read_resources(struct device *dev)
 {
 	int index = 0;
 
+	if (CONFIG(SOC_INTEL_HAS_CXL)) {
+		/* Construct NUMA data structure. This is needed for CXL. */
+		if (fill_pds() != CB_SUCCESS)
+			pds.num_pds = 0;
+
+		dump_pds();
+	}
+
 	/* Read standard PCI resources. */
 	pci_dev_read_resources(dev);
+
+	/* set up DPR */
+	configure_dpr(dev);
 
 	/* Calculate and add DRAM resources. */
 	mc_add_dram_resources(dev, &index);
@@ -271,6 +363,7 @@ static const struct pci_driver mmapvtd_driver __pci_driver = {
 	.devices  = mmapvtd_ids
 };
 
+#if !CONFIG(SOC_INTEL_MMAPVTD_ONLY_FOR_DPR)
 static void vtd_read_resources(struct device *dev)
 {
 	pci_dev_read_resources(dev);
@@ -291,6 +384,7 @@ static const struct pci_driver vtd_driver __pci_driver = {
 	.vendor   = PCI_VID_INTEL,
 	.device   = MMAP_VTD_STACK_CFG_REG_DEVID,
 };
+#endif
 
 static void dmi3_init(struct device *dev)
 {

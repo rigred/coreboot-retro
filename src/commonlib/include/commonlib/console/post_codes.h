@@ -28,6 +28,12 @@
 #define POST_CODES_H
 
 /**
+ * \brief Not an actual post-code - used to clear port80h
+ *
+ */
+#define POST_CODE_CLEAR				0x00
+
+/**
  * \brief  Entry into 'crt0.s'. reset code jumps to here
  *
  * First instruction that gets executed after the reset vector jumps.
@@ -64,6 +70,12 @@
  * c_start.S is the first code executing in ramstage.
  */
 #define POST_ENTRY_C_START			0x13
+
+/**
+ * \brief Entry into bootblock cache-as-RAM code
+ *
+ */
+#define POST_BOOTBLOCK_CAR			0x21
 
 /**
  * \brief Entry into pci_scan_bus

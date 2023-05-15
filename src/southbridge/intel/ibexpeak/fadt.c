@@ -2,7 +2,6 @@
 
 #include <device/pci_ops.h>
 #include <acpi/acpi.h>
-#include <cpu/x86/smm.h>
 #include <southbridge/intel/common/pmutil.h>
 #include "chip.h"
 
@@ -12,13 +11,6 @@ void acpi_fill_fadt(acpi_fadt_t *fadt)
 	struct southbridge_intel_ibexpeak_config *chip = dev->chip_info;
 	u16 pmbase = pci_read_config16(dev, 0x40) & 0xfffe;
 
-	fadt->sci_int = 0x9;
-
-	if (permanent_smi_handler()) {
-		fadt->smi_cmd = APM_CNT;
-		fadt->acpi_enable = APM_CNT_ACPI_ENABLE;
-		fadt->acpi_disable = APM_CNT_ACPI_DISABLE;
-	}
 
 	fadt->pm1a_evt_blk = pmbase;
 	fadt->pm1a_cnt_blk = pmbase + PM1_CNT;
@@ -31,14 +23,7 @@ void acpi_fill_fadt(acpi_fadt_t *fadt)
 	fadt->pm2_cnt_len = 1;
 	fadt->pm_tmr_len = 4;
 	fadt->gpe0_blk_len = 16;
-	/* P_LVLx not used */
-	fadt->p_lvl2_lat = 101;
-	fadt->p_lvl3_lat = 1001;
-	/* P_CNT not supported */
-	fadt->duty_offset = 0;
-	fadt->duty_width = 0;
-	fadt->day_alrm = 0xd;
-	fadt->mon_alrm = 0x00;
+
 	fadt->iapc_boot_arch = ACPI_FADT_LEGACY_DEVICES | ACPI_FADT_8042;
 
 	fadt->flags |= ACPI_FADT_WBINVD |

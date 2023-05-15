@@ -110,13 +110,13 @@ static struct device_operations cpu_dev_ops = {
 };
 
 static const struct cpu_device_id cpu_table[] = {
-	{ X86_VENDOR_INTEL, CPUID_APOLLOLAKE_A0 },
-	{ X86_VENDOR_INTEL, CPUID_APOLLOLAKE_B0 },
-	{ X86_VENDOR_INTEL, CPUID_APOLLOLAKE_E0 },
-	{ X86_VENDOR_INTEL, CPUID_GLK_A0 },
-	{ X86_VENDOR_INTEL, CPUID_GLK_B0 },
-	{ X86_VENDOR_INTEL, CPUID_GLK_R0 },
-	{ 0, 0 },
+	{ X86_VENDOR_INTEL, CPUID_APOLLOLAKE_A0, CPUID_EXACT_MATCH_MASK },
+	{ X86_VENDOR_INTEL, CPUID_APOLLOLAKE_B0, CPUID_EXACT_MATCH_MASK },
+	{ X86_VENDOR_INTEL, CPUID_APOLLOLAKE_E0, CPUID_EXACT_MATCH_MASK },
+	{ X86_VENDOR_INTEL, CPUID_GLK_A0, CPUID_EXACT_MATCH_MASK },
+	{ X86_VENDOR_INTEL, CPUID_GLK_B0, CPUID_EXACT_MATCH_MASK },
+	{ X86_VENDOR_INTEL, CPUID_GLK_R0, CPUID_EXACT_MATCH_MASK },
+	CPU_TABLE_END
 };
 
 static const struct cpu_driver driver __cpu_driver = {
@@ -262,18 +262,15 @@ static const struct mp_ops mp_ops = {
 	.post_mp_init = post_mp_init,
 };
 
-void soc_init_cpus(struct bus *cpu_bus)
+void mp_init_cpus(struct bus *cpu_bus)
 {
 	/* Clear for take-off */
 	/* TODO: Handle mp_init_with_smm failure? */
 	mp_init_with_smm(cpu_bus, &mp_ops);
-}
 
-void apollolake_init_cpus(struct device *dev)
-{
+	/* MTRR setup happens later, so we're done here. */
 	if (CONFIG(SOC_INTEL_COMMON_BLOCK_CPU_MPINIT))
 		return;
-	soc_init_cpus(dev->link_list);
 
 	/* Temporarily cache the memory-mapped boot media. */
 	if (CONFIG(BOOT_DEVICE_MEMORY_MAPPED) &&

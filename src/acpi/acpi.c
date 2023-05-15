@@ -17,6 +17,7 @@
 #include <acpi/acpi_ivrs.h>
 #include <acpi/acpigen.h>
 #include <arch/hpet.h>
+#include <arch/smp/mpspec.h>
 #include <cbfs.h>
 #include <cbmem.h>
 #include <commonlib/helpers.h>
@@ -122,7 +123,7 @@ int acpi_create_mcfg_mmconfig(acpi_mcfg_mmconfig_t *mmconfig, u32 base,
 	return sizeof(acpi_mcfg_mmconfig_t);
 }
 
-int acpi_create_madt_lapic(acpi_madt_lapic_t *lapic, u8 cpu, u8 apic)
+static int acpi_create_madt_lapic(acpi_madt_lapic_t *lapic, u8 cpu, u8 apic)
 {
 	lapic->type = LOCAL_APIC; /* Local APIC structure */
 	lapic->length = sizeof(acpi_madt_lapic_t);
@@ -133,7 +134,7 @@ int acpi_create_madt_lapic(acpi_madt_lapic_t *lapic, u8 cpu, u8 apic)
 	return lapic->length;
 }
 
-int acpi_create_madt_lx2apic(acpi_madt_lx2apic_t *lapic, u32 cpu, u32 apic)
+static int acpi_create_madt_lx2apic(acpi_madt_lx2apic_t *lapic, u32 cpu, u32 apic)
 {
 	lapic->type = LOCAL_X2APIC; /* Local APIC structure */
 	lapic->reserved = 0;
@@ -145,28 +146,53 @@ int acpi_create_madt_lx2apic(acpi_madt_lx2apic_t *lapic, u32 cpu, u32 apic)
 	return lapic->length;
 }
 
-unsigned long acpi_create_madt_lapics(unsigned long current)
+unsigned long acpi_create_madt_one_lapic(unsigned long current, u32 index, u32 lapic_id)
+{
+	if (lapic_id <= ACPI_MADT_MAX_LAPIC_ID)
+		current += acpi_create_madt_lapic((acpi_madt_lapic_t *)current, index,
+						  lapic_id);
+	else
+		current += acpi_create_madt_lx2apic((acpi_madt_lx2apic_t *)current, index,
+						    lapic_id);
+
+	return current;
+}
+
+/* Increase if necessary. Currently all x86 CPUs only have 2 SMP threads */
+#define MAX_THREAD_ID 1
+/*
+ * From ACPI 6.4 spec:
+ * "The advent of multi-threaded processors yielded multiple logical processors
+ * executing on common processor hardware. ACPI defines logical processors in
+ * an identical manner as physical processors. To ensure that non
+ * multi-threading aware OSPM implementations realize optimal performance on
+ * platforms containing multi-threaded processors, two guidelines should be
+ * followed. The first is the same as above, that is, OSPM should initialize
+ * processors in the order that they appear in the MADT. The second is that
+ * platform firmware should list the first logical processor of each of the
+ * individual multi-threaded processors in the MADT before listing any of the
+ * second logical processors. This approach should be used for all successive
+ * logical processors."
+ */
+static unsigned long acpi_create_madt_lapics(unsigned long current)
 {
 	struct device *cpu;
-	int index, apic_ids[CONFIG_MAX_CPUS] = {0}, num_cpus = 0;
-
-	for (cpu = all_devices; cpu; cpu = cpu->next) {
-		if (!is_enabled_cpu(cpu))
-			continue;
-		if (num_cpus >= ARRAY_SIZE(apic_ids))
-			break;
-		apic_ids[num_cpus++] = cpu->path.apic.apic_id;
+	int index, apic_ids[CONFIG_MAX_CPUS] = {0}, num_cpus = 0, sort_start = 0;
+	for (unsigned int thread_id = 0; thread_id <= MAX_THREAD_ID; thread_id++) {
+		for (cpu = all_devices; cpu; cpu = cpu->next) {
+			if (!is_enabled_cpu(cpu))
+				continue;
+			if (num_cpus >= ARRAY_SIZE(apic_ids))
+				break;
+			if (cpu->path.apic.thread_id != thread_id)
+				continue;
+			apic_ids[num_cpus++] = cpu->path.apic.apic_id;
+		}
+		bubblesort(&apic_ids[sort_start], num_cpus - sort_start, NUM_ASCENDING);
+		sort_start = num_cpus;
 	}
-	if (num_cpus > 1)
-		bubblesort(apic_ids, num_cpus, NUM_ASCENDING);
-	for (index = 0; index < num_cpus; index++) {
-		if (apic_ids[index] < 0xff)
-			current += acpi_create_madt_lapic((acpi_madt_lapic_t *)current,
-					index, apic_ids[index]);
-		else
-			current += acpi_create_madt_lx2apic((acpi_madt_lx2apic_t *)current,
-					index, apic_ids[index]);
-	}
+	for (index = 0; index < num_cpus; index++)
+		current = acpi_create_madt_one_lapic(current, index, apic_ids[index]);
 
 	return current;
 }
@@ -200,6 +226,24 @@ int acpi_create_madt_ioapic_from_hw(acpi_madt_ioapic_t *ioapic, u32 addr)
 }
 #endif
 
+static u16 acpi_sci_int(void)
+{
+#if ENV_X86
+	u8 gsi, irq, flags;
+
+	ioapic_get_sci_pin(&gsi, &irq, &flags);
+
+	/* ACPI Release 6.5, 5.2.9 and 5.2.15.5. */
+	if (!CONFIG(ACPI_HAVE_PCAT_8259))
+		return gsi;
+
+	assert(irq < 16);
+	return irq;
+#else
+	return 0;
+#endif
+}
+
 int acpi_create_madt_irqoverride(acpi_madt_irqoverride_t *irqoverride,
 		u8 bus, u8 source, u32 gsirq, u16 flags)
 {
@@ -213,7 +257,38 @@ int acpi_create_madt_irqoverride(acpi_madt_irqoverride_t *irqoverride,
 	return irqoverride->length;
 }
 
-int acpi_create_madt_lapic_nmi(acpi_madt_lapic_nmi_t *lapic_nmi, u8 cpu,
+int acpi_create_madt_sci_override(acpi_madt_irqoverride_t *irqoverride)
+{
+	u8 gsi, irq, flags;
+
+	ioapic_get_sci_pin(&gsi, &irq, &flags);
+
+	if (!CONFIG(ACPI_HAVE_PCAT_8259))
+		irq = gsi;
+
+	irqoverride->type = IRQ_SOURCE_OVERRIDE; /* Interrupt source override */
+	irqoverride->length = sizeof(acpi_madt_irqoverride_t);
+	irqoverride->bus = MP_BUS_ISA;
+	irqoverride->source = irq;
+	irqoverride->gsirq = gsi;
+	irqoverride->flags = flags;
+
+	return irqoverride->length;
+}
+
+static unsigned long acpi_create_madt_ioapic_gsi0_default(unsigned long current)
+{
+	current += acpi_create_madt_ioapic_from_hw((acpi_madt_ioapic_t *)current, IO_APIC_ADDR);
+
+	current += acpi_create_madt_irqoverride((void *)current, MP_BUS_ISA, 0, 2,
+						MP_IRQ_TRIGGER_EDGE | MP_IRQ_POLARITY_HIGH);
+
+	current += acpi_create_madt_sci_override((void *)current);
+
+	return current;
+}
+
+static int acpi_create_madt_lapic_nmi(acpi_madt_lapic_nmi_t *lapic_nmi, u8 cpu,
 				u16 flags, u8 lint)
 {
 	lapic_nmi->type = LOCAL_APIC_NMI; /* Local APIC NMI structure */
@@ -225,7 +300,7 @@ int acpi_create_madt_lapic_nmi(acpi_madt_lapic_nmi_t *lapic_nmi, u8 cpu,
 	return lapic_nmi->length;
 }
 
-int acpi_create_madt_lx2apic_nmi(acpi_madt_lx2apic_nmi_t *lapic_nmi, u32 cpu,
+static int acpi_create_madt_lx2apic_nmi(acpi_madt_lx2apic_nmi_t *lapic_nmi, u32 cpu,
 				 u16 flags, u8 lint)
 {
 	lapic_nmi->type = LOCAL_X2APIC_NMI; /* Local APIC NMI structure */
@@ -240,11 +315,9 @@ int acpi_create_madt_lx2apic_nmi(acpi_madt_lx2apic_nmi_t *lapic_nmi, u32 cpu,
 	return lapic_nmi->length;
 }
 
-unsigned long acpi_create_madt_lapics_with_nmis(unsigned long current)
+unsigned long acpi_create_madt_lapic_nmis(unsigned long current)
 {
 	const u16 flags = MP_IRQ_TRIGGER_EDGE | MP_IRQ_POLARITY_HIGH;
-
-	current = acpi_create_madt_lapics(current);
 
 	/* 1: LINT1 connect to NMI */
 	/* create all subtables for processors */
@@ -258,7 +331,14 @@ unsigned long acpi_create_madt_lapics_with_nmis(unsigned long current)
 	return current;
 }
 
-void acpi_create_madt(acpi_madt_t *madt)
+unsigned long acpi_create_madt_lapics_with_nmis(unsigned long current)
+{
+	current = acpi_create_madt_lapics(current);
+	current = acpi_create_madt_lapic_nmis(current);
+	return current;
+}
+
+static void acpi_create_madt(acpi_madt_t *madt)
 {
 	acpi_header_t *header = &(madt->header);
 	unsigned long current = (unsigned long)madt + sizeof(acpi_madt_t);
@@ -282,7 +362,13 @@ void acpi_create_madt(acpi_madt_t *madt)
 	if (CONFIG(ACPI_HAVE_PCAT_8259))
 		madt->flags |= 1;
 
-	if (!CONFIG(ACPI_NO_MADT))
+	if (CONFIG(ACPI_COMMON_MADT_LAPIC))
+		current = acpi_create_madt_lapics_with_nmis(current);
+
+	if (CONFIG(ACPI_COMMON_MADT_IOAPIC))
+		current = acpi_create_madt_ioapic_gsi0_default(current);
+
+	if (CONFIG(ACPI_CUSTOM_MADT))
 		current = acpi_fill_madt(current);
 
 	/* (Re)calculate length and checksum. */
@@ -300,7 +386,7 @@ static unsigned long acpi_fill_mcfg(unsigned long current)
 }
 
 /* MCFG is defined in the PCI Firmware Specification 3.0. */
-void acpi_create_mcfg(acpi_mcfg_t *mcfg)
+static void acpi_create_mcfg(acpi_mcfg_t *mcfg)
 {
 	acpi_header_t *header = &(mcfg->header);
 	unsigned long current = (unsigned long)mcfg + sizeof(acpi_mcfg_t);
@@ -484,7 +570,7 @@ static void acpi_ssdt_write_cbtable(void)
 	acpigen_pop_len();
 }
 
-void acpi_create_ssdt_generator(acpi_header_t *ssdt, const char *oem_table_id)
+static void acpi_create_ssdt_generator(acpi_header_t *ssdt, const char *oem_table_id)
 {
 	unsigned long current = (unsigned long)ssdt + sizeof(acpi_header_t);
 
@@ -529,6 +615,19 @@ int acpi_create_srat_lapic(acpi_srat_lapic_t *lapic, u8 node, u8 apic)
 	lapic->apic_id = apic;
 
 	return lapic->length;
+}
+
+int acpi_create_srat_x2apic(acpi_srat_x2apic_t *x2apic, u32 node, u32 apic)
+{
+	memset((void *)x2apic, 0, sizeof(acpi_srat_x2apic_t));
+
+	x2apic->type = 2; /* Processor x2APIC structure */
+	x2apic->length = sizeof(acpi_srat_x2apic_t);
+	x2apic->flags = (1 << 0); /* Enabled (the use of this structure). */
+	x2apic->proximity_domain = node;
+	x2apic->x2apic_id = apic;
+
+	return x2apic->length;
 }
 
 int acpi_create_srat_mem(acpi_srat_mem_t *mem, u8 node, u32 basek, u32 sizek,
@@ -943,7 +1042,7 @@ void acpi_create_slit(acpi_slit_t *slit,
 }
 
 /* http://www.intel.com/hardwaredesign/hpetspec_1.pdf */
-void acpi_create_hpet(acpi_hpet_t *hpet)
+static void acpi_create_hpet(acpi_hpet_t *hpet)
 {
 	acpi_header_t *header = &(hpet->header);
 	acpi_addr_t *addr = &(hpet->addr);
@@ -1284,7 +1383,7 @@ unsigned long acpi_write_hpet(const struct device *device, unsigned long current
 	return current;
 }
 
-void acpi_create_dbg2(acpi_dbg2_header_t *dbg2,
+static void acpi_create_dbg2(acpi_dbg2_header_t *dbg2,
 		      int port_type, int port_subtype,
 		      acpi_addr_t *address, uint32_t address_size,
 		      const char *device_path)
@@ -1405,7 +1504,7 @@ unsigned long acpi_write_dbg2_pci_uart(acpi_rsdp_t *rsdp, unsigned long current,
 	return current;
 }
 
-void acpi_create_facs(acpi_facs_t *facs)
+static void acpi_create_facs(acpi_facs_t *facs)
 {
 	memset((void *)facs, 0, sizeof(acpi_facs_t));
 
@@ -1582,7 +1681,7 @@ void acpi_write_hest(acpi_hest_t *hest,
 }
 
 /* ACPI 3.0b */
-void acpi_write_bert(acpi_bert_t *bert, uintptr_t region, size_t length)
+static void acpi_write_bert(acpi_bert_t *bert, uintptr_t region, size_t length)
 {
 	acpi_header_t *header = &(bert->header);
 
@@ -1610,7 +1709,7 @@ __weak void arch_fill_fadt(acpi_fadt_t *fadt) { }
 __weak void soc_fill_fadt(acpi_fadt_t *fadt) { }
 __weak void mainboard_fill_fadt(acpi_fadt_t *fadt) { }
 
-void acpi_create_fadt(acpi_fadt_t *fadt, acpi_facs_t *facs, void *dsdt)
+static void acpi_create_fadt(acpi_fadt_t *fadt, acpi_facs_t *facs, void *dsdt)
 {
 	acpi_header_t *header = &(fadt->header);
 
@@ -1639,10 +1738,17 @@ void acpi_create_fadt(acpi_fadt_t *fadt, acpi_facs_t *facs, void *dsdt)
 	/* should be 0 ACPI 3.0 */
 	fadt->reserved = 0;
 
+	/* P_LVLx latencies are not used as CPU _CST will override them. */
+	fadt->p_lvl2_lat = ACPI_FADT_C2_NOT_SUPPORTED;
+	fadt->p_lvl3_lat = ACPI_FADT_C3_NOT_SUPPORTED;
+
+	/* Use CPU _PTC instead to provide P_CNT details. */
+	fadt->duty_offset = 0;
+	fadt->duty_width = 0;
+
 	fadt->preferred_pm_profile = acpi_get_preferred_pm_profile();
 
-	if (CONFIG(USE_PC_CMOS_ALTCENTURY))
-		fadt->century = RTC_CLK_ALTCENTURY;
+	fadt->sci_int = acpi_sci_int();
 
 	arch_fill_fadt(fadt);
 
@@ -1655,7 +1761,7 @@ void acpi_create_fadt(acpi_fadt_t *fadt, acpi_facs_t *facs, void *dsdt)
 	    acpi_checksum((void *)fadt, header->length);
 }
 
-void acpi_create_lpit(acpi_lpit_t *lpit)
+static void acpi_create_lpit(acpi_lpit_t *lpit)
 {
 	acpi_header_t *header = &(lpit->header);
 	unsigned long current = (unsigned long)lpit + sizeof(acpi_lpit_t);
@@ -1751,6 +1857,7 @@ unsigned long write_acpi_tables(unsigned long start)
 		for (void *p = (void *)current; p < (void *)fw; p += 16) {
 			if (valid_rsdp((acpi_rsdp_t *)p)) {
 				rsdp = p;
+				coreboot_rsdp = (uintptr_t)rsdp;
 				break;
 			}
 		}
@@ -1799,6 +1906,7 @@ unsigned long write_acpi_tables(unsigned long start)
 	    || dsdt_file->length < sizeof(acpi_header_t)
 	    || memcmp(dsdt_file->signature, "DSDT", 4) != 0) {
 		printk(BIOS_ERR, "Invalid DSDT file, skipping ACPI tables\n");
+		cbfs_unmap(dsdt_file);
 		return current;
 	}
 
@@ -1808,6 +1916,7 @@ unsigned long write_acpi_tables(unsigned long start)
 		|| slic_file->length < sizeof(acpi_header_t)
 		|| (memcmp(slic_file->signature, "SLIC", 4) != 0
 		    && memcmp(slic_file->signature, "MSDM", 4) != 0))) {
+		cbfs_unmap(slic_file);
 		slic_file = 0;
 	}
 
@@ -1892,7 +2001,16 @@ unsigned long write_acpi_tables(unsigned long start)
 		current += slic_file->length;
 		current = acpi_align_current(current);
 		acpi_add_table(rsdp, slic);
+		cbfs_unmap(slic_file);
 	}
+
+	/*
+	 * cbfs_unmap() uses mem_pool_free() which works correctly only
+	 * if freeing is done in reverse order than memory allocation.
+	 * This is why unmapping of dsdt_file must be done after
+	 * unmapping slic file.
+	 */
+	cbfs_unmap(dsdt_file);
 
 	printk(BIOS_DEBUG, "ACPI:     * SSDT\n");
 	ssdt = (acpi_header_t *)current;

@@ -8,28 +8,21 @@ ifeq ($(CONFIG_SOC_AMD_GLINDA),y)
 subdirs-$(CONFIG_VBOOT_STARTS_BEFORE_BOOTBLOCK) += psp_verstage
 
 # Beware that all-y also adds the compilation unit to verstage on PSP
-all-y		+= config.c
 all-y		+= aoac.c
+all-y		+= config.c
+all-y		+= i2c.c
+
+# all_x86-y adds the compilation unit to all stages that run on the x86 cores
+all_x86-y	+= gpio.c
+all_x86-y	+= uart.c
 
 bootblock-y	+= early_fch.c
 bootblock-y	+= espi_util.c
-bootblock-y	+= gpio.c
-bootblock-y	+= i2c.c
-bootblock-y	+= reset.c
-bootblock-y	+= uart.c
 
-verstage-y	+= i2c.c
 verstage-y	+= espi_util.c
-verstage_x86-y	+= gpio.c
-verstage_x86-y	+= reset.c
-verstage_x86-y	+= uart.c
 
 romstage-y	+= fsp_m_params.c
-romstage-y	+= gpio.c
-romstage-y	+= i2c.c
-romstage-y	+= reset.c
 romstage-y	+= romstage.c
-romstage-y	+= uart.c
 
 ramstage-y	+= acpi.c
 ramstage-y	+= agesa_acpi.c
@@ -37,26 +30,18 @@ ramstage-y	+= chip.c
 ramstage-y	+= cpu.c
 ramstage-y	+= fch.c
 ramstage-y	+= fsp_s_params.c
-ramstage-y	+= gpio.c
-ramstage-y	+= i2c.c
 ramstage-y	+= mca.c
-ramstage-y	+= preload.c
-ramstage-y	+= reset.c
 ramstage-y	+= root_complex.c
-ramstage-y	+= uart.c
 ramstage-y	+= xhci.c
 
 smm-y		+= gpio.c
 smm-y		+= smihandler.c
-smm-y		+= smu.c
 smm-$(CONFIG_DEBUG_SMI) += uart.c
 
 CPPFLAGS_common += -I$(src)/soc/amd/glinda/include
 CPPFLAGS_common += -I$(src)/soc/amd/glinda/acpi
 CPPFLAGS_common += -I$(src)/vendorcode/amd/fsp/glinda
 CPPFLAGS_common += -I$(src)/vendorcode/amd/fsp/common
-
-MAINBOARD_BLOBS_DIR:=$(top)/3rdparty/blobs/mainboard/$(MAINBOARDDIR)
 
 # ROMSIG Normally At ROMBASE + 0x20000
 # Overridden by CONFIG_AMD_FWM_POSITION_INDEX
@@ -69,10 +54,8 @@ MAINBOARD_BLOBS_DIR:=$(top)/3rdparty/blobs/mainboard/$(MAINBOARDDIR)
 $(if $(CONFIG_AMD_FWM_POSITION_INDEX), ,\
      $(error Invalid AMD firmware position index. Check if the board sets a valid ROM size))
 
-GLINDA_FWM_POSITION=$(call int-add, \
-	$(call int-subtract, 0xffffffff \
-	$(call int-shift-left, \
-	0x80000 $(CONFIG_AMD_FWM_POSITION_INDEX))) 0x20000 1)
+# Fixed EFS location
+GLINDA_FWM_POSITION=0xff020000
 
 # 0x40 accounts for the cbfs_file struct + filename + metadata structs, aligned to 64 bytes
 # Building the cbfs image will fail if the offset isn't large enough
@@ -221,6 +204,7 @@ OPT_RECOVERY_AB_SINGLE_COPY=$(if $(CONFIG_VBOOT_SLOTS_RW_AB), --recovery-ab-sing
 
 AMDFW_COMMON_ARGS=$(OPT_PSP_APCB_FILES) \
 		$(OPT_APOB_ADDR) \
+		$(OPT_DEBUG_AMDFWTOOL) \
 		$(OPT_PSP_BIOSBIN_FILE) \
 		$(OPT_PSP_BIOSBIN_DEST) \
 		$(OPT_PSP_BIOSBIN_SIZE) \
@@ -228,7 +212,6 @@ AMDFW_COMMON_ARGS=$(OPT_PSP_APCB_FILES) \
 		$(OPT_PSP_LOAD_MP2_FW) \
 		--use-pspsecureos \
 		--load-s0i3 \
-		--combo-capable \
 		$(OPT_TOKEN_UNLOCK) \
 		$(OPT_WHITELIST_FILE) \
 		$(OPT_PSP_SHAREDMEM_BASE) \
@@ -237,7 +220,6 @@ AMDFW_COMMON_ARGS=$(OPT_PSP_APCB_FILES) \
 		$(OPT_EFS_SPI_SPEED) \
 		$(OPT_EFS_SPI_MICRON_FLAG) \
 		--config $(CONFIG_AMDFW_CONFIG_FILE) \
-		--soc-name "Glinda" \
 		--flashsize $(CONFIG_ROM_SIZE) \
 		$(OPT_RECOVERY_AB_SINGLE_COPY)
 
@@ -249,7 +231,6 @@ $(obj)/amdfw.rom:	$(call strip_quotes, $(PSP_BIOSBIN_FILE)) \
 			$(AMDFWTOOL) \
 			$(obj)/fmap_config.h \
 			$(objcbfs)/bootblock.elf # this target also creates the .map file
-	$(if $(PSP_APCB_FILES), ,$(error APCB_SOURCES is not set))
 	rm -f $@
 	@printf "    AMDFWTOOL  $(subst $(obj)/,,$(@))\n"
 	$(AMDFWTOOL) \

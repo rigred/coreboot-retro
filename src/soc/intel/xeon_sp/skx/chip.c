@@ -3,8 +3,8 @@
 #include <cbfs.h>
 #include <console/console.h>
 #include <device/pci.h>
+#include <gpio.h>
 #include <intelblocks/acpi.h>
-#include <intelblocks/gpio.h>
 #include <soc/acpi.h>
 #include <soc/chip_common.h>
 #include <soc/pch.h>
@@ -28,16 +28,14 @@ static struct device_operations pci_domain_ops = {
 	.scan_bus = &xeonsp_pci_domain_scan_bus,
 #if CONFIG(HAVE_ACPI_TABLES)
 	.write_acpi_tables  = &northbridge_write_acpi_tables,
-	#if CONFIG(HAVE_ACPI_TABLES)
 	.acpi_name        = soc_acpi_name
-#endif
 #endif
 };
 
 static struct device_operations cpu_bus_ops = {
 	.read_resources = noop_read_resources,
 	.set_resources = noop_set_resources,
-	.init = xeon_sp_init_cpus,
+	.init = mp_cpu_bus_init,
 #if CONFIG(HAVE_ACPI_TABLES)
 	/* defined in src/soc/intel/common/block/acpi/acpi.c */
 	.acpi_fill_ssdt = generate_cpu_entries,

@@ -2,9 +2,9 @@
 
 #include <console/console.h>
 #include <cpu/x86/smm.h>
+#include <halt.h>
 #include <southbridge/intel/bd82x6x/pch.h>
 #include <southbridge/intel/bd82x6x/me.h>
-#include <southbridge/intel/common/pmbase.h>
 #include <northbridge/intel/sandybridge/sandybridge.h>
 #include <ec/smsc/mec1308/ec.h>
 #include "ec.h"
@@ -20,7 +20,7 @@ static u8 mainboard_smi_ec(void)
 		printk(BIOS_DEBUG, "LID CLOSED, SHUTDOWN\n");
 
 		/* Go to S5 */
-		write_pmbase32(PM1_CNT, read_pmbase32(PM1_CNT) | (0xf << 10));
+		poweroff();
 		break;
 	}
 
@@ -47,12 +47,12 @@ int mainboard_smi_apmc(u8 apmc)
 	ec_set_ports(EC_MAILBOX_PORT, EC_MAILBOX_PORT+1);
 
 	switch (apmc) {
-	case 0xe1: /* ACPI ENABLE */
+	case APM_CNT_ACPI_ENABLE:
 		send_ec_command(EC_SMI_DISABLE);
 		send_ec_command(EC_ACPI_ENABLE);
 		break;
 
-	case 0x1e: /* ACPI DISABLE */
+	case APM_CNT_ACPI_DISABLE:
 		send_ec_command(EC_SMI_ENABLE);
 		send_ec_command(EC_ACPI_DISABLE);
 		break;

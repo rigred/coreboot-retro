@@ -6,6 +6,7 @@
 #include <cpu/intel/cpu_ids.h>
 #include <device/device.h>
 #include <drivers/wifi/generic/wifi.h>
+#include <elog.h>
 #include <fsp/fsp_debug_event.h>
 #include <fsp/util.h>
 #include <gpio.h>
@@ -20,6 +21,8 @@
 #include <soc/romstage.h>
 #include <soc/soc_chip.h>
 #include <string.h>
+
+#include "ux.h"
 
 #define FSP_CLK_NOTUSED			0xFF
 #define FSP_CLK_LAN			0x70
@@ -227,7 +230,7 @@ static void fill_fspm_misc_params(FSP_M_CONFIG *m_cfg,
 		m_cfg->CnviDdrRfim = wifi_generic_cnvi_ddr_rfim_enabled(dev);
 
 	/* Skip MBP HOB */
-	m_cfg->SkipMbpHob = config->skip_mbp_hob;
+	m_cfg->SkipMbpHob = !CONFIG(FSP_PUBLISH_MBP_HOB);
 }
 
 static void fill_fspm_audio_params(FSP_M_CONFIG *m_cfg,
@@ -239,13 +242,7 @@ static void fill_fspm_audio_params(FSP_M_CONFIG *m_cfg,
 	m_cfg->PchHdaIDispLinkTmode = config->pch_hda_idisp_link_tmode;
 	m_cfg->PchHdaIDispLinkFrequency = config->pch_hda_idisp_link_frequency;
 	m_cfg->PchHdaIDispCodecDisconnect = !config->pch_hda_idisp_codec_enable;
-	/*
-	 * All the PchHdaAudioLink{Hda|Dmic|Ssp|Sndw}Enable UPDs are used by FSP only to
-	 * configure GPIO pads for audio. Mainboard is expected to perform all GPIO
-	 * configuration in coreboot and hence these UPDs are set to 0 to skip FSP GPIO
-	 * configuration for audio pads.
-	 */
-	m_cfg->PchHdaAudioLinkHdaEnable = 0;
+	m_cfg->PchHdaAudioLinkHdaEnable = config->pch_hda_audio_link_hda_enable;
 	memset(m_cfg->PchHdaAudioLinkDmicEnable, 0, sizeof(m_cfg->PchHdaAudioLinkDmicEnable));
 	memset(m_cfg->PchHdaAudioLinkSspEnable, 0, sizeof(m_cfg->PchHdaAudioLinkSspEnable));
 	memset(m_cfg->PchHdaAudioLinkSndwEnable, 0, sizeof(m_cfg->PchHdaAudioLinkSndwEnable));
@@ -267,6 +264,11 @@ static void fill_fspm_tcss_params(FSP_M_CONFIG *m_cfg,
 	/* TCSS DMA */
 	m_cfg->TcssDma0En = is_devfn_enabled(SA_DEVFN_TCSS_DMA0);
 	m_cfg->TcssDma1En = is_devfn_enabled(SA_DEVFN_TCSS_DMA1);
+
+#if CONFIG(SOC_INTEL_RAPTORLAKE)
+	m_cfg->DisableDynamicTccoldHandshake =
+			config->disable_dynamic_tccold_handshake;
+#endif
 }
 
 static void fill_fspm_usb4_params(FSP_M_CONFIG *m_cfg,
@@ -297,6 +299,8 @@ static void fill_fspm_vtd_params(FSP_M_CONFIG *m_cfg,
 	m_cfg->VtdIopEnable = !m_cfg->VtdDisable;
 	m_cfg->VtdIgdEnable = m_cfg->InternalGfx;
 	m_cfg->VtdIpuEnable = m_cfg->SaIpuEnable;
+
+	m_cfg->PreBootDmaMask = CONFIG(ENABLE_EARLY_DMA_PROTECTION);
 
 	if (m_cfg->VtdIgdEnable && m_cfg->VtdBaseAddress[VTD_GFX] == 0) {
 		m_cfg->VtdIgdEnable = 0;
@@ -415,6 +419,16 @@ void platform_fsp_memory_init_params_cb(FSPM_UPD *mupd, uint32_t version)
 			m_cfg->SerialDebugMrcLevel = 0;
 		}
 	}
+
+	/*
+	 * If valid MRC cache data is not found, FSP should perform a memory
+	 * training. Memory training can take a while so let's inform the end
+	 * user with an on-screen text message.
+	 */
+	if (!arch_upd->NvsBufferPtr) {
+		if (ux_inform_user_of_update_operation("memory training"))
+			elog_add_event_byte(ELOG_TYPE_FW_EARLY_SOL, ELOG_FW_EARLY_SOL_MRC);
+	}
 	config = config_of_soc();
 
 	soc_memory_init_params(m_cfg, config);
@@ -423,6 +437,9 @@ void platform_fsp_memory_init_params_cb(FSPM_UPD *mupd, uint32_t version)
 	/* Override the memory init params through runtime debug capability */
 	if (CONFIG(SOC_INTEL_COMMON_BASECODE_DEBUG_FEATURE))
 		debug_override_memory_init_params(m_cfg);
+
+	if (CONFIG(HWBASE_STATIC_MMIO))
+		m_cfg->GttMmAdr = CONFIG_GFX_GMA_DEFAULT_MMIO;
 }
 
 __weak void mainboard_memory_init_params(FSPM_UPD *memupd)

@@ -80,7 +80,7 @@
   csrrw  t0,mscratch,x0
   csrr   s0,mstatus
   csrr   t1,mepc
-  csrr   t2,mbadaddr
+  csrr   t2,mtval
   csrr   t3,mcause
   STORE  t0,2*REGBYTES(x2)
   STORE  s0,32*REGBYTES(x2)
@@ -110,7 +110,7 @@ trap_entry:
 .Lsmp_hang:
   bnez sp, .Lsmp_hang
 
-  # Use a different stack than in the main context, to to avoid overwriting
+  # Use a different stack than in the main context, to avoid overwriting
   # stack data.
   # TODO: Maybe use the old stack pointer (plus an offset) instead. But only if
   # the previous mode was M, because it would be a very bad idea to use a stack

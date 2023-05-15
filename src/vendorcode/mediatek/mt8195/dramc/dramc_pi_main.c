@@ -151,6 +151,7 @@ void vSetVcoreByFreq(DRAMC_CTX_T *p)
     //int ret;
 
     vio18 = vcore = vdram = vddq = vmddr = 0;
+    (void)vio18;
 
 #if __ETT__
     hqa_set_voltage_by_freq(p, &vio18, &vcore, &vdram, &vddq, &vmddr);
@@ -1439,7 +1440,7 @@ static void vCalibration_Flow_LP4(DRAMC_CTX_T *p)
         DramcTxWindowPerbitCal(p, TX_DQ_DQS_MOVE_DQ_ONLY, FALSE, AUTOK_OFF);
 
 #if TX_K_DQM_WITH_WDBI
-        if ((p->DBI_W_onoff[p->dram_fsp]==DBI_ON))
+        if (p->DBI_W_onoff[p->dram_fsp]==DBI_ON)
         {
 
             //mcSHOW_DBG_MSG(("[TX_K_DQM_WITH_WDBI] Step1: K DQM with DBI_ON, and check DQM window spec.\n\n"));

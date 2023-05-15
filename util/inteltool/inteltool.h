@@ -9,7 +9,7 @@
 
 #include <stdint.h>
 
-#if defined(__GLIBC__)
+#if defined(__linux__)
 #include <sys/io.h>
 #endif
 #if (defined(__MACH__) && defined(__APPLE__))
@@ -223,6 +223,9 @@ static inline uint32_t inl(unsigned port)
 #define PCI_DEVICE_ID_INTEL_C256		0x438d
 #define PCI_DEVICE_ID_INTEL_W580		0x438f
 
+#define PCI_DEVICE_ID_INTEL_H610E		0x7a92
+#define PCI_DEVICE_ID_INTEL_Q670E		0x7a91
+#define PCI_DEVICE_ID_INTEL_R680E		0x7a90
 #define PCI_DEVICE_ID_INTEL_H610		0x7a87
 #define PCI_DEVICE_ID_INTEL_B660		0x7a86
 #define PCI_DEVICE_ID_INTEL_H670		0x7a85
@@ -298,6 +301,7 @@ static inline uint32_t inl(unsigned port)
 #define PCI_DEVICE_ID_INTEL_RPL_P		0x519d
 
 #define PCI_DEVICE_ID_INTEL_EHL			0x4b00
+#define PCI_DEVICE_ID_INTEL_JSL			0x4d87
 
 /* untested, but almost identical to D-series */
 #define PCI_DEVICE_ID_INTEL_ATOM_NXXX	0xa010
@@ -498,6 +502,7 @@ int print_gfx(struct pci_dev *gfx);
 int print_ahci(struct pci_dev *ahci);
 int print_sgx(void);
 void print_tme(void);
+void print_keylocker(void);
 void ivybridge_dump_timings(const char *dump_spd_file);
 
 #endif

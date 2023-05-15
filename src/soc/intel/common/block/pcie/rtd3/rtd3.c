@@ -131,6 +131,13 @@ pcie_rtd3_acpi_method_on(unsigned int pcie_rp,
 
 	acpigen_write_method_serialized("_ON", 0);
 
+	/* When this feature is enabled, ONSK indicates if the previous _OFF was
+	 * skipped. If so, since the device was not in Off state, and the current
+	 * _ON can be skipped as well.
+	 */
+	if (config->skip_on_off_support)
+		acpigen_write_if_lequal_namestr_int("ONSK", 0);
+
 	/* The _STA returns current power status of device, so we can skip _ON
 	 * if _STA returns 1
 	 * Example:
@@ -147,13 +154,9 @@ pcie_rtd3_acpi_method_on(unsigned int pcie_rp,
 	acpigen_write_return_op(ONE_OP);
 	acpigen_write_if_end();
 
-
-	/* When this feature is enabled, ONSK indicates if the previous _OFF was
-	 * skipped. If so, since the device was not in Off state, and the current
-	 * _ON can be skipped as well.
-	 */
-	if (config->skip_on_off_support)
-		acpigen_write_if_lequal_namestr_int("ONSK", 0);
+	if (config->use_rp_mutex)
+		acpigen_write_acquire(acpi_device_path_join(parent, RP_MUTEX_NAME),
+			ACPI_MUTEX_NO_TIMEOUT);
 
 	/* Disable modPHY power gating for PCH RPs. */
 	if (rp_type == PCIE_RP_PCH)
@@ -181,6 +184,9 @@ pcie_rtd3_acpi_method_on(unsigned int pcie_rp,
 	if (!config->disable_l23)
 		pcie_rtd3_acpi_l23_exit();
 
+	if (config->use_rp_mutex)
+		acpigen_write_release(acpi_device_path_join(parent, RP_MUTEX_NAME));
+
 	if (config->skip_on_off_support) {
 		/* If current _ON is skipped, ONSK is decremented so that _ON will be
 		 * executed normally until _OFF is skipped again.
@@ -197,8 +203,12 @@ pcie_rtd3_acpi_method_on(unsigned int pcie_rp,
 static void
 pcie_rtd3_acpi_method_off(int pcie_rp,
 			  const struct soc_intel_common_block_pcie_rtd3_config *config,
-			  enum pcie_rp_type rp_type)
+			  enum pcie_rp_type rp_type,
+			  const struct device *dev)
+
 {
+	const struct device *parent = dev->bus->dev;
+
 	acpigen_write_method_serialized("_OFF", 0);
 
 	/* When this feature is enabled, ONSK is checked to see if the device
@@ -208,6 +218,10 @@ pcie_rtd3_acpi_method_off(int pcie_rp,
 	 */
 	if (config->skip_on_off_support)
 		acpigen_write_if_lequal_namestr_int("OFSK", 0);
+
+	if (config->use_rp_mutex)
+		acpigen_write_acquire(acpi_device_path_join(parent, RP_MUTEX_NAME),
+			ACPI_MUTEX_NO_TIMEOUT);
 
 	/* Trigger L23 ready entry flow unless disabled by config. */
 	if (!config->disable_l23)
@@ -235,6 +249,9 @@ pcie_rtd3_acpi_method_off(int pcie_rp,
 			acpigen_write_sleep(config->enable_off_delay_ms);
 	}
 
+	if (config->use_rp_mutex)
+		acpigen_write_release(acpi_device_path_join(parent, RP_MUTEX_NAME));
+
 	if (config->skip_on_off_support) {
 		/* If current _OFF is skipped, ONSK is incremented so that the
 		 * following _ON will also be skipped. In addition, OFSK is decremented
@@ -260,25 +277,40 @@ pcie_rtd3_acpi_method_status(const struct soc_intel_common_block_pcie_rtd3_confi
 	const struct acpi_gpio *gpio;
 
 	acpigen_write_method("_STA", 0);
+	/*
+	 * Depending on the board configuration we use either the "enable" or
+	 * the "reset" pin to detect the status of the device. The logic for
+	 * each pin is detailed below.
+	 *
+	 * 1. For the "enable" pin:
+	 * | polarity    | tx value | get_tx_gpio() | State |
+	 * |-------------+----------+---------------+-------|
+	 * | active high |     0    |     0         |   0   |
+	 * | active high |     1    |     1(active) |   1   |
+	 * | active low  |     0    |     1(active) |   1   |
+	 * | active low  |     1    |     0         |   0   |
+	 *
+	 * 2. For the "reset" pin:
+	 * | polarity    | tx value | get_tx_gpio() | State |
+	 * |-------------+----------+---------------+-------|
+	 * | active high |     0    |     0         |   1   |
+	 * | active high |     1    |     1(active) |   0   |
+	 * | active low  |     0    |     1(active) |   0   |
+	 * | active low  |     1    |     0         |   1   |
+	 */
 
 	/* Use enable GPIO for status if provided, otherwise use reset GPIO. */
-	if (config->enable_gpio.pin_count)
+	if (config->enable_gpio.pin_count) {
 		gpio = &config->enable_gpio;
-	else
+		/* Read current GPIO state into Local0. */
+		acpigen_get_tx_gpio(gpio);
+	} else {
 		gpio = &config->reset_gpio;
-
-	/* Read current GPIO value into Local0. */
-	acpigen_get_tx_gpio(gpio);
-
-	/* Ensure check works for both active low and active high GPIOs. */
-	acpigen_write_store_int_to_op(gpio->active_low, LOCAL1_OP);
-
-	acpigen_write_if_lequal_op_op(LOCAL0_OP, LOCAL1_OP);
-	acpigen_write_return_op(ZERO_OP);
-	acpigen_write_else();
-	acpigen_write_return_op(ONE_OP);
-	acpigen_pop_len(); /* Else */
-
+		/* Read current GPIO state into Local0. */
+		acpigen_get_tx_gpio(gpio);
+		acpigen_write_not(LOCAL0_OP, LOCAL0_OP);
+	}
+	acpigen_write_return_op(LOCAL0_OP);
 	acpigen_pop_len(); /* Method */
 }
 
@@ -387,9 +419,10 @@ static void pcie_rtd3_acpi_fill_ssdt(const struct device *dev)
 			return;
 		}
 	}
-	if (config->srcclk_pin == 0) {
+	if (config->srcclk_pin == -1) {
 		if (config->ext_pm_support & ACPI_PCIE_RP_EMIT_SRCK) {
-			printk(BIOS_ERR, "%s: Can not export SRCK method\n", __func__);
+			printk(BIOS_ERR, "%s: Can not export SRCK method since clock source gating is not enabled\n",
+				__func__);
 			return;
 		}
 	}
@@ -407,6 +440,9 @@ static void pcie_rtd3_acpi_fill_ssdt(const struct device *dev)
 
 	/* The RTD3 power resource is added to the root port, not the device. */
 	acpigen_write_scope(scope);
+
+	if (config->use_rp_mutex)
+		acpigen_write_mutex(RP_MUTEX_NAME, 0);
 
 	if (config->desc)
 		acpigen_write_name_string("_DDN", config->desc);
@@ -450,7 +486,7 @@ static void pcie_rtd3_acpi_fill_ssdt(const struct device *dev)
 
 	pcie_rtd3_acpi_method_status(config);
 	pcie_rtd3_acpi_method_on(pcie_rp, config, rp_type, dev);
-	pcie_rtd3_acpi_method_off(pcie_rp, config, rp_type);
+	pcie_rtd3_acpi_method_off(pcie_rp, config, rp_type, dev);
 	acpigen_pop_len(); /* PowerResource */
 
 	/* Indicate to the OS that device supports hotplug in D3. */
@@ -476,7 +512,10 @@ static void pcie_rtd3_acpi_fill_ssdt(const struct device *dev)
 		acpigen_write_device(acpi_device_name(dev));
 		acpigen_write_ADR(0);
 		acpigen_write_STA(ACPI_STATUS_DEVICE_ALL_ON);
-		acpigen_write_name_integer("_S0W", ACPI_DEVICE_SLEEP_D3_COLD);
+		if (CONFIG(D3COLD_SUPPORT))
+			acpigen_write_name_integer("_S0W", ACPI_DEVICE_SLEEP_D3_COLD);
+		else
+			acpigen_write_name_integer("_S0W", ACPI_DEVICE_SLEEP_D3_HOT);
 
 		acpi_device_add_storage_d3_enable(NULL);
 

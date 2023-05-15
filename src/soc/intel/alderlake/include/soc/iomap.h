@@ -23,6 +23,22 @@
 #define PCH_PRESERVED_BASE_ADDRESS	0xfc800000
 #define PCH_PRESERVED_BASE_SIZE		0x02000000
 
+/* North (Intel) TraceHub Software. */
+#define NTH_SW_BASE_ADDRESS	0xfc000000
+#define NTH_SW_BASE_SIZE	0x800000
+
+/* North (Intel) TraceHub Firmware. */
+#define NTH_FW_BASE_ADDRESS	0xfae00000
+#define NTH_FW_BASE_SIZE	0x200000
+
+/* North (Intel) TraceHub Memory storage controller Trace Buffer. */
+#define NTH_MTB_BASE_ADDRESS	0xfad00000
+#define NTH_MTB_BASE_SIZE	0x100000
+
+/* North (Intel) TraceHub Real Time Instruction Trace. */
+#define NTH_RTIT_BASE_ADDRESS	0xfacfc000
+#define NTH_RTIT_BASE_SIZE	0x4000
+
 #define UART_BASE_SIZE		0x1000
 
 #define UART_BASE_0_ADDRESS	0xfe03e000
@@ -88,6 +104,13 @@
 #define IOM_BASE_SIZE		0x1600
 
 /*
+ * If MAINBOARD_HAS_EARLY_LIBGFXINIT is set, the following memory space is used
+ * at least temporarily in romstage and ramstage as the Intel Graphics Device
+ * Base Address Range 0. */
+#define IGD_BASE_ADDRESS	CONFIG_GFX_GMA_DEFAULT_MMIO
+#define IGD_BASE_SIZE		0x1000000
+
+/*
  * I/O port address space
  */
 #define SMBUS_BASE_ADDRESS	0x0efa0
@@ -100,6 +123,10 @@
 #define TCO_BASE_SIZE		0x20
 
 #define P2SB_BAR		CONFIG_PCR_BASE_ADDRESS
+#if CONFIG(SOC_INTEL_ALDERLAKE_PCH_S)
+#define P2SB_SIZE		(256 * MiB)
+#else
 #define P2SB_SIZE		(16 * MiB)
+#endif
 
 #endif

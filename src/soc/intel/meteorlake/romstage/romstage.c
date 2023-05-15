@@ -114,27 +114,31 @@ static void save_dimm_info(void)
 		}
 	}
 	mem_info->dimm_cnt = index;
-	printk(BIOS_DEBUG, "%d DIMMs found\n", mem_info->dimm_cnt);
+	if (mem_info->dimm_cnt == 0)
+		printk(BIOS_ERR, "No DIMMs found\n");
+	else
+		printk(BIOS_DEBUG, "%d DIMMs found\n", mem_info->dimm_cnt);
 }
 
 void mainboard_romstage_entry(void)
 {
-	bool s3wake;
 	struct chipset_power_state *ps = pmc_get_power_state();
+	bool s3wake = pmc_fill_power_state(ps) == ACPI_S3;
+
+	/* Initialize HECI interface */
+	cse_init(HECI1_BASE_ADDRESS);
+
+	if (!s3wake && CONFIG(SOC_INTEL_CSE_LITE_SKU))
+		cse_fw_sync();
+
+	/* Update coreboot timestamp table with CSE timestamps */
+	if (CONFIG(SOC_INTEL_CSE_PRE_CPU_RESET_TELEMETRY))
+		cse_get_telemetry_data();
 
 	/* Program MCHBAR, DMIBAR, GDXBAR and EDRAMBAR */
 	systemagent_early_init();
 	/* Program SMBus base address and enable it */
 	smbus_common_init();
-	/* Initialize HECI interface */
-	cse_init(HECI1_BASE_ADDRESS);
-
-	s3wake = pmc_fill_power_state(ps) == ACPI_S3;
-	if (!s3wake && CONFIG(SOC_INTEL_CSE_LITE_SKU)) {
-		timestamp_add_now(TS_CSE_FW_SYNC_START);
-		cse_fw_sync();
-		timestamp_add_now(TS_CSE_FW_SYNC_END);
-	}
 
 	/*
 	 * Set low maximum temp threshold value used for dynamic thermal sensor

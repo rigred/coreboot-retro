@@ -15,6 +15,7 @@
 #include <soc/cpu.h>
 #include <soc/iomap.h>
 #include <console/console.h>
+#include <types.h>
 
 /*
  * MP and SMM loading initialization.
@@ -60,9 +61,9 @@ static struct device_operations cpu_dev_ops = {
 };
 
 static struct cpu_device_id cpu_table[] = {
-	{ X86_VENDOR_AMD, 0x660f01 },
-	{ X86_VENDOR_AMD, 0x670f00 },
-	{ 0, 0 },
+	{ X86_VENDOR_AMD, CPUID_FROM_FMS(0x15, 0x60, 0), CPUID_ALL_STEPPINGS_MASK },
+	{ X86_VENDOR_AMD, CPUID_FROM_FMS(0x15, 0x70, 0), CPUID_ALL_STEPPINGS_MASK },
+	CPU_TABLE_END
 };
 
 static const struct cpu_driver model_15 __cpu_driver = {

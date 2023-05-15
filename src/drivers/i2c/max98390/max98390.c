@@ -6,8 +6,9 @@
 #include <device/i2c.h>
 #include <device/device.h>
 #include <device/path.h>
+#include <identity.h>
 #include <stdint.h>
-#include <vendorcode/google/chromeos/chromeos.h>
+#include <vendorcode/google/dsm_calib.h>
 #include "chip.h"
 
 #define MAX98390_ACPI_HID "MX98390"
@@ -46,7 +47,7 @@ static void max98390_fill_ssdt(const struct device *dev)
 	acpigen_write_resourcetemplate_footer();
 
 	/* Device Properties */
-	if (CONFIG(CHROMEOS_DSM_CALIB)) {
+	if (CONFIG(GOOGLE_DSM_CALIB)) {
 		if (get_dsm_calibration_from_key(config->r0_calib_key, &r0_value)
 		    || get_dsm_calibration_from_key(config->temperature_calib_key,
 						    &temp_value)) {
@@ -62,14 +63,14 @@ static void max98390_fill_ssdt(const struct device *dev)
 		}
 	}
 
-	if (CONFIG(CHROMEOS_DSM_PARAM_FILE_NAME)) {
+	if (CONFIG(GOOGLE_DSM_PARAM_FILE_NAME)) {
 		if (config->dsm_param_file_name) {
 			if (!dp)
 				dp = acpi_dp_new_table("_DSD");
 
 			size_t chars = snprintf(dsm_name, sizeof(dsm_name), "%s_%s_%s.bin",
-					config->dsm_param_file_name, CONFIG_MAINBOARD_VENDOR,
-					CONFIG_MAINBOARD_PART_NUMBER);
+					config->dsm_param_file_name, mainboard_vendor,
+					mainboard_part_number);
 
 			if (chars >= sizeof(dsm_name))
 				printk(BIOS_ERR, "String too long in %s\n", __func__);

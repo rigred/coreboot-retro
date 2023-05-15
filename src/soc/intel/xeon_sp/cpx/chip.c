@@ -6,13 +6,12 @@
 #include <cpu/x86/mp.h>
 #include <device/pci.h>
 #include <device/pci_ids.h>
+#include <gpio.h>
 #include <intelblocks/acpi.h>
-#include <intelblocks/gpio.h>
 #include <intelblocks/lpc_lib.h>
 #include <intelblocks/p2sb.h>
 #include <soc/acpi.h>
 #include <soc/chip_common.h>
-#include <soc/cpu.h>
 #include <soc/pch.h>
 #include <soc/soc_pch.h>
 #include <soc/ramstage.h>
@@ -49,7 +48,7 @@ static struct device_operations pci_domain_ops = {
 static struct device_operations cpu_bus_ops = {
 	.read_resources = noop_read_resources,
 	.set_resources = noop_set_resources,
-	.init = cpx_init_cpus,
+	.init = mp_cpu_bus_init,
 	.acpi_fill_ssdt = generate_cpu_entries,
 };
 

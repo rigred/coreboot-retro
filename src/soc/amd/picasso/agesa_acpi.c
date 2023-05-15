@@ -8,7 +8,6 @@
 #include <amdblocks/data_fabric.h>
 #include <amdblocks/ioapic.h>
 #include <cpu/amd/cpuid.h>
-#include <cpu/amd/msr.h>
 #include <cpu/cpu.h>
 #include <device/device.h>
 #include <device/mmio.h>
@@ -547,17 +546,18 @@ uintptr_t agesa_write_acpi_tables(const struct device *device, uintptr_t current
 	struct acpi_crat_header *crat;
 
 	/* CRAT */
-	current = ALIGN_UP(current, 8);
+	current = acpi_align_current(current);
 	crat = (struct acpi_crat_header *)current;
 	acpi_create_crat(crat, acpi_fill_crat);
 	current += crat->header.length;
 	acpi_add_table(rsdp, crat);
 
 	/* add ALIB SSDT from HOB */
+	current = acpi_align_current(current);
 	current = add_agesa_fsp_acpi_table(AMD_FSP_ACPI_ALIB_HOB_GUID, "ALIB", rsdp, current);
 
 	/* IVRS */
-	current = ALIGN_UP(current, 8);
+	current = acpi_align_current(current);
 	ivrs = (acpi_ivrs_t *)current;
 	acpi_create_ivrs(ivrs, acpi_fill_ivrs);
 	current += ivrs->header.length;

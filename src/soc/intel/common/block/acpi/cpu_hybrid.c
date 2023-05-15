@@ -1,79 +1,127 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
+#include <acpi/acpi.h>
 #include <acpi/acpigen.h>
-#include <intelblocks/acpi.h>
-#include <soc/cpu.h>
-#include <smp/spinlock.h>
-#include <device/device.h>
-#include <device/path.h>
+#include <bootstate.h>
+#include <commonlib/sort.h>
 #include <cpu/x86/lapic.h>
 #include <cpu/x86/mp.h>
+#include <cpu/cpu.h>
+#include <device/path.h>
+#include <intelblocks/acpi.h>
+#include <soc/cpu.h>
+#include <types.h>
 
 #define CPPC_NOM_FREQ_IDX	22
 #define CPPC_NOM_PERF_IDX	3
 
 enum cpu_perf_eff_type {
-	CPU_TYPE_SMALL,
-	CPU_TYPE_BIG,
+	CPU_TYPE_EFF,
+	CPU_TYPE_PERF,
 };
 
-DECLARE_SPIN_LOCK(cpu_lock);
-static u8 global_cpu_type[CONFIG_MAX_CPUS];
+struct cpu_apic_info_type {
+	/*
+	 * Ordered APIC IDs based on core type.
+	 * Array begins with Performance Cores' APIC IDs,
+	 * then followed by Efficeint Cores's APIC IDs.
+	 */
+	int32_t apic_ids[CONFIG_MAX_CPUS];
 
-static bool is_big_core(void)
-{
-	return get_soc_cpu_type() == CPUID_CORE_TYPE_INTEL_CORE;
-}
+	/* Total CPU count */
+	uint16_t total_cpu_cnt;
 
-static u32 get_cpu_index(void)
-{
-	u32 cpu_index = 0;
-	struct device *dev;
-	u32 my_apic_id = lapicid();
+	/*
+	 * Total Performance core count. This will be used
+	 * to identify the start of Efficient Cores's
+	 * APIC ID list
+	 */
+	uint16_t perf_cpu_cnt;
+};
 
-	for (dev = dev_find_lapic(0); dev; dev = dev->next) {
-		if (my_apic_id > dev->path.apic.apic_id)
-			cpu_index++;
-	}
-
-	return cpu_index;
-}
+static struct cpu_apic_info_type cpu_apic_info;
 
 /*
- * This function determines the type (big or small) of the CPU that is executing
- * it and stores the information (in a thread-safe manner) in an global_cpu_type
- * array.
- * It requires the SoC to implement a function `get_soc_cpu_type()` which will be
- * called in a critical section to determine the type of the executing CPU.
+ * The function orders APIC IDs such that orders first Performance cores and then
+ * Efficient cores' APIC IDs in ascending order. Also calculates total number of
+ * Performance cores and all cores count in the system and populates the information
+ * in the cpu_apic_info sturct.
  */
-static void set_cpu_type(void *unused)
+static void acpi_set_hybrid_cpu_apicid_order(void *unused)
 {
-	spin_lock(&cpu_lock);
-	u8 cpu_index = get_cpu_index();
+	size_t perf_core_cnt = 0, eff_core_cnt = 0;
+	int32_t eff_apic_ids[CONFIG_MAX_CPUS] = {0};
+	extern struct cpu_info cpu_infos[];
+	uint32_t i, j = 0;
 
-	if (is_big_core())
-		global_cpu_type[cpu_index] = CPU_TYPE_BIG;
-
-	spin_unlock(&cpu_lock);
-}
-
-static void run_set_cpu_type(void *unused)
-{
-	if (mp_run_on_all_cpus(set_cpu_type, NULL) != CB_SUCCESS) {
-		printk(BIOS_ERR, "cpu_hybrid: Failed to set global_cpu_type with CPU type info\n");
-		return;
+	for (i = 0; i < ARRAY_SIZE(cpu_apic_info.apic_ids); i++) {
+		if (cpu_infos[i].cpu->path.apic.core_type == CPU_TYPE_PERF)
+			cpu_apic_info.apic_ids[perf_core_cnt++] =
+				cpu_infos[i].cpu->path.apic.apic_id;
+		else
+			eff_apic_ids[eff_core_cnt++] =
+				cpu_infos[i].cpu->path.apic.apic_id;
 	}
+
+	if (perf_core_cnt > 1)
+		bubblesort(cpu_apic_info.apic_ids, perf_core_cnt, NUM_ASCENDING);
+
+	for (i = perf_core_cnt; j < eff_core_cnt; i++, j++)
+		cpu_apic_info.apic_ids[i] = eff_apic_ids[j];
+
+	if (eff_core_cnt > 1)
+		bubblesort(&cpu_apic_info.apic_ids[perf_core_cnt], eff_core_cnt, NUM_ASCENDING);
+
+	/* Populate total core count */
+	cpu_apic_info.total_cpu_cnt = perf_core_cnt + eff_core_cnt;
+
+	cpu_apic_info.perf_cpu_cnt = perf_core_cnt;
 }
 
-static void acpi_get_cpu_nomi_perf(u16 *small_core_nom_perf, u16 *big_core_nom_perf)
+static unsigned long acpi_create_madt_lapics_hybrid(unsigned long current)
 {
-	u16 big_core_scal_factor, small_core_scal_factor;
+	size_t index;
+
+	for (index = 0; index < cpu_apic_info.total_cpu_cnt; index++)
+		current = acpi_create_madt_one_lapic(current, index,
+						     cpu_apic_info.apic_ids[index]);
+
+	return current;
+}
+
+unsigned long acpi_create_madt_lapics_with_nmis_hybrid(unsigned long current)
+{
+	current = acpi_create_madt_lapics_hybrid(current);
+	current = acpi_create_madt_lapic_nmis(current);
+	return current;
+}
+
+static enum cpu_perf_eff_type get_core_type(void)
+{
+	return (get_soc_cpu_type() == CPUID_CORE_TYPE_INTEL_CORE) ?
+		CPU_TYPE_PERF : CPU_TYPE_EFF;
+}
+
+void set_dev_core_type(void)
+{
+	struct cpu_info *info = cpu_info();
+	info->cpu->path.apic.core_type = get_core_type();
+}
+
+static void acpi_get_cpu_nomi_perf(u16 *eff_core_nom_perf, u16 *perf_core_nom_perf)
+{
 	u8 max_non_turbo_ratio = cpu_get_max_non_turbo_ratio();
 
-	soc_get_scaling_factor(&big_core_scal_factor, &small_core_scal_factor);
+	_Static_assert(CONFIG_SOC_INTEL_PERFORMANCE_CORE_SCALE_FACTOR != 0,
+		       "CONFIG_SOC_INTEL_PERFORMANCE_CORE_SCALE_FACTOR must not be zero");
 
-	*big_core_nom_perf = (u16)((max_non_turbo_ratio * big_core_scal_factor) / 100);
+	_Static_assert(CONFIG_SOC_INTEL_EFFICIENT_CORE_SCALE_FACTOR != 0,
+		       "CONFIG_SOC_INTEL_EFFICIENT_CORE_SCALE_FACTOR must not be zero");
 
-	*small_core_nom_perf = (u16)((max_non_turbo_ratio * small_core_scal_factor) / 100);
+	*perf_core_nom_perf = (u16)((max_non_turbo_ratio *
+				CONFIG_SOC_INTEL_PERFORMANCE_CORE_SCALE_FACTOR) / 100);
+
+	*eff_core_nom_perf = (u16)((max_non_turbo_ratio *
+				CONFIG_SOC_INTEL_EFFICIENT_CORE_SCALE_FACTOR) / 100);
 }
 
 static u16 acpi_get_cpu_nominal_freq(void)
@@ -84,18 +132,18 @@ static u16 acpi_get_cpu_nominal_freq(void)
 /* Updates Nominal Frequency and Nominal Performance */
 static void acpigen_cppc_update_nominal_freq_perf(const char *pkg_path, s32 core_id)
 {
-	u16 small_core_nom_perf, big_core_nom_perf;
+	u16 eff_core_nom_perf, perf_core_nom_perf;
 
 	if (!soc_is_nominal_freq_supported())
 		return;
 
-	acpi_get_cpu_nomi_perf(&small_core_nom_perf, &big_core_nom_perf);
+	acpi_get_cpu_nomi_perf(&eff_core_nom_perf, &perf_core_nom_perf);
 
-	if (global_cpu_type[core_id] == CPU_TYPE_BIG)
-		acpigen_set_package_element_int(pkg_path, CPPC_NOM_PERF_IDX, big_core_nom_perf);
+	if (core_id < cpu_apic_info.perf_cpu_cnt)
+		acpigen_set_package_element_int(pkg_path, CPPC_NOM_PERF_IDX, perf_core_nom_perf);
 	else
 		acpigen_set_package_element_int(pkg_path, CPPC_NOM_PERF_IDX,
-						small_core_nom_perf);
+						eff_core_nom_perf);
 
 	/* Update CPU's nominal frequency */
 	acpigen_set_package_element_int(pkg_path, CPPC_NOM_FREQ_IDX,
@@ -110,7 +158,7 @@ void acpigen_write_CPPC_hybrid_method(s32 core_id)
 		snprintf(pkg_path, sizeof(pkg_path), CPPC_PACKAGE_NAME, 0);
 	else
 		snprintf(pkg_path, sizeof(pkg_path),
-			 CONFIG_ACPI_CPU_STRING "." CPPC_PACKAGE_NAME, 0);
+			 "\\_SB." CONFIG_ACPI_CPU_STRING "." CPPC_PACKAGE_NAME, 0);
 
 	acpigen_write_method("_CPC", 0);
 
@@ -121,4 +169,4 @@ void acpigen_write_CPPC_hybrid_method(s32 core_id)
 	acpigen_pop_len();
 }
 
-BOOT_STATE_INIT_ENTRY(BS_DEV_INIT_CHIPS, BS_ON_EXIT, run_set_cpu_type, NULL);
+BOOT_STATE_INIT_ENTRY(BS_DEV_INIT_CHIPS, BS_ON_EXIT, acpi_set_hybrid_cpu_apicid_order, NULL);

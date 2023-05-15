@@ -1,49 +1,22 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 
 #include <acpi/acpi.h>
-#include <arch/io.h>
 #include <console/console.h>
 #include <cpu/x86/smm.h>
 #include <soc/pm.h>
-#include <elog.h>
 #include <ec/google/chromeec/ec.h>
+#include <ec/google/chromeec/smm.h>
 #include <southbridge/intel/lynxpoint/lp_gpio.h>
 #include <soc/iomap.h>
 #include <soc/nvs.h>
 #include "ec.h"
 #include <variant/onboard.h>
 
-static u8 mainboard_smi_ec(void)
-{
-	u8 cmd = google_chromeec_get_event();
-	u32 pm1_cnt;
-
-	/* Log this event */
-	if (cmd)
-		elog_gsmi_add_event_byte(ELOG_TYPE_EC_EVENT, cmd);
-
-	switch (cmd) {
-	case EC_HOST_EVENT_LID_CLOSED:
-		printk(BIOS_DEBUG, "LID CLOSED, SHUTDOWN\n");
-
-		/* Go to S5 */
-		pm1_cnt = inl(ACPI_BASE_ADDRESS + PM1_CNT);
-		pm1_cnt |= (0xf << 10);
-		outl(pm1_cnt, ACPI_BASE_ADDRESS + PM1_CNT);
-		break;
-	}
-
-	return cmd;
-}
-
 /* gpi_sts is GPIO 47:32 */
 void mainboard_smi_gpi(u32 gpi_sts)
 {
-	if (gpi_sts & (1 << (EC_SMI_GPI - 32))) {
-		/* Process all pending events */
-		while (mainboard_smi_ec() != 0)
-			;
-	}
+	if (gpi_sts & (1 << (EC_SMI_GPI - 32)))
+		chromeec_smi_process_events();
 }
 
 static void mainboard_disable_gpios(void)
@@ -103,21 +76,6 @@ void mainboard_smi_sleep(u8 slp_typ)
 
 int mainboard_smi_apmc(u8 apmc)
 {
-	switch (apmc) {
-	case APM_CNT_ACPI_ENABLE:
-		google_chromeec_set_smi_mask(0);
-		/* Clear all pending events */
-		while (google_chromeec_get_event() != EC_HOST_EVENT_NONE)
-			;
-		google_chromeec_set_sci_mask(MAINBOARD_EC_SCI_EVENTS);
-		break;
-	case APM_CNT_ACPI_DISABLE:
-		google_chromeec_set_sci_mask(0);
-		/* Clear all pending events */
-		while (google_chromeec_get_event() != EC_HOST_EVENT_NONE)
-			;
-		google_chromeec_set_smi_mask(MAINBOARD_EC_SMI_EVENTS);
-		break;
-	}
+	chromeec_smi_apmc(apmc, MAINBOARD_EC_SCI_EVENTS, MAINBOARD_EC_SMI_EVENTS);
 	return 0;
 }

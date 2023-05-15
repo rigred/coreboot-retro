@@ -3,8 +3,10 @@
 #include <amdblocks/acpimmio.h>
 #include <amdblocks/amd_pci_util.h>
 #include <amdblocks/psp.h>
+#include <amdblocks/xhci.h>
 #include <baseboard/variants.h>
 #include <console/console.h>
+#include <cpu/x86/smm.h>
 #include <device/device.h>
 #include <drivers/i2c/tpm/chip.h>
 #include <soc/acpi.h>
@@ -37,7 +39,6 @@ static const struct fch_irq_routing fch_irq_map[] = {
 	{ PIRQ_SCI,	ACPI_SCI_IRQ,	ACPI_SCI_IRQ },
 	{ PIRQ_SD,	PIRQ_NC,	PIRQ_NC },
 	{ PIRQ_SDIO,	PIRQ_NC,	PIRQ_NC },
-	{ PIRQ_EMMC,	PIRQ_NC,	PIRQ_NC },
 	{ PIRQ_GPIO,	11,		11 },
 	{ PIRQ_I2C0,	10,		10 },
 	{ PIRQ_I2C1,	 7,		 7 },
@@ -88,11 +89,14 @@ static void mainboard_init(void *chip_info)
 
 static void mainboard_enable(struct device *dev)
 {
-	printk(BIOS_INFO, "Mainboard " CONFIG_MAINBOARD_PART_NUMBER " Enable.\n");
-
 	/* TODO: b/184678786 - Move into espi_config */
 	/* Unmask eSPI IRQ 1 (Keyboard) */
 	pm_write32(PM_ESPI_INTR_CTRL, PM_ESPI_DEV_INTR_MASK & ~(BIT(1)));
+}
+
+void smm_mainboard_pci_resource_store_init(struct smm_pci_resource_info *slots, size_t size)
+{
+	soc_xhci_store_resources(slots, size);
 }
 
 struct chip_operations mainboard_ops = {

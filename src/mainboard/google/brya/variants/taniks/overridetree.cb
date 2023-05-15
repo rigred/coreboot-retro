@@ -120,7 +120,6 @@ chip soc/intel/alderlake
 				register "options.tsr[0].desc" = ""DRAM_SOC""
 				register "options.tsr[1].desc" = ""Ambient""
 				register "options.tsr[2].desc" = ""Charger""
-				register "options.tsr[3].desc" = ""WWAN""
 
 				# TODO: below values are initial reference values only
 				## Active Policy
@@ -155,16 +154,6 @@ chip soc/intel/alderlake
 								TEMP_PCT(42, 40),
 						}
 					},
-					[3] = {
-						.target = DPTF_TEMP_SENSOR_3,
-						.thresholds = {
-								TEMP_PCT(60, 69),
-								TEMP_PCT(56, 50),
-								TEMP_PCT(52, 50),
-								TEMP_PCT(46, 40),
-								TEMP_PCT(42, 40),
-						}
-					}
 				}"
 
 				## Passive Policy
@@ -173,7 +162,6 @@ chip soc/intel/alderlake
 					[1] = DPTF_PASSIVE(CPU,         TEMP_SENSOR_0, 90, 6000),
 					[2] = DPTF_PASSIVE(CPU,		TEMP_SENSOR_1, 90, 6000),
 					[3] = DPTF_PASSIVE(CHARGER,	TEMP_SENSOR_2, 90, 6000),
-					[4] = DPTF_PASSIVE(CPU,         TEMP_SENSOR_3, 90, 6000),
 				}"
 
 				## Critical Policy
@@ -182,7 +170,6 @@ chip soc/intel/alderlake
 					[1] = DPTF_CRITICAL(TEMP_SENSOR_0,     100, SHUTDOWN),
 					[2] = DPTF_CRITICAL(TEMP_SENSOR_1,     100, SHUTDOWN),
 					[3] = DPTF_CRITICAL(TEMP_SENSOR_2,     100, SHUTDOWN),
-					[4] = DPTF_CRITICAL(TEMP_SENSOR_3,     100, SHUTDOWN),
 				}"
 
 				register "controls.power_limits" = "{
@@ -335,6 +322,12 @@ chip soc/intel/alderlake
 					probe AUDIO AUDIO_MAX98357_ALC5682I_I2S_2WAY
 				end
 			end
+			chip drivers/sof
+				register "spkr_tplg" = "max98357a"
+				register "jack_tplg" = "rt5682"
+				register "mic_tplg" = "_2ch_pdm0"
+				device generic 0 on end
+			end
 		end
 		device ref pcie_rp5 on
 			chip soc/intel/common/block/pcie/rtd3
@@ -363,21 +356,12 @@ chip soc/intel/alderlake
 			end
 		end
 		device ref pcie_rp9 on
-			# Enable NVMe PCIE 9 using clk 0
+			# Enable PCIE 9 using clk 0 for eMMC
 			register "pch_pcie_rp[PCH_RP(9)]" = "{
 				.clk_src = 0,
 				.clk_req = 0,
 				.flags = PCIE_RP_LTR | PCIE_RP_AER,
 			}"
-			chip soc/intel/common/block/pcie/rtd3
-				register "enable_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_HIGH(GPP_D11)"
-				register "reset_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_LOW(GPP_B4)"
-				register "srcclk_pin" = "0"
-				register "ext_pm_support" = "ACPI_PCIE_RP_EMIT_ALL"
-				device generic 0 on
-					probe BOOT_EMMC_MASK BOOT_EMMC_ENABLED
-				end
-			end
 			probe BOOT_EMMC_MASK BOOT_EMMC_ENABLED
 		end
 		device ref pch_espi on
@@ -418,6 +402,7 @@ chip soc/intel/alderlake
 						register "type" = "UPC_TYPE_C_USB2_SS_SWITCH"
 						register "use_custom_pld" = "true"
 						register "custom_pld" = "ACPI_PLD_TYPE_C(RIGHT, RIGHT, ACPI_PLD_GROUP(2, 1))"
+						register "usb_lpm_incapable" = "true"
 						device ref tcss_usb3_port3 on
 							probe DB_USB DB_USB3_WITH_A
 						end

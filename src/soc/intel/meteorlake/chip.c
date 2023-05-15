@@ -4,9 +4,11 @@
 #include <device/pci.h>
 #include <fsp/api.h>
 #include <fsp/util.h>
+#include <gpio.h>
 #include <intelblocks/acpi.h>
 #include <intelblocks/cfg.h>
-#include <intelblocks/gpio.h>
+#include <intelblocks/cse.h>
+#include <intelblocks/irq.h>
 #include <intelblocks/itss.h>
 #include <intelblocks/p2sb.h>
 #include <intelblocks/pcie_rp.h>
@@ -112,7 +114,8 @@ const char *soc_acpi_name(const struct device *dev)
 	case PCI_DEVFN_SMBUS:	return "SBUS";
 	case PCI_DEVFN_GBE:	return "GLAN";
 	}
-	printk(BIOS_DEBUG, "dev->path.devfn=%x\n", dev->path.pci.devfn);
+	printk(BIOS_DEBUG, "Missing ACPI Name for PCI: 00:%02x.%01x\n",
+			PCI_SLOT(dev->path.pci.devfn), PCI_FUNC(dev->path.pci.devfn));
 	return NULL;
 }
 #endif
@@ -149,6 +152,35 @@ void soc_init_pre_device(void *chip_info)
 
 	/* Swap enabled PCI ports in device tree if needed. */
 	pcie_rp_update_devicetree(get_pcie_rp_table());
+
+	/*
+	 * Earlier when coreboot used to send EOP at late as possible caused
+	 * issue of delayed response from CSE since CSE was busy loading payload.
+	 * To resolve the issue, EOP should be sent earlier than current sequence
+	 * in the boot sequence at BS_DEV_INIT.
+	 *
+	 * Intel CSE team recommends to send EOP close to FW init (between FSP-S
+	 * exit and current boot sequence) to reduce message response time from
+	 * CSE hence moving sending EOP to earlier stage.
+	 */
+	if (CONFIG(SOC_INTEL_CSE_SEND_EOP_EARLY) ||
+	    CONFIG(SOC_INTEL_CSE_SEND_EOP_ASYNC)) {
+		printk(BIOS_INFO, "Sending EOP early from SoC\n");
+		cse_send_end_of_post();
+	}
+}
+
+static void cpu_fill_ssdt(const struct device *dev)
+{
+	if (!generate_pin_irq_map())
+		printk(BIOS_ERR, "Failed to generate ACPI _PRT table!\n");
+
+	generate_cpu_entries(dev);
+}
+
+static void cpu_set_north_irqs(struct device *dev)
+{
+	irq_program_non_pch();
 }
 
 static struct device_operations pci_domain_ops = {
@@ -164,8 +196,9 @@ static struct device_operations pci_domain_ops = {
 static struct device_operations cpu_bus_ops = {
 	.read_resources   = noop_read_resources,
 	.set_resources    = noop_set_resources,
+	.enable_resources = cpu_set_north_irqs,
 #if CONFIG(HAVE_ACPI_TABLES)
-	.acpi_fill_ssdt = generate_cpu_entries,
+	.acpi_fill_ssdt = cpu_fill_ssdt,
 #endif
 };
 

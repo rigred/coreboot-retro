@@ -95,7 +95,9 @@ $(foreach arch,$(ARCH_SUPPORTED),\
 romstage-y += fmap.c
 romstage-y += delay.c
 romstage-y += cbfs.c
-romstage-$(CONFIG_COMPRESS_RAMSTAGE) += lzma.c lzmadecode.c
+ifneq ($(CONFIG_COMPRESS_RAMSTAGE_LZMA)$(CONFIG_FSP_COMPRESS_FSP_M_LZMA),)
+romstage-y += lzma.c lzmadecode.c
+endif
 romstage-y += libgcc.c
 romstage-y += memrange.c
 romstage-$(CONFIG_PRIMITIVE_MEMTEST) += primitive_memtest.c
@@ -227,12 +229,8 @@ ifeq ($(CONFIG_DEBUG_SMI),y)
 smm-$(CONFIG_CONSOLE_CBMEM) += cbmem_console.c
 endif
 
-bootblock-y += version.c
-romstage-y += version.c
-ramstage-y += version.c
-smm-y += version.c
-verstage-y += version.c
-postcar-y += version.c
+all-y += identity.c version.c
+smm-y += identity.c version.c
 
 $(call src-to-obj,bootblock,$(dir)/version.c) : $(obj)/build.h
 $(call src-to-obj,romstage,$(dir)/version.c) : $(obj)/build.h
@@ -294,7 +292,7 @@ postcar-y += fmap.c
 postcar-y += gcc.c
 postcar-y += halt.c
 postcar-y += libgcc.c
-postcar-$(CONFIG_COMPRESS_RAMSTAGE) += lzma.c lzmadecode.c
+postcar-$(CONFIG_COMPRESS_RAMSTAGE_LZMA) += lzma.c lzmadecode.c
 postcar-y += memchr.c
 postcar-y += memcmp.c
 postcar-y += prog_loaders.c

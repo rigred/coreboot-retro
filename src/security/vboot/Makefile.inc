@@ -30,9 +30,11 @@ $$(VBOOT_LIB_$(1)): $(obj)/config.h
 	EC_EFS="$(CONFIG_VBOOT_EC_EFS)" \
 	X86_SHA_EXT="$(if $(CONFIG_ARCH_$(call toupper,$(1))_X86_32)$(CONFIG_ARCH_$(call toupper,$(1))_X86_64),$\
 			$(CONFIG_VBOOT_X86_SHA256_ACCELERATION))" \
+	ARMV8_CRYPTO_EXT="$(if $(CONFIG_ARCH_$(call toupper,$(1))_ARMV8_64),$$(CONFIG_VBOOT_ARMV8_CE_SHA256_ACCELERATION))" \
 	$(MAKE) -C $(VBOOT_SOURCE) \
 		BUILD=$$(abspath $$(dir $$(VBOOT_LIB_$(1)))) \
 		V=$(V) \
+		USE_FLASHROM=0 \
 		fwlib \
 		$(if $(CONFIG_SBOM_VBOOT),$$(abspath $$(dir $$(VBOOT_LIB_$(1))))/vboot_host.pc)
 
@@ -71,6 +73,11 @@ romstage-$(CONFIG_VBOOT_VBNV_CMOS) += vbnv_cmos.c
 ramstage-$(CONFIG_VBOOT_VBNV_CMOS) += vbnv_cmos.c
 postcar-$(CONFIG_VBOOT_VBNV_CMOS) += vbnv_cmos.c
 
+$(call src-to-obj,bootblock,$(dir)/vbnv_flash.c) : $(obj)/fmap_config.h
+$(call src-to-obj,verstage,$(dir)/vbnv_flash.c) : $(obj)/fmap_config.h
+$(call src-to-obj,romstage,$(dir)/vbnv_flash.c) : $(obj)/fmap_config.h
+$(call src-to-obj,ramstage,$(dir)/vbnv_flash.c) : $(obj)/fmap_config.h
+$(call src-to-obj,postcar,$(dir)/vbnv_flash.c) : $(obj)/fmap_config.h
 bootblock-$(CONFIG_VBOOT_VBNV_CMOS_BACKUP_TO_FLASH) += vbnv_flash.c
 verstage-$(CONFIG_VBOOT_VBNV_CMOS_BACKUP_TO_FLASH) += vbnv_flash.c
 romstage-$(CONFIG_VBOOT_VBNV_CMOS_BACKUP_TO_FLASH) += vbnv_flash.c
@@ -120,6 +127,8 @@ postcar-y += common.c
 
 romstage-$(CONFIG_MRC_SAVE_HASH_IN_TPM) += mrc_cache_hash_tpm.c
 ramstage-$(CONFIG_MRC_SAVE_HASH_IN_TPM) += mrc_cache_hash_tpm.c
+
+ramstage-$(CONFIG_SOC_AMD_GFX_CACHE_VBIOS_IN_FMAP) += vbios_cache_hash_tpm.c
 
 ifeq ($(CONFIG_VBOOT_SEPARATE_VERSTAGE),y)
 
@@ -190,6 +199,7 @@ regions-for-file = $(subst $(spc),$(comma),$(sort \
 		intel_fit \
 		intel_fit_ts \
 		fspt.bin \
+		pagetables \
 		$(call strip_quotes,$(CONFIG_RO_REGION_ONLY)) \
 		,$(1)),COREBOOT,\
 		$(if $(filter \

@@ -5,13 +5,6 @@
 
 config SOC_AMD_GLINDA
 	bool
-	help
-	  AMD Glinda support
-
-if SOC_AMD_GLINDA
-
-config SOC_SPECIFIC_OPTIONS
-	def_bool y
 	select ACPI_SOC_NVS
 	select ARCH_X86
 	select BOOT_DEVICE_SUPPORTS_WRITES if BOOT_DEVICE_SPI_FLASH
@@ -44,14 +37,15 @@ config SOC_SPECIFIC_OPTIONS
 	select SOC_AMD_COMMON_BLOCK_ACPIMMIO		# TODO: Check if this is still correct
 	select SOC_AMD_COMMON_BLOCK_ACPI_ALIB		# TODO: Check if this is still correct
 	select SOC_AMD_COMMON_BLOCK_ACPI_CPPC		# TODO: Check if this is still correct
+	select SOC_AMD_COMMON_BLOCK_ACPI_CPU_POWER_STATE
 	select SOC_AMD_COMMON_BLOCK_ACPI_GPIO		# TODO: Check if this is still correct
 	select SOC_AMD_COMMON_BLOCK_ACPI_IVRS		# TODO: Check if this is still correct
 	select SOC_AMD_COMMON_BLOCK_AOAC		# TODO: Check if this is still correct
 	select SOC_AMD_COMMON_BLOCK_APOB		# TODO: Check if this is still correct
 	select SOC_AMD_COMMON_BLOCK_APOB_HASH		# TODO: Check if this is still correct
 	select SOC_AMD_COMMON_BLOCK_BANKED_GPIOS	# TODO: Check if this is still correct
+	select SOC_AMD_COMMON_BLOCK_CPUFREQ_FAM1AH
 	select SOC_AMD_COMMON_BLOCK_DATA_FABRIC
-	select SOC_AMD_COMMON_BLOCK_EMMC		# TODO: Check if this is still correct
 	select SOC_AMD_COMMON_BLOCK_ESPI_EXTENDED_DECODE_RANGES # TODO: Check if this is still correct
 	select SOC_AMD_COMMON_BLOCK_GRAPHICS		# TODO: Check if this is still correct
 	select SOC_AMD_COMMON_BLOCK_HAS_ESPI		# TODO: Check if this is still correct
@@ -68,17 +62,21 @@ config SOC_SPECIFIC_OPTIONS
 	select SOC_AMD_COMMON_BLOCK_PM			# TODO: Check if this is still correct
 	select SOC_AMD_COMMON_BLOCK_PM_CHIPSET_STATE_SAVE # TODO: Check if this is still correct
 	select SOC_AMD_COMMON_BLOCK_PSP_GEN2		# TODO: Check if this is still correct
+	select SOC_AMD_COMMON_BLOCK_RESET
 	select SOC_AMD_COMMON_BLOCK_SMBUS		# TODO: Check if this is still correct
 	select SOC_AMD_COMMON_BLOCK_SMI			# TODO: Check if this is still correct
 	select SOC_AMD_COMMON_BLOCK_SMM			# TODO: Check if this is still correct
 	select SOC_AMD_COMMON_BLOCK_SMU			# TODO: Check if this is still correct
+	select SOC_AMD_COMMON_BLOCK_SMU_SX_ENTRY	# TODO: Check if this is still correct
 	select SOC_AMD_COMMON_BLOCK_SPI			# TODO: Check if this is still correct
-	select SOC_AMD_COMMON_BLOCK_TSC_FAM17H_19H	# TODO: Check if this is still correct
+	select SOC_AMD_COMMON_BLOCK_SVI3
+	select SOC_AMD_COMMON_BLOCK_TSC
 	select SOC_AMD_COMMON_BLOCK_UART		# TODO: Check if this is still correct
 	select SOC_AMD_COMMON_BLOCK_UCODE		# TODO: Check if this is still correct
 	select SOC_AMD_COMMON_FSP_CCX_CPPC_HOB		# TODO: Check if this is still correct
 	select SOC_AMD_COMMON_FSP_DMI_TABLES		# TODO: Check if this is still correct
 	select SOC_AMD_COMMON_FSP_PCI			# TODO: Check if this is still correct
+	select SOC_AMD_COMMON_FSP_PRELOAD_FSPS
 	select SSE2
 	select UDK_2017_BINDING
 	select USE_DDR5
@@ -88,6 +86,10 @@ config SOC_SPECIFIC_OPTIONS
 	select VBOOT_DEFINE_WIDEVINE_COUNTERS if VBOOT_STARTS_BEFORE_BOOTBLOCK
 	select X86_AMD_FIXED_MTRRS
 	select X86_INIT_NEED_1_SIPI
+	help
+	  AMD Glinda support
+
+if SOC_AMD_GLINDA
 
 config CHIPSET_DEVICETREE
 	string
@@ -296,18 +298,7 @@ config DISABLE_SPI_FLASH_ROM_SHARING
 config DISABLE_KEYBOARD_RESET_PIN
 	bool
 	help
-	  Instruct the SoC to not use the state of GPIO_129 as keyboard reset
-	  signal. When this pin is used as GPIO and the keyboard reset
-	  functionality isn't disabled, configuring it as an output and driving
-	  it as 0 will cause a reset.
-
-config ACPI_SSDT_PSD_INDEPENDENT
-	bool "Allow core p-state independent transitions"
-	default y
-	help
-	  AMD recommends the ACPI _PSD object to be configured to cause
-	  cores to transition between p-states independently. A vendor may
-	  choose to generate _PSD object to allow cores to transition together.
+	  Instruct the SoC to not to reset based on the state of GPIO_21, KBDRST_L.
 
 menu "PSP Configuration Options"
 

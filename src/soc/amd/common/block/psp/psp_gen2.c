@@ -1,8 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 
-#include <bootstate.h>
-#include <console/console.h>
 #include <timer.h>
+#include <types.h>
 #include <amdblocks/psp.h>
 #include <amdblocks/smn.h>
 #include "psp_def.h"
@@ -10,9 +9,6 @@
 #define PSP_MAILBOX_COMMAND_OFFSET	0x10570 /* 4 bytes */
 #define PSP_MAILBOX_BUFFER_L_OFFSET	0x10574 /* 4 bytes */
 #define PSP_MAILBOX_BUFFER_H_OFFSET	0x10578 /* 4 bytes */
-
-#define CORE_2_PSP_MSG_38_OFFSET	0x10998 /* 4 byte */
-#define   CORE_2_PSP_MSG_38_FUSE_SPL	BIT(12)
 
 union pspv2_mbox_command {
 	u32 val;
@@ -113,26 +109,3 @@ uint32_t soc_read_c2p38(void)
 {
 	return smn_read32(SMN_PSP_PUBLIC_BASE + CORE_2_PSP_MSG_38_OFFSET);
 }
-
-static void psp_set_spl_fuse(void *unused)
-{
-	if (!CONFIG(SOC_AMD_COMMON_BLOCK_PSP_FUSE_SPL))
-		return;
-
-	int cmd_status = 0;
-	struct mbox_cmd_late_spl_buffer buffer = {
-		.header = {
-			.size = sizeof(buffer)
-		}
-	};
-
-	if (soc_read_c2p38() & CORE_2_PSP_MSG_38_FUSE_SPL) {
-		printk(BIOS_DEBUG, "PSP: Fuse SPL requested\n");
-		cmd_status = send_psp_command(MBOX_BIOS_CMD_SET_SPL_FUSE, &buffer);
-		psp_print_cmd_status(cmd_status, NULL);
-	} else {
-		printk(BIOS_DEBUG, "PSP: Fuse SPL not requested\n");
-	}
-}
-
-BOOT_STATE_INIT_ENTRY(BS_PAYLOAD_LOAD, BS_ON_ENTRY, psp_set_spl_fuse, NULL);

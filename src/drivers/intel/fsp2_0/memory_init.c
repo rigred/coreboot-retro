@@ -24,6 +24,10 @@
 #include <types.h>
 #include <vb2_api.h>
 
+#if CONFIG(SOC_INTEL_COMMON_BASECODE_RAMTOP)
+#include <intelbasecode/ramtop.h>
+#endif
+
 static uint8_t temp_ram[CONFIG_FSP_TEMP_RAM_SIZE] __aligned(sizeof(uint64_t));
 
 static void do_fsp_post_memory_init(bool s3wake, uint32_t fsp_version)
@@ -86,7 +90,7 @@ static void fsp_fill_mrc_cache(FSPM_ARCH_UPD *arch_upd, uint32_t fsp_version)
 	/* MRC cache found */
 	arch_upd->NvsBufferPtr = (uintptr_t)data;
 
-	printk(BIOS_SPEW, "MRC cache found, size %zx\n", mrc_size);
+	printk(BIOS_SPEW, "MRC cache found, size %zu bytes\n", mrc_size);
 }
 
 static enum cb_err check_region_overlap(const struct memranges *ranges,
@@ -254,6 +258,12 @@ static void do_fsp_memory_init(const struct fspm_context *context, bool s3wake)
 					memmap) != CB_SUCCESS)
 		die_with_post_code(POST_INVALID_VENDOR_BINARY,
 			"FSPM_ARCH_UPD not found!\n");
+
+	/* Early caching of RAMTOP region if valid mrc cache data is found */
+#if (CONFIG(SOC_INTEL_COMMON_BASECODE_RAMTOP))
+	if (arch_upd->NvsBufferPtr)
+		early_ramtop_enable_cache_range();
+#endif
 
 	/* Give SoC and mainboard a chance to update the UPD */
 	platform_fsp_memory_init_params_cb(&fspm_upd, fsp_version);

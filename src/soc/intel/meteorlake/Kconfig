@@ -16,6 +16,7 @@ config CPU_SPECIFIC_OPTIONS
 	select CPU_INTEL_FIRMWARE_INTERFACE_TABLE
 	select CPU_SUPPORTS_INTEL_TME
 	select CPU_SUPPORTS_PM_TIMER_EMULATION
+	select DEFAULT_SOFTWARE_CONNECTION_MANAGER if MAINBOARD_HAS_CHROMEOS
 	select DEFAULT_X2APIC_LATE_WORKAROUND
 	select DISPLAY_FSP_VERSION_INFO_2
 	select DRIVERS_USB_ACPI
@@ -29,6 +30,7 @@ config CPU_SPECIFIC_OPTIONS
 	select GENERIC_GPIO_LIB
 	select HAVE_DEBUG_RAM_SETUP
 	select HAVE_FSP_GOP
+	select HAVE_HYPERTHREADING
 	select HAVE_INTEL_COMPLIANCE_TEST_MODE
 	select HAVE_SMI_HANDLER
 	select IDT_IN_EVERY_STAGE
@@ -38,6 +40,7 @@ config CPU_SPECIFIC_OPTIONS
 	select INTEL_GMA_OPREGION_2_1
 	select IOAPIC
 	select MICROCODE_BLOB_UNDISCLOSED
+	select MP_SERVICES_PPI_V2
 	select MRC_SETTINGS_PROTECT
 	select PARALLEL_MP_AP_WORK
 	select PLATFORM_USES_FSP2_3
@@ -60,6 +63,7 @@ config CPU_SPECIFIC_OPTIONS
 	select SOC_INTEL_COMMON_BLOCK_CPU_SMMRELOCATE
 	select SOC_INTEL_COMMON_BLOCK_DTT
 	select SOC_INTEL_COMMON_BLOCK_GPIO_DUAL_ROUTE_SUPPORT
+	select SOC_INTEL_COMMON_BLOCK_GPIO_IOSTANDBY
 	select SOC_INTEL_COMMON_BLOCK_GPIO_LOCK_USING_PCR
 	select SOC_INTEL_COMMON_BLOCK_GPIO_PMODE_4BITS
 	select SOC_INTEL_COMMON_BLOCK_GSPI_VERSION_2
@@ -67,6 +71,8 @@ config CPU_SPECIFIC_OPTIONS
 	select SOC_INTEL_COMMON_BLOCK_HECI1_DISABLE_USING_PMC_IPC
 	select SOC_INTEL_COMMON_BLOCK_IPU
 	select SOC_INTEL_COMMON_BLOCK_IOE_P2SB
+	select SOC_INTEL_COMMON_BLOCK_IRQ
+	select SOC_INTEL_COMMON_BLOCK_ME_SPEC_18
 	select SOC_INTEL_COMMON_BLOCK_MEMINIT
 	select SOC_INTEL_COMMON_BLOCK_PCIE_RTD3
 	select SOC_INTEL_COMMON_BLOCK_PMC_EPOC
@@ -78,11 +84,12 @@ config CPU_SPECIFIC_OPTIONS
 	select SOC_INTEL_COMMON_BLOCK_XHCI
 	select SOC_INTEL_COMMON_BLOCK_XHCI_ELOG
 	select SOC_INTEL_COMMON_BASECODE
+	select SOC_INTEL_COMMON_BASECODE_RAMTOP
 	select SOC_INTEL_COMMON_FSP_RESET
 	select SOC_INTEL_COMMON_PCH_CLIENT
 	select SOC_INTEL_COMMON_RESET
 	select SOC_INTEL_COMMON_BLOCK_IOC
-	select SOC_INTEL_CSE_SEND_EOP_LATE
+	select SOC_INTEL_CSE_SEND_EOP_LATE if !MAINBOARD_HAS_CHROMEOS
 	select SOC_INTEL_CSE_SET_EOP
 	select SOC_INTEL_GFX_NON_PREFETCHABLE_MMIO
 	select SOC_INTEL_MEM_MAPPED_PM_CONFIGURATION
@@ -91,6 +98,7 @@ config CPU_SPECIFIC_OPTIONS
 	select TSC_MONOTONIC_TIMER
 	select UDELAY_TSC
 	select UDK_202111_BINDING
+	select X86_CLFLUSH_CAR
 	select X86_INIT_NEED_1_SIPI
 
 config SOC_INTEL_METEORLAKE_TCSS_USB4_SUPPORT
@@ -210,6 +218,14 @@ config PCR_BASE_ADDRESS
 config ECAM_MMCONF_BASE_ADDRESS
 	default 0xc0000000
 
+config SOC_INTEL_PERFORMANCE_CORE_SCALE_FACTOR
+	int
+	default 125
+
+config SOC_INTEL_EFFICIENT_CORE_SCALE_FACTOR
+	int
+	default 100
+
 config CPU_BCLK_MHZ
 	int
 	default 100
@@ -285,7 +301,13 @@ config CBFS_SIZE
 
 config PRERAM_CBMEM_CONSOLE_SIZE
 	hex
-	default 0x1400
+	default 0x16000 if BUILDING_WITH_DEBUG_FSP
+	default 0x2000
+
+config CONSOLE_CBMEM_BUFFER_SIZE
+	hex
+	default 0x100000 if BUILDING_WITH_DEBUG_FSP
+	default 0x40000
 
 config FSP_HEADER_PATH
 	string "Location of FSP headers"
@@ -328,29 +350,51 @@ config SOC_INTEL_GFX_FRAMEBUFFER_OFFSET
 	hex
 	default 0x800000
 
-choice
-	prompt "Multiprocessor (MP) Initialization configuration to use"
-	default MTL_USE_FSP_MP_INIT
-
-config MTL_USE_FSP_MP_INIT
-	bool "Use FSP MP init"
-	select MP_SERVICES_PPI_V2
+config FSP_PUBLISH_MBP_HOB
+	bool
+	default n if CHROMEOS
+	default y
 	help
-	  Upon selection, coreboot brings APs from reset and the FSP runs feature programming.
+	  This is to control creation of ME_BIOS_PAYLOAD_HOB (MBP HOB) by FSP.
+	  Disabling it for the platforms, which do not use MBP HOB, can improve the boot time.
 
-config MTL_USE_COREBOOT_MP_INIT
-	bool "Use coreboot MP init"
-	# FSP assumes ownership of the APs (Application Processors)
-	# upon passing `NULL` pointer to the CpuMpPpi FSP-S UPD.
-	# Hence, select `MP_SERVICES_PPI_V2_NOOP` config to pass a valid
-	# pointer to the CpuMpPpi UPD with FSP_UNSUPPORTED type APIs.
-	# This will protect APs from getting hijacked by FSP while coreboot
-	# decides to set SkipMpInit UPD.
-	select MP_SERVICES_PPI_V2_NOOP
-	select RELOAD_MICROCODE_PATCH
+config BUILDING_WITH_DEBUG_FSP
+	bool "Debug FSP is used for the build"
+	default n
 	help
-	  Upon selection, coreboot performs MP Initialization that includes feature programming.
+	  Set this option if debug build of FSP is used.
 
-endchoice
+config DROP_CPU_FEATURE_PROGRAM_IN_FSP
+	bool
+	default y if MP_SERVICES_PPI_V2_NOOP || CHROMEOS
+	default n
+	help
+	  This is to avoid FSP running basic CPU feature programming on BSP
+	  and on APs using the "CpuFeaturesPei.efi" module. The feature programming
+	  includes enabling x2APIC, MCA, MCE and Turbo etc.
+
+	  Most of these feature programming are getting performed today in scope
+	  of coreboot doing MP Init. Running these redundant programming in scope
+	  of FSP (when `USE_FSP_FEATURE_PROGRAM_ON_APS` config is enabled) would
+	  results in CPU exception.
+
+	  SoC users to select this config after dropping "CpuFeaturesPei.ffs" module
+	  from FSP-S Firmware Volume (FV). Upon selection, coreboot runs those additional
+	  feature programming on BSP and APs.
+
+	  This feature is default enabled, in case of "coreboot running MP init"
+	  aka MP_SERVICES_PPI_V2_NOOP config is selected.
+
+config PCIE_LTR_MAX_SNOOP_LATENCY
+	hex
+	default 0x100f
+	help
+	  Latency tolerance reporting, max snoop latency value defaults to 15.73 ms.
+
+config PCIE_LTR_MAX_NO_SNOOP_LATENCY
+	hex
+	default 0x100f
+	help
+	  Latency tolerance reporting, max non-snoop latency value defaults to 15.73 ms.
 
 endif

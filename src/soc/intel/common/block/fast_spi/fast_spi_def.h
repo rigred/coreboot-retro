@@ -4,6 +4,8 @@
 #define SOC_INTEL_COMMON_BLOCK_FAST_SPI_DEF_H
 
 /* PCI configuration registers */
+#define SPI_BIOS_DECODE_EN		0xd8
+#define  SPI_BIOS_DECODE_LOCK		BIT(31)
 
 #define SPI_BIOS_CONTROL		0xdc
 
@@ -37,6 +39,7 @@
 #define SPIBAR_OPMENU_UPPER		0xac
 #define SPIBAR_FDOC			0xb4
 #define SPIBAR_FDOD			0xb8
+#define SPIBAR_SFDP0_VSCC0		0xc4
 #define SPIBAR_PTINX			0xcc
 #define SPIBAR_PTDATA			0xd0
 
@@ -130,6 +133,12 @@
 		    (SPI_OPTYPE_3 << 6) | (SPI_OPTYPE_2 << 4)   | \
 		    (SPI_OPTYPE_1 << 2) | (SPI_OPTYPE_0))
 #define SPI_OPPREFIX ((0x50 << 8) | 0x06) /* EWSR and WREN */
+
+/*
+ * Spi Flash Vendor Specific Component Capabilities
+ * for Component 0 (0xc4) register
+ */
+#define SPIBAR_SFDP0_VSCC0_VCL		(1 << 30)
 
 /*
  * Register Offset of BIOS Vendor Specific Component Capabilities (VSCC)

@@ -2,7 +2,7 @@
 
 Device (AC)
 {
-	Name (_HID, "ACPI0003" /* Power Source Device */)  // _HID: Hardware ID
+	Name (_HID, "ACPI0003" /* Power Source Device */)
 	Name (_PCL, Package (0x01)  // _PCL: Power Consumer List
 	{
 		_SB
@@ -15,7 +15,7 @@ Device (AC)
 		Return (ACFG)
 	}
 
-	Method (_STA, 0, NotSerialized)  // _STA: Status
+	Method (_STA, 0, NotSerialized)
 	{
 		Return (0x0F)
 	}

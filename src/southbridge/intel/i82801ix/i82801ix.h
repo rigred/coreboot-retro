@@ -20,8 +20,6 @@
 #define DEFAULT_TCOBASE		(DEFAULT_PMBASE + 0x60)
 #define DEFAULT_GPIOBASE	0x00000580
 
-#define APM_CNT		0xb2
-
 #define GP_IO_USE_SEL	0x00
 #define GP_IO_SEL	0x04
 #define GP_LVL		0x0c
@@ -30,8 +28,6 @@
 #define GP_IO_USE_SEL2	0x30
 #define GP_IO_SEL2	0x34
 #define GP_LVL2		0x38
-
-#define DEBUG_PERIODIC_SMIS	0
 
 #define MAINBOARD_POWER_OFF	0
 #define MAINBOARD_POWER_ON	1
@@ -148,7 +144,6 @@
 #define FD_SAD1		(1 <<  2) /* SATA #1 */
 
 #ifndef __ACPI__
-#ifndef __ASSEMBLER__
 
 #include <device/pci_ops.h>
 
@@ -165,7 +160,6 @@ void i82801ix_lpc_setup(void);
 void i82801ix_dmi_setup(void);
 void i82801ix_dmi_poll_vc1(void);
 
-#endif
 #endif
 
 #endif

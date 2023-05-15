@@ -79,7 +79,8 @@ chip soc/amd/mendocino
 	register "gpp_clk_config[2]" = "GPP_CLK_REQ"
 	register "gpp_clk_config[3]" = "GPP_CLK_OFF"
 
-	register "pspp_policy" = "DXIO_PSPP_DISABLED" # TODO: reenable when PSPP works
+	# PSPP doesn't save any power on this platform
+	register "pspp_policy" = "DXIO_PSPP_DISABLED"
 
 	register "s0ix_enable" = "true"
 
@@ -162,6 +163,7 @@ chip soc/amd/mendocino
 				end
 			end
 			device ref acp on end # Audio Processor (ACP)
+			device ref mp2 on end # Sensor Fusion Hub (MP2)
 		end
 		device ref gpp_bridge_c on  # Internal GPP Bridge 2 to Bus C
 			device ref xhci_2 on # USB 2.0 (USB2)
@@ -173,7 +175,6 @@ chip soc/amd/mendocino
 							register "type" = "UPC_TYPE_INTERNAL"
 							register "has_power_resource" = "true"
 							register "enable_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_LOW(GPIO_10)"
-							# TODO(b/263161283): Confirm the delay meets the requirement of all BT controllers
 							register "enable_delay_ms" = "500"
 							register "enable_off_delay_ms" = "200"
 							register "use_gpio_for_status" = "true"
@@ -259,7 +260,6 @@ chip soc/amd/mendocino
 	register "fast_ppt_limit_mW"                     = "30000"
 	register "slow_ppt_time_constant_s"              = "5"
 	register "stapm_time_constant_s"                 = "275"
-	register "sustained_power_limit_mW"              = "15000"
 	register "thermctl_limit_degreeC"                = "100"
 	register "vrm_current_limit_mA"                  = "28000"
 	register "vrm_maximum_current_limit_mA"          = "50000"

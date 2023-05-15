@@ -18,8 +18,7 @@ enum core_type {
 	CPUID_UNKNOWN = 0xff,
 };
 
-/* Gets the scaling factor for small and big core */
-void soc_get_scaling_factor(u16 *big_core_scal_factor, u16 *small_core_scal_factor);
+unsigned long acpi_create_madt_lapics_with_nmis_hybrid(unsigned long current);
 
 /* Generates ACPI code to define _CPC control method */
 void acpigen_write_CPPC_hybrid_method(int core_id);
@@ -133,6 +132,9 @@ struct min_sleep_state {
 	uint8_t pci_dev;
 	enum acpi_device_sleep_states min_sleep_state;
 };
+
+/* Updates core type into 'struct cpu_info' */
+void set_dev_core_type(void);
 
 /*
  * This SOC callback returns an array that maps devices to their min sleep state.

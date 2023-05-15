@@ -20,13 +20,20 @@ fw_config
 	field AMP 6 7
 		option AMP_MX98360A		0
 	end
+	field THERMAL_SOLUTION 10 12
+		option THERMAL_SOLUTION_6W	0
+		option THERMAL_SOLUTION_15W	1
+	end
 	field WIFI_SAR_ID 13 15
 		option ID_0			0
-		option UNUSED			7
 	end
 	field CODEC 32 33
 		option CODEC_ALC5682I_VS	0
 		option CODEC_NAU8825		1
+	end
+	field TS_SOURCE 38 41
+		option TS_UNPROVISIONED 	0
+		option TS_GTCH7503		1
 	end
 end
 
@@ -110,6 +117,68 @@ chip soc/intel/alderlake
 	# Enable the Cnvi BT Audio Offload
 	register "cnvi_bt_audio_offload" = "1"
 
+	# Intel Common SoC Config
+	#+-------------------+---------------------------+
+	#| Field             |  Value                    |
+	#+-------------------+---------------------------+
+	#| I2C0              | TPM. Early init is        |
+	#|                   | required to set up a BAR  |
+	#|                   | for TPM communication     |
+	#| I2C1              | Touchscreen               |
+	#| I2C2              | Sub-board(PSensor)/WCAM   |
+	#| I2C3              | Audio                     |
+	#| I2C5              | Trackpad                  |
+	#+-------------------+---------------------------+
+	register "common_soc_config" = "{
+		.i2c[0] = {
+			.early_init = 1,
+			.speed = I2C_SPEED_FAST_PLUS,
+			.speed_config[0] = {
+				.speed = I2C_SPEED_FAST_PLUS,
+				.scl_lcnt = 55,
+				.scl_hcnt = 30,
+				.sda_hold = 7,
+			}
+		},
+		.i2c[1] = {
+			.speed = I2C_SPEED_FAST,
+			.speed_config[0] = {
+				.speed = I2C_SPEED_FAST,
+				.scl_lcnt = 158,
+				.scl_hcnt = 79,
+				.sda_hold = 30,
+			}
+		},
+		.i2c[2] = {
+			.speed = I2C_SPEED_FAST,
+			.speed_config[0] = {
+				.speed = I2C_SPEED_FAST,
+				.scl_lcnt = 158,
+				.scl_hcnt = 79,
+				.sda_hold = 7,
+			}
+		},
+		.i2c[3] = {
+			.speed = I2C_SPEED_FAST,
+			.speed_config[0] = {
+				.speed = I2C_SPEED_FAST,
+				.scl_lcnt = 158,
+				.scl_hcnt = 79,
+				.sda_hold = 7,
+			}
+		},
+		.i2c[5] = {
+			.speed = I2C_SPEED_FAST,
+			.speed_config[0] = {
+				.speed = I2C_SPEED_FAST,
+				.scl_lcnt = 158,
+				.scl_hcnt = 79,
+				.sda_hold = 40,
+			}
+		},
+	}"
+
+
 	register "power_limits_config[ADL_N_041_6W_CORE]" = "{
 		.tdp_pl1_override = 6,
 		.tdp_pl2_override = 25,
@@ -172,7 +241,61 @@ chip soc/intel/alderlake
 					[3] = {   8,  500 }
 				}"
 
-				device generic 0 on end
+				device generic 0 on
+					probe THERMAL_SOLUTION THERMAL_SOLUTION_6W
+				end
+			end
+			chip drivers/intel/dptf
+				## sensor information
+				register "options.tsr[0].desc" = ""Memory""
+				register "options.tsr[1].desc" = ""Charger""
+				register "options.tsr[2].desc" = ""Ambient""
+
+				# TODO: below values are initial reference values only
+				## Passive Policy
+				register "policies.passive" = "{
+					[0] = DPTF_PASSIVE(CPU,         CPU,           95, 5000),
+					[1] = DPTF_PASSIVE(CPU,         TEMP_SENSOR_0, 75, 5000),
+					[2] = DPTF_PASSIVE(CHARGER,     TEMP_SENSOR_1, 75, 5000),
+					[3] = DPTF_PASSIVE(CPU,         TEMP_SENSOR_2, 75, 5000),
+				}"
+
+				## Critical Policy
+				register "policies.critical" = "{
+					[0] = DPTF_CRITICAL(CPU,               105, SHUTDOWN),
+					[1] = DPTF_CRITICAL(TEMP_SENSOR_0,      85, SHUTDOWN),
+					[2] = DPTF_CRITICAL(TEMP_SENSOR_1,      85, SHUTDOWN),
+					[3] = DPTF_CRITICAL(TEMP_SENSOR_2,      85, SHUTDOWN),
+				}"
+
+				register "controls.power_limits" = "{
+					.pl1 = {
+							.min_power = 15000,
+							.max_power = 15000,
+							.time_window_min = 28 * MSECS_PER_SEC,
+							.time_window_max = 28 * MSECS_PER_SEC,
+							.granularity = 125
+						},
+					.pl2 = {
+							.min_power = 35000,
+							.max_power = 35000,
+							.time_window_min = 1,
+							.time_window_max = 1,
+							.granularity = 1000
+						}
+				}"
+
+				## Charger Performance Control (Control, mA)
+				register "controls.charger_perf" = "{
+					[0] = { 255, 1700 },
+					[1] = {  24, 1500 },
+					[2] = {  16, 1000 },
+					[3] = {   8,  500 }
+				}"
+
+				device generic 1 on
+					probe THERMAL_SOLUTION THERMAL_SOLUTION_15W
+				end
 			end
 		end
 		device ref ipu on
@@ -202,9 +325,26 @@ chip soc/intel/alderlake
 				register "generic.enable_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_HIGH(GPP_C0)"
 				register "generic.enable_delay_ms" = "12"
 				register "generic.has_power_resource" = "1"
-				register "generic.disable_gpio_export_in_crs" = "1"
 				register "hid_desc_reg_offset" = "0x01"
-				device i2c 0x40 on end
+				device i2c 0x40 on
+					probe TS_SOURCE TS_UNPROVISIONED
+				end
+			end
+			chip drivers/i2c/hid
+				register "generic.hid" = ""GTCH7503""
+				register "generic.desc" = ""G2 Touchscreen""
+				register "generic.irq" = "ACPI_IRQ_LEVEL_LOW(GPP_C7_IRQ)"
+				register "generic.probed" = "1"
+				register "generic.reset_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_LOW(GPP_C1)"
+				register "generic.reset_delay_ms" = "120"
+				register "generic.reset_off_delay_ms" = "3"
+				register "generic.enable_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_HIGH(GPP_C0)"
+				register "generic.enable_delay_ms" = "12"
+				register "generic.has_power_resource" = "1"
+				register "hid_desc_reg_offset" = "0x01"
+				device i2c 0x40 on
+					probe TS_SOURCE TS_GTCH7503
+				end
 			end
 			chip drivers/generic/gpio_keys
 				register "name" = ""PENH""
@@ -234,9 +374,10 @@ chip soc/intel/alderlake
 				register "generic.enable_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_HIGH(GPP_C0)"
 				register "generic.enable_delay_ms" = "1"
 				register "generic.has_power_resource" = "1"
-				register "generic.disable_gpio_export_in_crs" = "1"
 				register "hid_desc_reg_offset" = "0x01"
-				device i2c 10 on end
+				device i2c 10 on
+					probe TS_SOURCE TS_UNPROVISIONED
+				end
 			end
 		end
 		device ref i2c2 on
@@ -256,6 +397,8 @@ chip soc/intel/alderlake
 				register "remote_name" = ""IPU0""
 
 				register "has_power_resource" = "1"
+				register "max_dstate_for_probe" = "ACPI_DEVICE_SLEEP_D3_COLD"
+
 				#Controls
 				register "clk_panel.clks[0].clknum" = "IMGCLKOUT_3"
 				register "clk_panel.clks[0].freq" = "FREQ_19_2_MHZ"
@@ -290,6 +433,7 @@ chip soc/intel/alderlake
 				register "chip_name" = ""Ov 8856 Camera""
 				register "device_type" = "INTEL_ACPI_CAMERA_SENSOR"
 				register "has_power_resource" = "1"
+				register "max_dstate_for_probe" = "ACPI_DEVICE_SLEEP_D3_COLD"
 
 				register "ssdb.lanes_used" = "2"
 				register "ssdb.link_used" = "1"
@@ -333,8 +477,20 @@ chip soc/intel/alderlake
 				register "chip_name" = ""DW AF DAC""
 				register "device_type" = "INTEL_ACPI_CAMERA_VCM"
 
-				register "pr0" = ""\\_SB.PCI0.I2C2.CAM0.PRIC""
 				register "vcm_compat" = ""dongwoon,dw9714""
+				register "has_power_resource" = "1"
+				register "max_dstate_for_probe" = "ACPI_DEVICE_SLEEP_D3_COLD"
+
+				#Controls
+				register "gpio_panel.gpio[0].gpio_num" = "GPP_D15"  # EN_PP2800_WCAM_X
+
+				#_ON
+				register "on_seq.ops_cnt" = "1"
+				register "on_seq.ops[0]" = "SEQ_OPS_GPIO_ENABLE(0, 5)"
+
+				#_OFF
+				register "off_seq.ops_cnt" = "1"
+				register "off_seq.ops[0]" = "SEQ_OPS_GPIO_DISABLE(0, 0)"
 
 				device i2c 0C on
 					probe WFC WFC_MIPI_OVTI5675
@@ -347,8 +503,6 @@ chip soc/intel/alderlake
 				register "acpi_name" = ""NVM0""
 				register "chip_name" = ""GT24C08""
 				register "device_type" = "INTEL_ACPI_CAMERA_NVM"
-
-				register "pr0" = ""\\_SB.PCI0.I2C2.CAM0.PRIC""
 
 				register "nvm_size" = "0x2000"
 				register "nvm_pagesize" = "1"
@@ -447,10 +601,13 @@ chip soc/intel/alderlake
 			probe SD_CARD SD_GL9750S
 		end
 		device ref pcie_rp9 on
-			# Enable NVMe SSD PCIe 9-12 using clk 1
+			# Enable NVMe SSD PCIe 9-12 using clk_src1 and clk_req2 mapping to hardware
+			# design.Due to inconsistency between PMC firmware and FSP, we need to set
+			# clk_src to clk_req number, not same as hardware mapping in coreboot.Then
+			# swap correct setting to clk_src=1,clk_req=2 in mFIT.
 			register "pch_pcie_rp[PCH_RP(9)]" = "{
-				.clk_src = 1,
-				.clk_req = 1,
+				.clk_src = 2,
+				.clk_req = 2,
 				.flags = PCIE_RP_LTR | PCIE_RP_AER,
 			}"
 		end

@@ -19,7 +19,6 @@ chip soc/intel/tigerlake
 	register "CnviBtAudioOffload"		= "1"
 	register "enable_c6dram"		= "1"
 	register "SaGv"				= "SaGv_Enabled"
-	register "TcssD3ColdDisable"		= "1"
 
 	# FSP Silicon
 	# Serial I/O
@@ -64,9 +63,7 @@ chip soc/intel/tigerlake
 	register "PcieClkSrcClkReq[6]"		= "PCIE_CLK_NOTUSED"
 
 # Actual device tree.
-	device cpu_cluster 0 on
-		device lapic 0 on end
-	end
+	device cpu_cluster 0 on end
 
 	device domain 0 on
 		device ref igpu		on  end

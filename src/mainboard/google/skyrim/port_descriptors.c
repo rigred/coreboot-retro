@@ -5,6 +5,9 @@
 #include <soc/platform_descriptors.h>
 #include <types.h>
 
+#if CONFIG(USE_VARIANT_DXIO_DESCRIPTOR)
+static const fsp_dxio_descriptor skyrim_mdn_dxio_descriptors[] = {};
+#else
 static const fsp_dxio_descriptor skyrim_mdn_dxio_descriptors[] = {
 	{ /* WLAN */
 		.engine_type = PCIE_ENGINE,
@@ -16,7 +19,8 @@ static const fsp_dxio_descriptor skyrim_mdn_dxio_descriptors[] = {
 		.link_speed_capability = GEN3,
 		.turn_off_unused_lanes = true,
 		.link_aspm = ASPM_L1,
-		.link_hotplug = 3,
+		.link_aspm_L1_1 = true,
+		.link_aspm_L1_2 = true,
 		.clk_req = CLK_REQ2,
 	},
 	{ /*  SD */
@@ -28,8 +32,9 @@ static const fsp_dxio_descriptor skyrim_mdn_dxio_descriptors[] = {
 		.function_number = PCI_FUNC(SD_DEVFN),
 		.link_speed_capability = GEN3,
 		.turn_off_unused_lanes = true,
-		.link_aspm = ASPM_L1,
 		.link_hotplug = 3,
+		.link_aspm = ASPM_L1,
+		.link_aspm_L1_1 = true,
 		.gpio_group_id = GPIO_27,
 		.clk_req = CLK_REQ1,
 	},
@@ -43,11 +48,13 @@ static const fsp_dxio_descriptor skyrim_mdn_dxio_descriptors[] = {
 		.link_speed_capability = GEN3,
 		.turn_off_unused_lanes = true,
 		.link_aspm = ASPM_L1,
-		.link_hotplug = 3,
+		.link_aspm_L1_1 = true,
+		.link_aspm_L1_2 = true,
 		.gpio_group_id = GPIO_6,
 		.clk_req = CLK_REQ0,
 	},
 };
+#endif
 
 static const fsp_ddi_descriptor skyrim_mdn_ddi_descriptors[] = {
 	{ /* DDI0 - eDP */
@@ -81,8 +88,13 @@ void mainboard_get_dxio_ddi_descriptors(
 		const fsp_dxio_descriptor **dxio_descs, size_t *dxio_num,
 		const fsp_ddi_descriptor **ddi_descs, size_t *ddi_num)
 {
-	*dxio_descs = skyrim_mdn_dxio_descriptors;
-	*dxio_num = ARRAY_SIZE(skyrim_mdn_dxio_descriptors);
+	if (CONFIG(USE_VARIANT_DXIO_DESCRIPTOR)) {
+		variant_get_dxio_descriptor(dxio_descs, dxio_num);
+	} else {
+		*dxio_descs = skyrim_mdn_dxio_descriptors;
+		*dxio_num = ARRAY_SIZE(skyrim_mdn_dxio_descriptors);
+	}
+
 	*ddi_descs = skyrim_mdn_ddi_descriptors;
 	*ddi_num = ARRAY_SIZE(skyrim_mdn_ddi_descriptors);
 }

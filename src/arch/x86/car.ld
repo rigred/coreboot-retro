@@ -20,9 +20,9 @@
 	VBOOT2_WORK(., 12K)
 #endif
 #if CONFIG(TPM_MEASURED_BOOT)
-	/* Vboot measured boot TCPA log measurements.
+	/* Vboot measured boot TPM log measurements.
 	 * Needs to be transferred until CBMEM is available */
-	TPM_TCPA_LOG(., 2K)
+	TPM_LOG(., 2K)
 #endif
 	/* Stack for CAR stages. Since it persists across all stages that
 	 * use CAR it can be reused. The chipset/SoC is expected to provide
@@ -72,6 +72,13 @@
 	 * runtime. Therefore, they can be placed in the _bss region. */
 #if CONFIG(ROMSTAGE_LIBHWBASE)
 	*(.data.hw__*_E)
+#endif
+#if CONFIG(EARLY_GFX_GMA)
+	*(.data.gma*_E)
+	/* libgfxinit uses a boolean variable to track its initialization
+	 * state. Since the initial value is False it can safely be placed in
+	 * the _bss region. */
+	*(.data.hw__gfx__gma__initialized)
 #endif
 	. = ALIGN(ARCH_POINTER_ALIGN_SIZE);
 	_ebss = .;
@@ -133,7 +140,7 @@ _bogus = ASSERT((CONFIG_DCACHE_RAM_SIZE == 0) || (SIZEOF(.car.data) <= CONFIG_DC
 _bogus2 = ASSERT(_pagetables == ALIGN(_pagetables, 4096), "_pagetables aren't 4KiB aligned");
 #endif
 _bogus3 = ASSERT(CONFIG_DCACHE_BSP_STACK_SIZE > 0x0, "BSP stack size not configured");
-#if CONFIG(NO_XIP_EARLY_STAGES) && (ENV_ROMSTAGE || ENV_VERSTAGE)
+#if CONFIG(NO_XIP_EARLY_STAGES) && (ENV_ROMSTAGE || ENV_SEPARATE_VERSTAGE)
 _bogus4 = ASSERT(_eprogram <= _car_region_end, "Stage end too high !");
 _bogus5 = ASSERT(_program >= _car_unallocated_start, "Stage start too low!");
 #endif

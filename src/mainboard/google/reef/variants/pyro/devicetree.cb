@@ -1,9 +1,5 @@
 chip soc/intel/apollolake
 
-	device cpu_cluster 0 on
-		device lapic 0 on end
-	end
-
 	register "pcie_rp_clkreq_pin[0]" = "0"    # wifi/bt
 	# Disable unused clkreq of PCIe root ports
 	register "pcie_rp_clkreq_pin[1]" = "CLKREQ_DISABLED"
@@ -133,11 +129,11 @@ chip soc/intel/apollolake
 	device domain 0 on
 		device pci 00.0 on  end	# - Host Bridge
 		device pci 00.1 on  end	# - DPTF
-		device pci 00.2 on  end	# - NPK
+		device pci 00.2 off end	# - NPK
 		device pci 02.0 on	# - Gen
 			register "gfx" = "GMA_DEFAULT_PANEL(0)"
 		end
-		device pci 03.0 on  end	# - Iunit
+		device pci 03.0 off end	# - Iunit
 		device pci 0d.0 on  end	# - P2SB
 		device pci 0d.1 on  end	# - PMC
 		device pci 0d.2 on  end	# - SPI
@@ -204,7 +200,6 @@ chip soc/intel/apollolake
 				register "generic.enable_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_HIGH(GPIO_152)"
 				register "generic.enable_delay_ms" = "1"
 				register "generic.has_power_resource" = "1"
-				register "generic.disable_gpio_export_in_crs" = "1"
 				register "hid_desc_reg_offset" = "0x1"
 				device i2c 0xA on end
 			end

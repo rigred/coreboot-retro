@@ -1100,6 +1100,9 @@ int print_gpios(struct pci_dev *sb, int show_all, int show_diffs)
 	case PCI_DEVICE_ID_INTEL_C256:
 	case PCI_DEVICE_ID_INTEL_W580:
 	case PCI_DEVICE_ID_INTEL_ICELAKE_LP_U:
+	case PCI_DEVICE_ID_INTEL_H610E:
+	case PCI_DEVICE_ID_INTEL_Q670E:
+	case PCI_DEVICE_ID_INTEL_R680E:
 	case PCI_DEVICE_ID_INTEL_H610:
 	case PCI_DEVICE_ID_INTEL_B660:
 	case PCI_DEVICE_ID_INTEL_H670:
@@ -1114,7 +1117,9 @@ int print_gpios(struct pci_dev *sb, int show_all, int show_diffs)
 	case PCI_DEVICE_ID_INTEL_ADL_P:
 	case PCI_DEVICE_ID_INTEL_ADL_M:
 	case PCI_DEVICE_ID_INTEL_RPL_P:
+	case PCI_DEVICE_ID_INTEL_JSL:
 	case PCI_DEVICE_ID_INTEL_EHL:
+	case PCI_DEVICE_ID_INTEL_EBG:
 		print_gpio_groups(sb);
 		return 0;
 	case PCI_DEVICE_ID_INTEL_82371XX:

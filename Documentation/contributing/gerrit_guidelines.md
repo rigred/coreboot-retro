@@ -41,7 +41,7 @@ project you're submitting the changes to. If you’re submitting code that
 you wrote that might be owned by your employer, make sure that your
 employer is aware and you are authorized to submit the code. For
 clarification, see the Developer's Certificate of Origin in the coreboot
-[Signed-off-by policy](https://www.coreboot.org/Development_Guidelines#Sign-off_Procedure).
+[Signed-off-by policy](#sign-off-procedure).
 
 * In general, patches should remain open for review for at least 24 hours
 since the last significant modification to the change. The purpose is to
@@ -127,6 +127,54 @@ those platforms. While it would be nice to update any other platforms, you
 must at least provide a path that will allow other platforms to continue
 working.
 
+Sign-off Procedure
+------------------
+The coreboot project employs a sign-off procedure similar to what is
+used by the Linux kernel. Each gerrit commit requires a sign-off line
+saying that the contributed code abides by the Developer's certificate
+of origin, below.
+```text
+Signed-off-by: Random J Developer <random@developer.example.org>
+```
+
+Using '-s' with 'git commit' will automatically add a Signed-off-by line
+to your commit message.  Patches without a Signed-off-by should not be
+pushed to gerrit, and will be rejected by coreboot's CI system.
+
+You must use a known identity in the Signed-off-by line. Anonymous
+contributions cannot be committed! This can be anything sufficient to
+identify and contact the source of a contribution, such as your name or
+an established alias/nickname. Refer to [this LKML thread] and the
+[SCO-Linux disputes] for the rationale behind the DCO.
+
+Developer's Certificate of Origin 1.1
+
+> By making a contribution to this project, I certify that:
+>
+> (a) The contribution was created in whole or in part by me and I have
+> the right to submit it under the open source license indicated in the
+> file; or
+>
+> (b) The contribution is based upon previous work that, to the best of
+> my knowledge, is covered under an appropriate open source license and
+> I have the right under that license to submit that work with
+> modifications, whether created in whole or in part by me, under the
+> same open source license (unless I am permitted to submit under a
+> different license), as indicated in the file; or
+>
+> (c) The contribution was provided directly to me by some other person
+> who certified (a), (b) or (c) and I have not modified it; and
+>
+> (d) In the case of each of (a), (b), or (c), I understand and agree
+> that this project and the contribution are public and that a record of
+> the contribution (including all personal information I submit with it,
+> including my sign-off) is maintained indefinitely and may be
+> redistributed consistent with this project or the open source license
+> indicated in the file.
+
+Note: The [Developer's Certificate of Origin 1.1] is licensed under the
+terms of the [Creative Commons Attribution-ShareAlike 2.5 License].
+
 
 Recommendations for gerrit activity
 -----------------------------------
@@ -173,7 +221,10 @@ This helps verify that the patch train won’t tie up the jenkins builders
 for no reason if there are failing patches in the train. For running
 parallel builds, you can specify the number of cores to use by setting the
 the CPUS environment variable. Example:
-        make what-jenkins-does CPUS=8
+
+```Bash
+make what-jenkins-does CPUS=8
+```
 
 * Use a topic when pushing a train of patches. This groups the commits
 together so people can easily see the connection at the top level of
@@ -181,7 +232,10 @@ gerrit. Topics can be set for individual patches in gerrit by going into
 the patch and clicking on the icon next to the topic line. Topics can also
 be set when you push the patches into gerrit. For example, to push a set of
 commits with the i915-kernel-x60 set, use the command:
-        git push origin HEAD:refs/for/master%topic=i915-kernel-x60
+
+```Bash
+git push origin HEAD:refs/for/master%topic=i915-kernel-x60
+```
 
 * If one of your patches isn't ready to be merged, make sure it's obvious
 that you don't feel it's ready for merge yet. The preferred way to show
@@ -191,7 +245,10 @@ Examples of this are "WIP: title" or "[NEEDS_TEST]: title".  Another way to
 mark the patch as not ready would be to give it a -1 or -2 review, but
 isn't as obvious as the commit message. These patches can also be pushed with
 the wip flag:
-	git push origin HEAD:refs/for/master%wip
+
+```Bash
+git push origin HEAD:refs/for/master%wip
+```
 
 * When pushing patches that are not for submission, these should be marked
 as such. This can be done in the title ‘[DONOTSUBMIT]’, or can be pushed as
@@ -200,10 +257,16 @@ sorts of patches are frequently posted as ideas or RFCs for the community to
 look at. Note that private changes can still be fetched from Gerrit by anybody
 who knows their commit ID, so don't use this for sensitive changes. To push
 a private change, use the command:
-        git push origin HEAD:refs/for/master%private
+
+```Bash
+git push origin HEAD:refs/for/master%private
+```
 
 * Multiple push options can be combined:
-        git push origin HEAD:refs/for/master%private,wip,topic=experiment
+
+```Bash
+git push origin HEAD:refs/for/master%private,wip,topic=experiment
+```
 
 * Respond to anyone who has taken the time to review your patches, even if
 it's just to say that you disagree. While it may seem annoying to address a
@@ -277,13 +340,15 @@ git/gerrit tags by prepending the lines with 'Original-'.  Marking
 the original text this way makes it much easier to tell what changes
 happened in which repository. This applies to these lines, not the actual
 commit message itself:
-        Commit-Id:
-        Change-Id:
-        Signed-off-by:
-        Reviewed-on:
-        Tested-by:
-        Reviewed-by:
-The script 'util/gitconfig/rebase.sh' can be used to help automate this.
+
+	* Commit-Id:
+	* Change-Id:
+	* Signed-off-by:
+	* Reviewed-on:
+	* Tested-by:
+	* Reviewed-by:
+
+The script `util/gitconfig/rebase.sh` can be used to help automate this.
 Other tags such as 'Commit-Queue' can simply be removed.
 
 * Check if there's documentation that needs to be updated to remain current
@@ -369,3 +434,7 @@ Requests for clarification and suggestions for updates to these guidelines
 should be sent to the coreboot mailing list at <coreboot@coreboot.org>.
 
 [ready changes]: https://review.coreboot.org/q/age:1d+project:coreboot+status:open+is:mergeable+label:All-Comments-Resolved%253Dok+label:Code-Review%253D2+-label:Code-Review%253C0+label:Verified%253D1+-label:Verified-1
+[Developer's Certificate of Origin 1.1]: https://developercertificate.org/
+[Creative Commons Attribution-ShareAlike 2.5 License]: https://creativecommons.org/licenses/by-sa/2.5/
+[this LKML thread]: https://lkml.org/lkml/2004/5/23/10
+[SCO-Linux disputes]: https://en.wikipedia.org/wiki/SCO%E2%80%93Linux_disputes

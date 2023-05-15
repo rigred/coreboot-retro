@@ -16,7 +16,6 @@
 #include <device/device.h>
 #include <device/pci.h>
 #include <device/pci_ops.h>
-#include <device/pci_def.h>
 #include <device/pci_ids.h>
 #include <delay.h>
 #include <fmap.h>
@@ -110,7 +109,7 @@ static enum cb_err fetch_mac_vpd_key(u8 *macstrbuf, const char *vpd_key)
 			search_length);
 
 	if (offset == search_length) {
-		printk(BIOS_ERR, "Could not locate '%s' in VPD\n", vpd_key);
+		printk(BIOS_WARNING, "Could not locate '%s' in VPD\n", vpd_key);
 		rdev_munmap(&rdev, search_address);
 		return CB_ERR;
 	}
@@ -379,6 +378,7 @@ static void r8168_net_fill_ssdt(const struct device *dev)
 
 	if (dev->chip_ops)
 		acpigen_write_name_string("_DDN", dev->chip_ops->name);
+	acpigen_write_STA(ACPI_STATUS_DEVICE_HIDDEN_ON);
 
 	/* Power Resource */
 	if (CONFIG(RT8168_GEN_ACPI_POWER_RESOURCE) && config->has_power_resource) {

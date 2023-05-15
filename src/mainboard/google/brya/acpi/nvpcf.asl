@@ -34,14 +34,14 @@ Method (NPCF, 2, Serialized)
 							      2=CTGP-only.
 							   [7:4] Reserved. Set to 0. */
 				/* Controller #1 Params */
-				0x00,			/* Class = Dynamic Boost
+							/* Class = Dynamic Boost
 							   [0:0] DC support
 							      0=Not supported, 1=Supported
 							   [31:1] Reserved. Set to 0. */
 				0x00, 0x00, 0x00, 0x00,
 
 				/* Twos-complement checksum */
-				0xad
+				0xaf
 			})
 		}
 		Case (NVPCF_FUNC_UPDATE_DYNAMIC_PARAMS)
@@ -50,10 +50,12 @@ Method (NPCF, 2, Serialized)
 				/* Dynamic Params Table Header (1 controller entry, 0x1c bytes) */
 				0x22, 0x05, 0x10, 0x1c, 0x01 }
 
-			CreateWordField (Local0, 0x05, TGPA)
+			CreateWordField (Local0, 0x1d, MAGA)
+			CreateWordField (Local0, 0x19, TPPA)
 			CreateDWordField (Local0, 0x15, CEO0)
 
-			TGPA = 0x50	/* TGP on AC = 10W in 1/8-Watt increments */
+			MAGA = 0x50	/* TGP on AC = 10W in 1/8-Watt increments */
+                        TPPA = 0xc8	/* TPPA = 25W in 1/8-Watt increments */
 			CEO0 = 0x200	/* [7:0] Controller index
 					   [8:8] Disable controller on AC
 					   [9:9] Disable controller on DC */

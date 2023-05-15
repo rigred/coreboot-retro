@@ -8,7 +8,6 @@
 #include <device/pci.h>
 #include <intelblocks/acpi.h>
 #include <soc/acpi.h>
-#include <soc/cpu.h>
 #include <soc/iomap.h>
 #include <soc/msr.h>
 #include <soc/pci_devs.h>
@@ -48,8 +47,6 @@ void soc_fill_fadt(acpi_fadt_t *fadt)
 	fadt->pm2_cnt_len = 1;
 	fadt->pm_tmr_len = 4;
 
-	/* RTC Registers */
-	fadt->mon_alrm = 0x00;
 	fadt->iapc_boot_arch = ACPI_FADT_LEGACY_DEVICES | ACPI_FADT_8042;
 
 	/* PM2 Control Registers */
@@ -58,7 +55,7 @@ void soc_fill_fadt(acpi_fadt_t *fadt)
 	fadt->x_pm2_cnt_blk.bit_offset = 0;
 	fadt->x_pm2_cnt_blk.access_size = ACPI_ACCESS_SIZE_BYTE_ACCESS;
 	fadt->x_pm2_cnt_blk.addrl = fadt->pm2_cnt_blk;
-	fadt->x_pm2_cnt_blk.addrh = 0x00;
+	fadt->x_pm2_cnt_blk.addrh = 0x0;
 
 	/* PM1 Timer Register */
 	fadt->x_pm_tmr_blk.space_id = ACPI_ADDRESS_SPACE_IO;
@@ -66,7 +63,7 @@ void soc_fill_fadt(acpi_fadt_t *fadt)
 	fadt->x_pm_tmr_blk.bit_offset = 0;
 	fadt->x_pm_tmr_blk.access_size = ACPI_ACCESS_SIZE_DWORD_ACCESS;
 	fadt->x_pm_tmr_blk.addrl = fadt->pm_tmr_blk;
-	fadt->x_pm_tmr_blk.addrh = 0x00;
+	fadt->x_pm_tmr_blk.addrh = 0x0;
 
 }
 

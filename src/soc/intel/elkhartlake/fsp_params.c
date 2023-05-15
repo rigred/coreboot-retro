@@ -259,10 +259,23 @@ void platform_fsp_silicon_init_params_cb(FSPS_UPD *supd)
 	params->PeiGraphicsPeimInit = CONFIG(RUN_FSP_GOP) && is_devfn_enabled(SA_DEVFN_IGD);
 
 	/* Display config */
+	params->DdiPortAConfig = config->DdiPortAConfig;
+	params->DdiPortBConfig = config->DdiPortBConfig;
+	params->DdiPortCConfig = config->DdiPortCConfig;
 	params->DdiPortAHpd = config->DdiPortAHpd;
-	params->DdiPortADdc = config->DdiPortADdc;
+	params->DdiPortBHpd = config->DdiPortBHpd;
 	params->DdiPortCHpd = config->DdiPortCHpd;
+	params->DdiPort1Hpd = config->DdiPort1Hpd;
+	params->DdiPort2Hpd = config->DdiPort2Hpd;
+	params->DdiPort3Hpd = config->DdiPort3Hpd;
+	params->DdiPort4Hpd = config->DdiPort4Hpd;
+	params->DdiPortADdc = config->DdiPortADdc;
+	params->DdiPortBDdc = config->DdiPortBDdc;
 	params->DdiPortCDdc = config->DdiPortCDdc;
+	params->DdiPort1Ddc = config->DdiPort1Ddc;
+	params->DdiPort2Ddc = config->DdiPort2Ddc;
+	params->DdiPort3Ddc = config->DdiPort3Ddc;
+	params->DdiPort4Ddc = config->DdiPort4Ddc;
 
 	/* Intel Speed Step */
 	params->Eist = config->eist_enable;
@@ -307,10 +320,22 @@ void platform_fsp_silicon_init_params_cb(FSPS_UPD *supd)
 	 */
 	params->EnableTcoTimer = 1;
 
-	/* PCH Master Gating Control */
-	params->PchPostMasterClockGating = 1;
-	params->PchPostMasterPowerGating = 1;
-
+	/* Set up recommended real time parameters if real time tuning is enabled. */
+	if (config->realtime_tuning_enable) {
+		params->PchPostMasterClockGating = 0;
+		params->PchPostMasterPowerGating = 0;
+		params->PchPwrOptEnable = 0;
+		params->PsfTccEnable = 1;
+		params->PmcLpmS0ixSubStateEnableMask = 0;
+		params->PchDmiAspmCtrl = 0;
+		params->PchLegacyIoLowLatency = 0;
+		params->EnableItbm = 0;
+		params->D3ColdEnable = 0;
+		params->PmcOsIdleEnable = 0;
+	} else {
+		params->PchPostMasterClockGating = 1;
+		params->PchPostMasterPowerGating = 1;
+	}
 	/* HECI */
 	params->Heci3Enabled = config->Heci3Enable;
 
@@ -356,10 +381,13 @@ void platform_fsp_silicon_init_params_cb(FSPS_UPD *supd)
 			!config->PcieRpAdvancedErrorReportingDisable[i];
 		params->PcieRpHotPlug[i] = config->PcieRpHotPlug[i];
 		params->PciePtm[i] = config->PciePtm[i];
+		params->PcieRpPcieSpeed[i] = config->PcieRpPcieSpeed[i];
 		params->PcieRpLtrMaxNoSnoopLatency[i] = 0x1003;
 		params->PcieRpLtrMaxSnoopLatency[i] = 0x1003;
 		/* Virtual Channel 1 to Traffic Class mapping */
 		params->PcieRpVc1TcMap[i] = 0x60;
+		if (config->realtime_tuning_enable)
+			params->PcieRpEnableCpm[i] = 0;
 	}
 
 	/* SATA config */
@@ -368,10 +396,12 @@ void platform_fsp_silicon_init_params_cb(FSPS_UPD *supd)
 		params->SataMode = config->SataMode;
 		params->SataSalpSupport = config->SataSalpSupport;
 		params->SataPwrOptEnable = !(config->SataPwrOptimizeDisable);
+		params->SataSpeedLimit = config->SataSpeed;
 
 		for (i = 0; i < CONFIG_MAX_SATA_PORTS; i++) {
 			params->SataPortsEnable[i] = config->SataPortsEnable[i];
 			params->SataPortsDevSlp[i] = config->SataPortsDevSlp[i];
+			params->SataPortsSolidStateDrive[i] = config->SataPortsSSD[i];
 			if (config->SataPortsEnableDitoConfig[i]) {
 				params->SataPortsDmVal[i] =
 					config->SataPortsDmVal[i] ? : DEF_DMVAL;

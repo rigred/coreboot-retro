@@ -2,21 +2,12 @@
 
 #include <device/pci_ops.h>
 #include <acpi/acpi.h>
-#include <cpu/x86/smm.h>
-#include <version.h>
 #include <southbridge/intel/common/pmutil.h>
 
 void acpi_fill_fadt(acpi_fadt_t *fadt)
 {
 	u16 pmbase = pci_read_config16(pcidev_on_root(0x1f, 0), 0x40) & 0xfffe;
 
-	fadt->sci_int = 0x9;
-
-	if (permanent_smi_handler()) {
-		fadt->smi_cmd = APM_CNT;
-		fadt->acpi_enable = APM_CNT_ACPI_ENABLE;
-		fadt->acpi_disable = APM_CNT_ACPI_DISABLE;
-	}
 
 	fadt->pm1a_evt_blk = pmbase;
 	fadt->pm1a_cnt_blk = pmbase + PM1_CNT;
@@ -34,8 +25,7 @@ void acpi_fill_fadt(acpi_fadt_t *fadt)
 	fadt->p_lvl3_lat = 0;	/* FIXME: Is this correct? */
 	fadt->duty_offset = 1;
 	fadt->duty_width = 0;
-	fadt->day_alrm = 0xd;
-	fadt->mon_alrm = 0x00;
+
 	fadt->iapc_boot_arch = ACPI_FADT_8042 | ACPI_FADT_LEGACY_DEVICES;
 	fadt->flags |= (ACPI_FADT_WBINVD | ACPI_FADT_C1_SUPPORTED
 		       | ACPI_FADT_SLEEP_BUTTON | ACPI_FADT_S4_RTC_WAKE

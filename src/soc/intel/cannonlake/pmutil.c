@@ -8,16 +8,15 @@
 #define __SIMPLE_DEVICE__
 
 #include <acpi/acpi_pm.h>
+#include <console/console.h>
 #include <device/mmio.h>
 #include <device/device.h>
 #include <device/pci.h>
-#include <device/pci_def.h>
-#include <console/console.h>
+#include <gpio.h>
 #include <intelblocks/pmclib.h>
 #include <intelblocks/rtc.h>
 #include <intelblocks/tco.h>
 #include <soc/gpe.h>
-#include <soc/gpio.h>
 #include <soc/iomap.h>
 #include <soc/lpc.h>
 #include <soc/pci_devs.h>
@@ -195,7 +194,7 @@ int soc_prev_sleep_state(const struct chipset_power_state *ps, int prev_sleep_st
 	 * S5 because the PCH does not set the WAK_STS bit when waking
 	 * from a true G3 state.
 	 */
-	if (ps->gen_pmcon_a & (PWR_FLR | SUS_PWR_FLR))
+	if (!(ps->pm1_sts & WAK_STS) && (ps->gen_pmcon_a & (PWR_FLR | SUS_PWR_FLR)))
 		prev_sleep_state = ACPI_S5;
 
 	/*

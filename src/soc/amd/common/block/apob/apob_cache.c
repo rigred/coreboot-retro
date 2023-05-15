@@ -10,15 +10,24 @@
 #include <console/console.h>
 #include <fmap.h>
 #include <fmap_config.h>
+#include <security/vboot/vboot_common.h>
 #include <spi_flash.h>
-#include <stdint.h>
 #include <string.h>
 #include <thread.h>
 #include <timestamp.h>
+#include <types.h>
 #include <xxhash.h>
 
 #define DEFAULT_MRC_CACHE	"RW_MRC_CACHE"
 #define DEFAULT_MRC_CACHE_SIZE	FMAP_SECTION_RW_MRC_CACHE_SIZE
+
+#if CONFIG(HAS_RECOVERY_MRC_CACHE)
+#define RECOVERY_MRC_CACHE	"RECOVERY_MRC_CACHE"
+#define RECOVERY_MRC_CACHE_SIZE	FMAP_SECTION_RECOVERY_MRC_CACHE_SIZE
+#else
+#define RECOVERY_MRC_CACHE	DEFAULT_MRC_CACHE
+#define RECOVERY_MRC_CACHE_SIZE	DEFAULT_MRC_CACHE_SIZE
+#endif
 
 #if CONFIG(SOC_AMD_COMMON_BLOCK_APOB_HASH)
 #define MRC_HASH_SIZE		((uint32_t)sizeof(uint64_t))
@@ -34,6 +43,9 @@
 
 _Static_assert(CONFIG_PSP_APOB_DRAM_SIZE == DEFAULT_MRC_CACHE_SIZE,
 	"APOB DRAM reserved space != to MRC CACHE size - check your config");
+
+_Static_assert(CONFIG_PSP_APOB_DRAM_SIZE == RECOVERY_MRC_CACHE_SIZE,
+	"APOB DRAM reserved space != to RECOVERY MRC CACHE size - check your config");
 
 #define APOB_SIGNATURE 0x424F5041	/* 'APOB' */
 
@@ -78,14 +90,26 @@ static void *get_apob_dram_address(void)
 	return apob_src_ram;
 }
 
-static int get_nv_rdev(struct region_device *r)
+static enum cb_err get_nv_rdev(struct region_device *r)
 {
-	if  (fmap_locate_area_as_rdev(DEFAULT_MRC_CACHE, r) < 0) {
+	if  (fmap_locate_area_as_rdev(vboot_recovery_mode_enabled() ?
+				      RECOVERY_MRC_CACHE : DEFAULT_MRC_CACHE, r) < 0) {
 		printk(BIOS_ERR, "No APOB NV region is found in flash\n");
-		return -1;
+		return CB_ERR;
 	}
 
-	return 0;
+	return CB_SUCCESS;
+}
+
+static enum cb_err get_nv_rdev_rw(struct region_device *r)
+{
+	if  (fmap_locate_area_as_rdev_rw(vboot_recovery_mode_enabled() ?
+					 RECOVERY_MRC_CACHE : DEFAULT_MRC_CACHE, r) < 0) {
+		printk(BIOS_ERR, "No APOB NV region is found in flash\n");
+		return CB_ERR;
+	}
+
+	return CB_SUCCESS;
 }
 
 static struct apob_thread_context {
@@ -122,7 +146,7 @@ void start_apob_cache_read(void)
 	if (acpi_is_wakeup_s3())
 		return;
 
-	if (get_nv_rdev(&thread->apob_rdev) != 0)
+	if (get_nv_rdev(&thread->apob_rdev) != CB_SUCCESS)
 		return;
 
 	assert(ARRAY_SIZE(thread->buffer) == region_device_sz(&thread->apob_rdev));
@@ -186,7 +210,7 @@ static void soc_update_apob_cache(void *unused)
 	if (apob_src_ram == NULL)
 		return;
 
-	if (get_nv_rdev(&read_rdev) != 0)
+	if (get_nv_rdev(&read_rdev) != CB_SUCCESS)
 		return;
 
 	timestamp_add_now(TS_AMD_APOB_READ_START);
@@ -227,10 +251,8 @@ static void soc_update_apob_cache(void *unused)
 		apob_src_ram, apob_src_ram->size,
 		region_device_offset(&read_rdev), region_device_sz(&read_rdev));
 
-	if  (fmap_locate_area_as_rdev_rw(DEFAULT_MRC_CACHE, &write_rdev) < 0) {
-		printk(BIOS_ERR, "No RW APOB NV region is found in flash\n");
+	if (get_nv_rdev_rw(&write_rdev) != CB_SUCCESS)
 		return;
-	}
 
 	timestamp_add_now(TS_AMD_APOB_ERASE_START);
 
@@ -259,7 +281,7 @@ static void *get_apob_nv_address(void)
 {
 	struct region_device rdev;
 
-	if (get_nv_rdev(&rdev) != 0)
+	if (get_nv_rdev(&rdev) != CB_SUCCESS)
 		return NULL;
 
 	return get_apob_from_nv_rdev(&rdev);

@@ -21,6 +21,7 @@ bootblock-y += espi.c
 bootblock-y += p2sb.c
 bootblock-y += soc_info.c
 
+romstage-$(CONFIG_SOC_INTEL_CSE_PRE_CPU_RESET_TELEMETRY) += cse_telemetry.c
 romstage-y += espi.c
 romstage-y += meminit.c
 romstage-y += pcie_rp.c
@@ -35,7 +36,6 @@ ramstage-y += espi.c
 ramstage-y += finalize.c
 ramstage-y += fsp_params.c
 ramstage-y += lockdown.c
-ramstage-y += me.c
 ramstage-y += p2sb.c
 ramstage-y += pcie_rp.c
 ramstage-y += pmc.c

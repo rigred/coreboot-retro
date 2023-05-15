@@ -37,9 +37,6 @@
 #define TOP_MEM2	0xC001001Dul
 #endif
 
-#define TOP_MEM_MASK			0x007fffff
-#define TOP_MEM_MASK_KB			(TOP_MEM_MASK >> 10)
-
 #if !defined(__ASSEMBLER__)
 
 #include <cpu/x86/msr.h>
@@ -68,12 +65,12 @@ static __always_inline void wrmsr_amd(unsigned int index, msr_t msr)
 		);
 }
 
-static inline uint64_t amd_topmem(void)
+static inline uint32_t get_top_of_mem_below_4gb(void)
 {
 	return rdmsr(TOP_MEM).lo;
 }
 
-static inline uint64_t amd_topmem2(void)
+static inline uint64_t get_top_of_mem_above_4gb(void)
 {
 	msr_t msr = rdmsr(TOP_MEM2);
 	return (uint64_t)msr.hi << 32 | msr.lo;

@@ -2,13 +2,6 @@
 
 config SOC_AMD_STONEYRIDGE
 	bool
-	help
-	  AMD support for SOCs in Family 15h Models 60h-6Fh and Models 70h-7Fh.
-
-if SOC_AMD_STONEYRIDGE
-
-config CPU_SPECIFIC_OPTIONS
-	def_bool y
 	select ACPI_SOC_NVS
 	select ARCH_X86
 	select BOOT_DEVICE_SUPPORTS_WRITES if BOOT_DEVICE_SPI_FLASH
@@ -28,11 +21,13 @@ config CPU_SPECIFIC_OPTIONS
 	select SOC_AMD_COMMON
 	select SOC_AMD_COMMON_BLOCK_ACPI
 	select SOC_AMD_COMMON_BLOCK_ACPI_GPIO
+	select SOC_AMD_COMMON_BLOCK_ACPI_CPU_POWER_STATE
 	select SOC_AMD_COMMON_BLOCK_ACPIMMIO
 	select SOC_AMD_COMMON_BLOCK_ACPIMMIO_BIOSRAM
 	select SOC_AMD_COMMON_BLOCK_AOAC
 	select SOC_AMD_COMMON_BLOCK_BANKED_GPIOS
 	select SOC_AMD_COMMON_BLOCK_CAR
+	select SOC_AMD_COMMON_BLOCK_CPUFREQ_FAM15H_16H
 	select SOC_AMD_COMMON_BLOCK_HDA
 	select SOC_AMD_COMMON_BLOCK_I2C
 	select SOC_AMD_COMMON_BLOCK_IOMMU
@@ -45,12 +40,18 @@ config CPU_SPECIFIC_OPTIONS
 	select SOC_AMD_COMMON_BLOCK_SMBUS
 	select SOC_AMD_COMMON_BLOCK_SMI
 	select SOC_AMD_COMMON_BLOCK_SMM
+	select SOC_AMD_COMMON_BLOCK_SMN
 	select SOC_AMD_COMMON_BLOCK_SPI
+	select SOC_AMD_COMMON_BLOCK_SVI2
 	select SOC_AMD_COMMON_BLOCK_UART
 	select SSE2
 	select TSC_SYNC_LFENCE
 	select USE_DDR4
 	select X86_AMD_FIXED_MTRRS
+	help
+	  AMD support for SOCs in Family 15h Models 60h-6Fh and Models 70h-7Fh.
+
+if SOC_AMD_STONEYRIDGE
 
 config AMD_APU_STONEYRIDGE
 	bool
@@ -138,8 +139,8 @@ config ECAM_MMCONF_BUS_NUMBER
 
 config VGA_BIOS_ID
 	string
-	default "1002,9874" if AMD_APU_MERLINFALCON
-	default "1002,98e4"
+	default "1002,9870" if AMD_APU_MERLINFALCON
+	default "1002,98e0"
 	help
 	  The default VGA BIOS PCI vendor/device ID should be set to the
 	  result of the map_oprom_vendev() function in northbridge.c.
@@ -234,15 +235,6 @@ comment "AHCI7804"
 comment "IDE to AHCI7804"
 	depends on STONEYRIDGE_SATA_MODE = 6
 
-if STONEYRIDGE_SATA_MODE = 2 || STONEYRIDGE_SATA_MODE = 5
-
-config AHCI_ROM_ID
-	string  "AHCI device PCI IDs"
-	default "1022,7801" if STONEYRIDGE_SATA_MODE = 2
-	default "1022,7804" if STONEYRIDGE_SATA_MODE = 5
-
-endif # STONEYRIDGE_SATA_MODE = 2 || STONEYRIDGE_SATA_MODE = 5
-
 config STONEYRIDGE_LEGACY_FREE
 	bool "System is legacy free"
 	help
@@ -276,7 +268,10 @@ config SMM_MODULE_STACK_SIZE
 
 config ACPI_CPU_STRING
 	string
-	default "\\_SB.P%03d"
+	default "P%03d"
+
+config ACPI_SSDT_PSD_INDEPENDENT
+	default n
 
 config ACPI_BERT
 	bool "Build ACPI BERT Table"

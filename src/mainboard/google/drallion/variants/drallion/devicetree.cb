@@ -216,12 +216,11 @@ chip soc/intel/cannonlake
 	register "gpio_pm[COMM_3]" = "0"
 	register "gpio_pm[COMM_4]" = "0"
 
-	device cpu_cluster 0 on
-		device lapic 0 on end
-	end
+	device cpu_cluster 0 on end
 	device domain 0 on
 		device pci 00.0 on  end # Host Bridge
 		device pci 02.0 on
+			register "gfx" = "GMA_DEFAULT_PANEL(0)"
 			chip drivers/gfx/generic
 				register "device_count" = "1"
 				register "device[0].name" = ""LCD""
@@ -348,7 +347,6 @@ chip soc/intel/cannonlake
 							"ACPI_GPIO_OUTPUT_ACTIVE_HIGH(GPP_B21)"
 				register "generic.enable_delay_ms" = "55"
 				register "generic.has_power_resource" = "1"
-				register "generic.disable_gpio_export_in_crs" = "1"
 				register "hid_desc_reg_offset" = "0x1"
 				register "generic.device_present_gpio" = "GPP_B4"
 				register "generic.device_present_gpio_invert" = "1"

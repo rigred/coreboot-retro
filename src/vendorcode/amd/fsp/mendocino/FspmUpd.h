@@ -97,7 +97,13 @@ typedef struct __packed {
 	/* usb_phy_ptr is actually struct usb_phy_config *, but that won't work for 64bit coreboot */
 	/** Offset 0x04D8**/	uint32_t                    usb_phy_ptr;
 	/** Offset 0x04DC**/	uint8_t                     dxio_tx_vboost_enable;
-	/** Offset 0x04DD**/	uint8_t                     UnusedUpdSpace2[291];
+	/** Offset 0x04DD**/	uint32_t                    vrm_current_limit_mA;
+	/** Offset 0x04E1**/	uint32_t                    vrm_maximum_current_limit_mA;
+	/** Offset 0x04E5**/	uint32_t                    vrm_soc_current_limit_mA;
+	/** Offset 0x04E9**/	uint8_t                     fch_usb_3_port_force_gen1;
+	/** Offset 0x04EA**/	uint8_t                     edp_panel_t8_ms;
+	/** Offset 0x04EB**/	uint8_t                     edp_panel_t9_ms;
+	/** Offset 0x04EC**/	uint8_t                     UnusedUpdSpace2[276];
 	/** Offset 0x0600**/	uint16_t                    UpdTerminator;
 } FSP_M_CONFIG;
 

@@ -2,13 +2,18 @@
 
 #include <arch/romstage.h>
 #include <cbmem.h>
+#include <cf9_reset.h>
 #include <console/console.h>
+#include <elog.h>
 #include <fsp/util.h>
 #include <intelblocks/cfg.h>
 #include <intelblocks/cse.h>
+#include <intelblocks/early_graphics.h>
+#include <intelblocks/pcr.h>
 #include <intelblocks/pmclib.h>
 #include <intelblocks/smbus.h>
 #include <intelblocks/thermal.h>
+#include <intelblocks/vtd.h>
 #include <intelbasecode/debug_feature.h>
 #include <memory_info.h>
 #include <soc/intel/common/smbios.h>
@@ -19,6 +24,26 @@
 #include <cpu/intel/cpu_ids.h>
 #include <timestamp.h>
 #include <string.h>
+#include <security/intel/txt/txt.h>
+#include <soc/pcr_ids.h>
+
+#define PSF_UFS0_BASE_ADDRESS  0x280
+#define PSF_UFS1_BASE_ADDRESS  0x300
+#define PCR_PSFX_T0_SHDW_PCIEN 0x1C
+#define PCR_PSFX_T0_SHDW_PCIEN_FUNDIS  (1 << 8)
+
+static void disable_ufs(void)
+{
+	/* disable USF0 */
+	pcr_or32(PID_PSF2, PSF_UFS0_BASE_ADDRESS + PCR_PSFX_T0_SHDW_PCIEN,
+			 PCR_PSFX_T0_SHDW_PCIEN_FUNDIS);
+
+	/* disable USF1 */
+	pcr_or32(PID_PSF2, PSF_UFS1_BASE_ADDRESS + PCR_PSFX_T0_SHDW_PCIEN,
+			 PCR_PSFX_T0_SHDW_PCIEN_FUNDIS);
+}
+
+#include "ux.h"
 
 #define FSP_SMBIOS_MEMORY_INFO_GUID	\
 {	\
@@ -124,28 +149,56 @@ static void save_dimm_info(void)
 	printk(BIOS_DEBUG, "%d DIMMs found\n", mem_info->dimm_cnt);
 }
 
+void cse_fw_update_misc_oper(void)
+{
+	if (ux_inform_user_of_update_operation("CSE update"))
+		elog_add_event_byte(ELOG_TYPE_FW_EARLY_SOL, ELOG_FW_EARLY_SOL_CSE_SYNC);
+}
+
+void cse_board_reset(void)
+{
+	early_graphics_stop();
+}
+
 void mainboard_romstage_entry(void)
 {
-	bool s3wake;
 	struct chipset_power_state *ps = pmc_get_power_state();
+	bool s3wake = pmc_fill_power_state(ps) == ACPI_S3;
 
-	/* Program MCHBAR, DMIBAR, GDXBAR and EDRAMBAR */
-	systemagent_early_init();
-	/* Program SMBus base address and enable it */
-	smbus_common_init();
 	/* Initialize HECI interface */
 	cse_init(HECI1_BASE_ADDRESS);
 
 	if (CONFIG(SOC_INTEL_COMMON_BASECODE_DEBUG_FEATURE))
 		dbg_feature_cntrl_init();
 
-	s3wake = pmc_fill_power_state(ps) == ACPI_S3;
+	/*
+	 * Disable Intel TXT if `CPU is unsupported` or `SoC haven't selected the config`.
+	 *
+	 * It would help to access VGA framebuffer prior calling into CSE
+	 * firmware update or FSP-M.
+	 */
+	if (!CONFIG(INTEL_TXT))
+		disable_intel_txt();
 
-	if (CONFIG(SOC_INTEL_CSE_LITE_SYNC_IN_ROMSTAGE) && !s3wake) {
-		timestamp_add_now(TS_CSE_FW_SYNC_START);
+	if (CONFIG(SOC_INTEL_CSE_LITE_SYNC_IN_ROMSTAGE) && !s3wake)
 		cse_fw_sync();
-		timestamp_add_now(TS_CSE_FW_SYNC_END);
+
+	/* Program to Disable UFS Controllers */
+	if (!is_devfn_enabled(PCH_DEVFN_UFS) &&
+			 (CONFIG(USE_UNIFIED_AP_FIRMWARE_FOR_UFS_AND_NON_UFS))) {
+		printk(BIOS_INFO, "Disabling UFS controllers\n");
+		disable_ufs();
+		if (ps->prev_sleep_state == ACPI_S5) {
+			printk(BIOS_INFO, "Warm Reset after disabling UFS controllers\n");
+			system_reset();
+		}
 	}
+
+	/* Program MCHBAR, DMIBAR, GDXBAR and EDRAMBAR */
+	systemagent_early_init();
+	/* Program SMBus base address and enable it */
+	smbus_common_init();
+
 
 	/* Update coreboot timestamp table with CSE timestamps */
 	if (CONFIG(SOC_INTEL_CSE_PRE_CPU_RESET_TELEMETRY))
@@ -164,4 +217,15 @@ void mainboard_romstage_entry(void)
 	pmc_set_disb();
 	if (!s3wake)
 		save_dimm_info();
+
+	/*
+	 * Turn-off early graphics configuration with two purposes:
+	 * - Clear any potentially still on-screen message
+	 * - Allow PEIM graphics driver to smoothly execute in ramstage if
+	 *   RUN_FSP_GOP is selected
+	 */
+	early_graphics_stop();
+
+	if (CONFIG(ENABLE_EARLY_DMA_PROTECTION))
+		vtd_enable_dma_protection();
 }

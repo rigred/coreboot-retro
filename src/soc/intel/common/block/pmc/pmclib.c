@@ -24,6 +24,7 @@
 
 #define PMC_IPC_BIOS_RST_COMPLETE		0xd0
 #define PMC_IPC_BIOS_RST_SUBID_PCI_ENUM_DONE	0
+#define PMC_IPC_BIOS_RST_CMPL_STS_PCI_ENUM	BIT(0)
 
 static struct chipset_power_state power_state;
 
@@ -425,7 +426,13 @@ static int pmc_prev_sleep_state(const struct chipset_power_state *ps)
 		/* Clear SLP_TYP. */
 		pmc_write_pm1_control(ps->pm1_cnt & ~(SLP_TYP));
 	}
-	return soc_prev_sleep_state(ps, prev_sleep_state);
+
+	prev_sleep_state = soc_prev_sleep_state(ps, prev_sleep_state);
+
+	/* Clear PMC PMCON_x register power failure status bits. */
+	pmc_clear_pmcon_pwr_failure_sts();
+
+	return prev_sleep_state;
 }
 
 void pmc_fill_pm_reg_info(struct chipset_power_state *ps)
@@ -603,6 +610,48 @@ void pmc_gpe_init(void)
 
 	/* Set the routes in the GPIO communities as well. */
 	gpio_route_gpe(dw0, dw1, dw2);
+}
+
+static void pmc_clear_pmcon_pwr_failure_sts_mmio(void)
+{
+	uint8_t *addr = pmc_mmio_regs();
+
+	/*
+	 * Clear PMC GEN_PMCON_A register power failure status bits:
+	 * SUS_PWR_FLR, PWR_FLR bits
+	 * while retaining MS4V write-1-to-clear bit
+	 *
+	 * Note: clearing `GBL_RST_STS` bit earlier than FSP-M/MRC having an adverse effect
+	 * on the PMC sleep type register which results in calculating wrong
+	 * `prev_sleep_state` post a global reset, hence, just clearing the power failure
+	 * status bits rather than clearing the complete PMC PMCON_A register.
+	 */
+	clrbits32((addr + GEN_PMCON_A), (MS4V | GBL_RST_STS));
+}
+
+static void pmc_clear_pmcon_pwr_failure_sts_pci(void)
+{
+#if defined(__SIMPLE_DEVICE__)
+	pci_devfn_t dev = PCI_DEV(0, PCI_SLOT(PCH_DEVFN_PMC), PCI_FUNC(PCH_DEVFN_PMC));
+#else
+	struct device *dev = pcidev_path_on_root(PCH_DEVFN_PMC);
+	if (!dev)
+		return;
+#endif
+
+	pci_or_config32(dev, GEN_PMCON_B, (SUS_PWR_FLR | PWR_FLR));
+}
+
+/*
+ * Clear PMC GEN_PMCON_X register power failure status bits:
+ * SUS_PWR_FLR, PWR_FLR bits (keep the other bits intact)
+ */
+void pmc_clear_pmcon_pwr_failure_sts(void)
+{
+	if (CONFIG(SOC_INTEL_MEM_MAPPED_PM_CONFIGURATION))
+		pmc_clear_pmcon_pwr_failure_sts_mmio();
+	else
+		pmc_clear_pmcon_pwr_failure_sts_pci();
 }
 
 #if ENV_RAMSTAGE
@@ -806,12 +855,13 @@ enum pch_pmc_xtal pmc_get_xtal_freq(void)
 	}
 }
 
-void pmc_send_pci_enum_done(void)
+void pmc_send_bios_reset_pci_enum_done(void)
 {
 	struct pmc_ipc_buffer req = { 0 };
 	struct pmc_ipc_buffer rsp;
 	uint32_t cmd;
 
+	req.buf[0] = PMC_IPC_BIOS_RST_CMPL_STS_PCI_ENUM;
 	cmd = pmc_make_ipc_cmd(PMC_IPC_BIOS_RST_COMPLETE,
 			 PMC_IPC_BIOS_RST_SUBID_PCI_ENUM_DONE, 0);
 	if (pmc_send_ipc_cmd(cmd, &req, &rsp) != CB_SUCCESS)

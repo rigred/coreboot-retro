@@ -29,9 +29,6 @@ void variant_early_gpio_table(const struct soc_amd_gpio **gpio, size_t *size);
 /* This function allows variant to override any early GPIO init in early bootblock or psp. */
 void variant_early_override_gpio_table(const struct soc_amd_gpio **gpio, size_t *size);
 
-/* This function provides GPIO settings before entering sleep. */
-void variant_sleep_gpio_table(const struct soc_amd_gpio **gpio, size_t *size);
-
 /* This function provides GPIO settings for eSPI bus. */
 void variant_espi_gpio_table(const struct soc_amd_gpio **gpio, size_t *size);
 
@@ -43,5 +40,8 @@ void baseboard_romstage_gpio_table(const struct soc_amd_gpio **gpio, size_t *siz
 
 /* This function allows variant to override any GPIO init in romstage. */
 void variant_romstage_override_gpio_table(const struct soc_amd_gpio **gpio, size_t *size);
+
+/* Allow variants to override the DXIO Descriptors */
+void variant_get_dxio_descriptor(const fsp_dxio_descriptor **dxio_descs, size_t *dxio_num);
 
 #endif /* __BASEBOARD_VARIANTS_H__ */

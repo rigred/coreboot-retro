@@ -32,6 +32,11 @@ const uint8_t fsp_nv_storage_guid[16] = {
 	0xb3, 0xdc, 0x27, 0x0b, 0x7b, 0xa9, 0xe4, 0xb0
 };
 
+const uint8_t fsp_error_info_guid[16] = {
+	0x88, 0x6a, 0x1e, 0x61, 0xb7, 0xad, 0x01, 0x43,
+	0x93, 0xff, 0xe4, 0x73, 0x04, 0xb4, 0x3d, 0xa6
+};
+
 static const uint8_t uuid_fv_info[16] = {
 	0x2e, 0x72, 0x8e, 0x79, 0xb2, 0x15, 0x13, 0x4e,
 	0x8a, 0xe9, 0x6b, 0xa3, 0x0f, 0xf7, 0xf1, 0x67
@@ -200,34 +205,34 @@ void fsp_print_guid(int level, const void *base)
 	mid[0] = read16(id + 4);
 	mid[1] = read16(id + 6);
 
-	printk(level, "%08x-%04x-%04x-%02x%02x%02x%02x%02x%02x%02x%02x",
+	printk(level, "%08x-%04x-%04x-%02x%02x%02x%02x%02x%02x%02x%02x\n",
 	       big, mid[0], mid[1],
 	       id[8], id[9], id[10], id[11], id[12], id[13], id[14], id[15]);
 }
 
-int fsp_find_range_hob(struct range_entry *re, const uint8_t guid[16])
+enum cb_err fsp_find_range_hob(struct range_entry *re, const uint8_t guid[16])
 {
 	const struct hob_header *hob_iterator;
 	const struct hob_resource *fsp_mem;
 
 	if (fsp_hob_iterator_init(&hob_iterator) != CB_SUCCESS)
-		return -1;
+		return CB_ERR;
 
 	range_entry_init(re, 0, 0, 0);
 
 	if (fsp_hob_iterator_get_next_guid_resource(&hob_iterator, guid, &fsp_mem) != CB_SUCCESS) {
 		fsp_print_guid(BIOS_SPEW, guid);
 		printk(BIOS_SPEW, " not found!\n");
-		return -1;
+		return CB_ERR;
 	}
 
 	range_entry_init(re, fsp_mem->addr, fsp_mem->addr + fsp_mem->length, 0);
-	return 0;
+	return CB_SUCCESS;
 }
 
 void fsp_find_reserved_memory(struct range_entry *re)
 {
-	if (fsp_find_range_hob(re, fsp_reserved_memory_guid))
+	if (fsp_find_range_hob(re, fsp_reserved_memory_guid) != CB_SUCCESS)
 		die("9.1: FSP_RESERVED_MEMORY_RESOURCE_HOB missing!\n");
 }
 
@@ -241,6 +246,20 @@ const void *fsp_find_extension_hob_by_guid(const uint8_t *guid, size_t *size)
 
 	if (fsp_hob_iterator_get_next_guid_extension(&hob_iterator, guid, &hob_guid, size) == CB_SUCCESS)
 		return hob_guid;
+
+	return NULL;
+}
+
+const void *fsp_find_resource_hob_by_guid(const uint8_t *guid)
+{
+	const struct hob_header *hob_iterator;
+	const struct hob_resource *res_hob;
+
+	if (fsp_hob_iterator_init(&hob_iterator) != CB_SUCCESS)
+		return NULL;
+
+	if (fsp_hob_iterator_get_next_guid_resource(&hob_iterator, guid, &res_hob) == CB_SUCCESS)
+		return res_hob;
 
 	return NULL;
 }
@@ -353,6 +372,24 @@ const void *fsp_find_nv_storage_data(size_t *size)
 
 void fsp_find_bootloader_tolum(struct range_entry *re)
 {
-	if (fsp_find_range_hob(re, fsp_bootloader_tolum_guid))
+	if (fsp_find_range_hob(re, fsp_bootloader_tolum_guid) != CB_SUCCESS)
 		die("9.3: FSP_BOOTLOADER_TOLUM_HOB missing!\n");
+}
+
+bool fsp_display_error_info(void)
+{
+	if (!CONFIG(ENABLE_FSP_ERROR_INFO))
+		return false;
+
+	const struct hob_header *hob;
+	size_t size;
+
+	hob = (const struct hob_header *)fsp_find_extension_hob_by_guid(
+		fsp_error_info_guid, &size);
+	if (hob != NULL) {
+		display_fsp_error_info_hob(hob);
+		return true;
+	}
+
+	return false;
 }

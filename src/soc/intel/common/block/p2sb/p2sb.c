@@ -146,7 +146,6 @@ static const unsigned short pci_device_ids[] = {
 	PCI_DID_INTEL_LWB_P2SB_SUPER,
 	PCI_DID_INTEL_CNL_P2SB,
 	PCI_DID_INTEL_CNP_H_P2SB,
-	PCI_DID_INTEL_ICL_P2SB,
 	PCI_DID_INTEL_CMP_P2SB,
 	PCI_DID_INTEL_CMP_H_P2SB,
 	PCI_DID_INTEL_TGL_P2SB,
@@ -156,6 +155,7 @@ static const unsigned short pci_device_ids[] = {
 	PCI_DID_INTEL_ADP_P_P2SB,
 	PCI_DID_INTEL_ADP_S_P2SB,
 	PCI_DID_INTEL_ADP_M_P2SB,
+	PCI_DID_INTEL_SPR_SP_P2SB,
 	0,
 };
 

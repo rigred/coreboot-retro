@@ -4,12 +4,12 @@ Scope (\_SB.PCI0.I2C2)
 {
 	Device (PMIC)
 	{
-		Name (_HID, "INT3472") /* _HID: Hardware ID */
-		Name (_UID, 0)  /* _UID: Unique ID */
+		Name (_HID, "INT3472")
+		Name (_UID, 0)
 		Name (_DDN, "TPS68470 PMIC")  /* _DDN: DOS Device Name */
 		Name (CAMD, 0x64)
 
-		Method (_STA, 0, NotSerialized)  /* _STA: Status */
+		Method (_STA, 0, NotSerialized)
 		{
 			Return (0x0F)
 		}

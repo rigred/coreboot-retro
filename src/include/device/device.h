@@ -85,7 +85,8 @@ struct bus {
 	uint16_t	bridge_cmd;		/* Bridge command register */
 	unsigned char	link_num;	/* The index of this link */
 	uint16_t	secondary;	/* secondary bus number */
-	uint16_t	subordinate;	/* max subordinate bus number */
+	uint16_t	subordinate;	/* subordinate bus number */
+	uint16_t	max_subordinate;	/* max subordinate bus number */
 	unsigned char   cap;		/* PCi capability offset */
 	uint32_t	hcdn_reg;		/* For HyperTransport link  */
 
@@ -99,13 +100,6 @@ struct bus {
  * There is one device structure for each slot-number/function-number
  * combination:
  */
-
-struct pci_irq_info {
-	unsigned int	ioapic_irq_pin;
-	unsigned int	ioapic_src_pin;
-	unsigned int	ioapic_dst_id;
-	unsigned int    ioapic_flags;
-};
 
 struct device {
 	DEVTREE_CONST struct bus *bus;	/* bus this device is on, for bridge
@@ -143,7 +137,6 @@ struct device {
 	DEVTREE_CONST struct bus *link_list;
 
 #if !DEVTREE_EARLY
-	struct pci_irq_info pci_irq_info[4];
 	struct device_operations *ops;
 	struct chip_operations *chip_ops;
 	const char *name;
@@ -180,8 +173,6 @@ extern DEVTREE_CONST struct device	dev_root;
 extern DEVTREE_CONST struct device * DEVTREE_CONST all_devices;
 extern struct resource	*free_resources;
 extern struct bus	*free_links;
-
-extern const char mainboard_name[];
 
 /* Generic device interface functions */
 struct device *alloc_dev(struct bus *parent, struct device_path *path);
@@ -239,15 +230,6 @@ struct device *dev_find_lapic(unsigned int apic_id);
 int dev_count_cpu(void);
 struct device *add_cpu_device(struct bus *cpu_bus, unsigned int apic_id,
 				int enabled);
-void set_cpu_topology(struct device *cpu, unsigned int node,
-	unsigned int package, unsigned int core, unsigned int thread);
-
-#define amd_cpu_topology(cpu, node, core) \
-	set_cpu_topology(cpu, node, 0, core, 0)
-
-#define intel_cpu_topology(cpu, package, core, thread) \
-	set_cpu_topology(cpu, 0, package, core, thread)
-
 void mp_init_cpus(DEVTREE_CONST struct bus *cpu_bus);
 static inline void mp_cpu_bus_init(struct device *dev)
 {
@@ -426,6 +408,9 @@ static inline void fixed_mem_resource_kb(struct device *dev, unsigned long index
 #define reserved_ram_resource_kb(dev, idx, basek, sizek) \
 	fixed_mem_resource_kb(dev, idx, basek, sizek, IORESOURCE_CACHEABLE \
 		| IORESOURCE_RESERVE)
+
+#define soft_reserved_ram_resource(dev, idx, basek, sizek) \
+	fixed_mem_resource(dev, idx, basek, sizek, IORESOURCE_SOFT_RESERVE)
 
 #define bad_ram_resource_kb(dev, idx, basek, sizek) \
 	reserved_ram_resource_kb((dev), (idx), (basek), (sizek))

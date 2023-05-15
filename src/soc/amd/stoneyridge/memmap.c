@@ -5,7 +5,6 @@
 #include <stdint.h>
 #include <cpu/x86/msr.h>
 #include <cpu/x86/smm.h>
-#include <cpu/amd/msr.h>
 #include <cpu/amd/mtrr.h>
 #include <cbmem.h>
 #include <soc/northbridge.h>
@@ -14,9 +13,7 @@
 
 uintptr_t cbmem_top_chipset(void)
 {
-	msr_t tom = rdmsr(TOP_MEM);
-
-	if (!tom.lo)
+	if (!get_top_of_mem_below_4gb())
 		return 0;
 
 	/* 8MB alignment to keep MTRR usage low */

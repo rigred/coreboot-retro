@@ -57,8 +57,8 @@ void get_gmch_info(sysinfo_t *sysinfo)
 		printk(BIOS_SPEW, "AMT enabled\n");
 	}
 
-	sysinfo->max_ddr2_mhz = (capid & (1<<(53-32)))?667:800;
-	printk(BIOS_SPEW, "capable of DDR2 of %d MHz or lower\n", sysinfo->max_ddr2_mhz);
+	sysinfo->max_ddr2_mt = (capid & (1<<(53-32)))?667:800;
+	printk(BIOS_SPEW, "capable of DDR2 of %d MHz or lower\n", sysinfo->max_ddr2_mt);
 
 	if (!(capid & (1<<(48-32)))) {
 		printk(BIOS_SPEW, "VT-d enabled\n");
@@ -224,6 +224,58 @@ static int test_dimm(sysinfo_t *const sysinfo,
 }
 
 /* This function dies if dimm is unsuitable for the chipset. */
+static void verify_ddr2_dimm(sysinfo_t *const sysinfo, int dimm)
+{
+	if (!test_dimm(sysinfo, dimm, 20, 0x04, 0x04))
+		die("Chipset only supports SO-DIMM\n");
+
+	if (!test_dimm(sysinfo, dimm,  6, 0xff, 0x40) ||
+	    !test_dimm(sysinfo, dimm, 11, 0xff, 0x00))
+		die("Chipset doesn't support ECC RAM\n");
+
+	if (!test_dimm(sysinfo, dimm,  5, 0x07, 0) &&
+	    !test_dimm(sysinfo, dimm,  5, 0x07, 1))
+		die("Chipset wants single or dual ranked DIMMs\n");
+
+	/*
+	 * Generally supports:
+	 *   x8/x16
+	 *   4 or 8 banks
+	 *   10 column address bits
+	 *   13, 14 or 15 (x8 only) row address bits
+	 *
+	 * FIXME: There seems to be an exception for 256Gb x16 chips. Not
+	 *        covered by the numbers above (9 column address bits?).
+	 */
+	if (!test_dimm(sysinfo, dimm, 13, 0xff, 8) &&
+	    !test_dimm(sysinfo, dimm, 13, 0xff, 16))
+		die("Chipset requires x8 or x16 width\n");
+
+	if (!test_dimm(sysinfo, dimm, 17, 0xff, 4) &&
+	    !test_dimm(sysinfo, dimm, 17, 0xff, 8))
+		die("Chipset requires 4 or 8 banks\n");
+
+	if (!test_dimm(sysinfo, dimm,  4, 0xff, 10))
+		die("Chipset requires 10 column address bits\n");
+
+	if (!test_dimm(sysinfo, dimm, 3, 0xff, 13) &&
+	    !test_dimm(sysinfo, dimm, 3, 0xff, 14) &&
+	    !(test_dimm(sysinfo, dimm, 3, 0xff, 15) &&
+	      test_dimm(sysinfo, dimm, 13, 0xff, 8)))
+		die("Chipset requires 13, 14 or 15 (with x8) row address bits");
+}
+
+/* For every detected DIMM, test if it's suitable for the chipset. */
+static void verify_ddr2(sysinfo_t *const sysinfo, int mask)
+{
+	int cur;
+	for (cur = 0; mask; mask >>= 1, ++cur) {
+		if (mask & 1)
+			verify_ddr2_dimm(sysinfo, cur);
+	}
+}
+
+/* This function dies if dimm is unsuitable for the chipset. */
 static void verify_ddr3_dimm(sysinfo_t *const sysinfo, int dimm)
 {
 	if (!test_dimm(sysinfo, dimm, 3, 15, 3))
@@ -281,7 +333,7 @@ static void verify_ddr3(sysinfo_t *const sysinfo, int mask)
 
 typedef struct {
 	int dimm_mask;
-	struct {
+	struct spd_dimminfo {
 		unsigned int rows;
 		unsigned int cols;
 		unsigned int chip_capacity;
@@ -297,8 +349,109 @@ typedef struct {
 		unsigned int tWR;
 		unsigned int page_size;
 		unsigned int raw_card;
+		unsigned int refresh;
 	} channel[2];
 } spdinfo_t;
+/**
+ * \brief Decode SPD tck cycle time
+ *
+ * Decodes a raw SPD data from a DDR2 DIMM.
+ * Returns cycle time in 1/256th ns.
+ */
+static unsigned int spd_decode_tck_time(u8 c)
+{
+	u8 high, low;
+
+	high = c >> 4;
+
+	switch (c & 0xf) {
+	case 0xa:
+		low = 25;
+		break;
+	case 0xb:
+		low = 33;
+		break;
+	case 0xc:
+		low = 66;
+		break;
+	case 0xd:
+		low = 75;
+		break;
+	case 0xe:
+	case 0xf:
+		die("Invalid tck setting. lower nibble is 0x%x\n", c & 0xf);
+	default:
+		low = (c & 0xf) * 10;
+	}
+
+	return ((high * 100 + low) << 8) / 100;
+}
+static void collect_ddr2_dimm(struct spd_dimminfo *const di, const int smb_addr)
+{
+	static const int tCK_offsets[] = { 9, 23, 25 };
+
+	di->rows = smbus_read_byte(smb_addr, 3);
+	di->cols = smbus_read_byte(smb_addr, 4);
+	di->banks = smbus_read_byte(smb_addr, 17);
+	di->width = smbus_read_byte(smb_addr, 13) / 8;	/* in bytes */
+
+	/* 0: 256Mb .. 3: 2Gb */
+	di->chip_capacity =
+		di->rows + di->cols
+		+ (di->width == 1 ? 3 : 4)	/* 1B: 2^3 bits, 2B: 2^4 bits */
+		+ (di->banks == 4 ? 2 : 3)	/* 4 banks: 2^2, 8 banks: 2^3 */
+		- 28;
+
+	di->page_size = di->width * (1 << di->cols);	/* in bytes */
+
+	di->ranks = (smbus_read_byte(smb_addr, 5) & 7) + 1;
+
+	di->cas_latencies = smbus_read_byte(smb_addr, 18);
+	/* assuming tCKmin for the highest CAS is the absolute minimum */
+	di->tCKmin = spd_decode_tck_time(smbus_read_byte(smb_addr, 9));
+
+	/* try to reconstruct tAAmin from available data (I hate DDR2 SPDs) */
+	unsigned int i;
+	unsigned int cas = 7;
+	di->tAAmin = UINT32_MAX; /* we don't have UINT_MAX? */
+	for (i = 0; i < ARRAY_SIZE(tCK_offsets); ++i, --cas) {
+		for (; cas > 1; --cas)
+			if (di->cas_latencies & (1 << cas))
+				break;
+		if (cas <= 1)
+			break;
+
+		const unsigned int tCK_enc =
+			smbus_read_byte(smb_addr, tCK_offsets[i]);
+		const unsigned int tAA = spd_decode_tck_time(tCK_enc) * cas;
+		if (tAA < di->tAAmin)
+			di->tAAmin = tAA;
+	}
+
+	/* convert to 1/256ns */
+	di->tRAS = smbus_read_byte(smb_addr, 30) << 8;	/* given in ns */
+	di->tRP  = smbus_read_byte(smb_addr, 27) << 6;	/* given in 1/4ns */
+	di->tRCD = smbus_read_byte(smb_addr, 29) << 6;	/* given in 1/4ns */
+	di->tWR  = smbus_read_byte(smb_addr, 36) << 6;	/* given in 1/4ns */
+
+	di->raw_card = 0;	/* Use same path as for DDR3 type A. */
+	di->refresh = smbus_read_byte(smb_addr, 12);
+}
+/*
+ * This function collects RAM characteristics from SPD, assuming that RAM
+ * is generally within chipset's requirements, since verify_ddr2() passed.
+ */
+static void collect_ddr2(sysinfo_t *const sysinfo, spdinfo_t *const config)
+{
+	int cur;
+	for (cur = 0; cur < 2; ++cur) {
+		if (config->dimm_mask & (1 << (2 * cur))) {
+			collect_ddr2_dimm(&config->channel[cur],
+					  sysinfo->spd_map[2 * cur]);
+		}
+	}
+}
+
 /*
  * This function collects RAM characteristics from SPD, assuming that RAM
  * is generally within chipset's requirements, since verify_ddr3() passed.
@@ -325,20 +478,21 @@ static void collect_ddr3(sysinfo_t *const sysinfo, spdinfo_t *const config)
 			config->channel[cur].cas_latencies =
 				((smbus_read_byte(smb_addr, 15) << 8) | smbus_read_byte(smb_addr, 14))
 				<< 4; /* so bit x is CAS x */
-			config->channel[cur].tAAmin = smbus_read_byte(smb_addr, 16); /* in MTB */
-			config->channel[cur].tCKmin = smbus_read_byte(smb_addr, 12); /* in MTB */
+			config->channel[cur].tAAmin = smbus_read_byte(smb_addr, 16) * 32; /* convert from MTB to 1/256 ns */
+			config->channel[cur].tCKmin = smbus_read_byte(smb_addr, 12) * 32; /* convert from MTB to 1/256 ns */
 
 			config->channel[cur].width = smbus_read_byte(smb_addr, 7) & 7;
 			config->channel[cur].page_size = config->channel[cur].width *
 								(1 << config->channel[cur].cols); /* in Bytes */
 
 			tmp = smbus_read_byte(smb_addr, 21);
-			config->channel[cur].tRAS = smbus_read_byte(smb_addr, 22) | ((tmp & 0xf) << 8);
-			config->channel[cur].tRP = smbus_read_byte(smb_addr, 20);
-			config->channel[cur].tRCD = smbus_read_byte(smb_addr, 18);
-			config->channel[cur].tWR = smbus_read_byte(smb_addr, 17);
+			config->channel[cur].tRAS = (smbus_read_byte(smb_addr, 22) | ((tmp & 0xf) << 8)) * 32;
+			config->channel[cur].tRP = smbus_read_byte(smb_addr, 20) * 32;
+			config->channel[cur].tRCD = smbus_read_byte(smb_addr, 18) * 32;
+			config->channel[cur].tWR = smbus_read_byte(smb_addr, 17) * 32;
 
 			config->channel[cur].raw_card = smbus_read_byte(smb_addr, 62) & 0x1f;
+			config->channel[cur].refresh = REFRESH_7_8;
 		}
 		cur++;
 		mask >>= 2;
@@ -418,10 +572,13 @@ static unsigned int find_common_clock_cas(sysinfo_t *const sysinfo,
 		case FSB_CLOCK_667MHz:	fsb_mhz =  667; break;
 	}
 
-	unsigned int clock = 8000 / tCKmin;
-	if ((clock > sysinfo->max_ddr3_mt / 2) || (clock > fsb_mhz / 2)) {
-		int new_clock = MIN(sysinfo->max_ddr3_mt / 2, fsb_mhz / 2);
-		printk(BIOS_SPEW, "DIMMs support %d MHz, but chipset only runs at up to %d. Limiting...\n",
+	unsigned int clock = 256000 / tCKmin;
+	const unsigned int max_ddr_clock = (sysinfo->spd_type == DDR2)
+					   ? sysinfo->max_ddr2_mt / 2
+					   : sysinfo->max_ddr3_mt / 2;
+	if ((clock > max_ddr_clock) || (clock > fsb_mhz / 2)) {
+		int new_clock = MIN(max_ddr_clock, fsb_mhz / 2);
+		printk(BIOS_INFO, "DIMMs support %d MHz, but chipset only runs at up to %d. Limiting...\n",
 			clock, new_clock);
 		clock = new_clock;
 	}
@@ -433,13 +590,13 @@ static unsigned int find_common_clock_cas(sysinfo_t *const sysinfo,
 	while (1) {
 		if (!clock)
 			die("Couldn't find compatible clock / CAS settings.\n");
-		tCKproposed = 8000 / clock;
+		tCKproposed = 256000 / clock;
 		CAS = DIV_ROUND_UP(tAAmin, tCKproposed);
 		printk(BIOS_SPEW, "Trying CAS %u, tCK %u.\n", CAS, tCKproposed);
 		for (; CAS <= DDR3_MAX_CAS; ++CAS)
 			if (cas_latencies & (1 << CAS))
 				break;
-		if ((CAS <= DDR3_MAX_CAS) && (CAS * tCKproposed < 160)) {
+		if ((CAS <= DDR3_MAX_CAS) && (CAS * tCKproposed < 32 * 160)) {
 			/* Found good CAS. */
 			printk(BIOS_SPEW, "Found compatible clock / CAS pair: %u / %u.\n", clock, CAS);
 			break;
@@ -533,7 +690,9 @@ static void calculate_derived_timings(sysinfo_t *const sysinfo,
 
 	/* Refresh rate is fixed. */
 	unsigned int tWL;
-	if (sysinfo->selected_timings.mem_clock == MEM_CLOCK_1067MT) {
+	if (sysinfo->spd_type == DDR2) {
+		tWL = sysinfo->selected_timings.CAS - 1;
+	} else if (sysinfo->selected_timings.mem_clock == MEM_CLOCK_1067MT) {
 		tWL = 6;
 	} else {
 		tWL = 5;
@@ -594,7 +753,8 @@ static void collect_dimm_config(sysinfo_t *const sysinfo)
 	printk(BIOS_SPEW, "DDR mask %x, DDR %d\n", spdinfo.dimm_mask, sysinfo->spd_type);
 
 	if (sysinfo->spd_type == DDR2) {
-		die("DDR2 not supported at this time.\n");
+		verify_ddr2(sysinfo, spdinfo.dimm_mask);
+		collect_ddr2(sysinfo, &spdinfo);
 	} else if (sysinfo->spd_type == DDR3) {
 		verify_ddr3(sysinfo, spdinfo.dimm_mask);
 		collect_ddr3(sysinfo, &spdinfo);
@@ -621,13 +781,14 @@ static void collect_dimm_config(sysinfo_t *const sysinfo)
 				spdinfo.channel[i].width, spdinfo.channel[i].page_size,
 				spdinfo.channel[i].banks, spdinfo.channel[i].ranks,
 				spdinfo.channel[i].tAAmin, spdinfo.channel[i].tCKmin,
-				8000 / spdinfo.channel[i].tCKmin, spdinfo.channel[i].cas_latencies);
+				256000 / spdinfo.channel[i].tCKmin, spdinfo.channel[i].cas_latencies);
 		}
 	}
 
 	FOR_EACH_CHANNEL(i) {
 		sysinfo->dimms[i].card_type =
 			(spdinfo.dimm_mask & (1 << (i * 2))) ? spdinfo.channel[i].raw_card + 0xa : 0;
+		sysinfo->dimms[i].refresh = spdinfo.channel[i].refresh;
 	}
 
 	/* Find common memory clock and CAS. */
@@ -823,9 +984,10 @@ static void configure_dram_control_mode(const timings_t *const timings, const di
 		cxdrc &= ~CxDRC0_RANKEN_MASK;
 		FOR_EACH_POPULATED_RANK_IN_CHANNEL(dimms, ch, r)
 			cxdrc |= CxDRC0_RANKEN(r);
-		cxdrc = (cxdrc & ~CxDRC0_RMS_MASK) |
-				/* Always 7.8us for DDR3: */
-				CxDRC0_RMS_78US;
+		if (dimms[ch].refresh == REFRESH_3_9)
+			cxdrc = (cxdrc & ~CxDRC0_RMS_MASK) | CxDRC0_RMS_39US;
+		else
+			cxdrc = (cxdrc & ~CxDRC0_RMS_MASK) | CxDRC0_RMS_78US;
 		mchbar_write32(mchbar, cxdrc);
 
 		mchbar = CxDRC1_MCHBAR(ch);
@@ -848,30 +1010,41 @@ static void configure_dram_control_mode(const timings_t *const timings, const di
 	}
 }
 
-static void rcomp_initialization(const stepping_t stepping, const int sff)
+static void rcomp_initialization(const int spd_type, const stepping_t stepping, const int sff)
 {
 	/* Program RCOMP codes. */
 	if (sff)
 		die("SFF platform unsupported in RCOMP initialization.\n");
-	/* Values are for DDR3. */
-	mchbar_clrbits8(0x6ac, 0x0f);
-	mchbar_write8(0x6b0,   0x55);
-	mchbar_clrbits8(0x6ec, 0x0f);
-	mchbar_write8(0x6f0,   0x66);
-	mchbar_clrbits8(0x72c, 0x0f);
-	mchbar_write8(0x730,   0x66);
-	mchbar_clrbits8(0x76c, 0x0f);
-	mchbar_write8(0x770,   0x66);
-	mchbar_clrbits8(0x7ac, 0x0f);
-	mchbar_write8(0x7b0,   0x66);
-	mchbar_clrbits8(0x7ec, 0x0f);
-	mchbar_write8(0x7f0,   0x66);
-	mchbar_clrbits8(0x86c, 0x0f);
-	mchbar_write8(0x870,   0x55);
-	mchbar_clrbits8(0x8ac, 0x0f);
-	mchbar_write8(0x8b0,   0x66);
-	/* ODT multiplier bits. */
-	mchbar_clrsetbits32(0x04d0, 7 << 3 | 7 << 0, 2 << 3 | 2 << 0);
+
+	if (spd_type == DDR2) {
+		unsigned int o;
+		for (o = 0; o <= 0x200; o += 0x40) {
+			mchbar_clrsetbits8(0x6ac + o, 0x0f, 0x0a);
+			mchbar_write8(0x6b0 + o, 0x55);
+		}
+		/* ODT multiplier bits. */
+		mchbar_clrsetbits32(0x04d0, 7 << 3 | 7 << 0, 1 << 3 | 1 << 0);
+	} else {
+		/* Values are for DDR3. */
+		mchbar_clrbits8(0x6ac, 0x0f);
+		mchbar_write8(0x6b0,   0x55);
+		mchbar_clrbits8(0x6ec, 0x0f);
+		mchbar_write8(0x6f0,   0x66);
+		mchbar_clrbits8(0x72c, 0x0f);
+		mchbar_write8(0x730,   0x66);
+		mchbar_clrbits8(0x76c, 0x0f);
+		mchbar_write8(0x770,   0x66);
+		mchbar_clrbits8(0x7ac, 0x0f);
+		mchbar_write8(0x7b0,   0x66);
+		mchbar_clrbits8(0x7ec, 0x0f);
+		mchbar_write8(0x7f0,   0x66);
+		mchbar_clrbits8(0x86c, 0x0f);
+		mchbar_write8(0x870,   0x55);
+		mchbar_clrbits8(0x8ac, 0x0f);
+		mchbar_write8(0x8b0,   0x66);
+		/* ODT multiplier bits. */
+		mchbar_clrsetbits32(0x04d0, 7 << 3 | 7 << 0, 2 << 3 | 2 << 0);
+	}
 
 	/* Perform RCOMP calibration for DDR3. */
 	raminit_rcomp_calibration(stepping);
@@ -896,44 +1069,64 @@ static void rcomp_initialization(const stepping_t stepping, const int sff)
 	mchbar_setbits32(0x400, 1 << 1);
 }
 
-static void dram_powerup(const int resume)
+static void dram_powerup(const int spd_type, const int stepping, const int resume)
 {
+	u32 tmp;
+
 	udelay(200);
-	mchbar_clrsetbits32(CLKCFG_MCHBAR, 1 << 3, 3 << 21);
-	if (!resume) {
+	tmp = mchbar_read32(CLKCFG_MCHBAR);
+	tmp &= ~(3 << 21 | 1 << 3);
+	if (spd_type == DDR2 && stepping < STEPPING_B0)
+		tmp |= 2 << 21 | 1 << 3;
+	else
+		tmp |= 3 << 21;
+	mchbar_write32(CLKCFG_MCHBAR, tmp);
+
+	if (spd_type == DDR3 && !resume) {
 		mchbar_setbits32(0x1434, 1 << 10);
 		udelay(1);
 	}
 	mchbar_setbits32(0x1434, 1 << 6);
-	if (!resume) {
+	if (spd_type == DDR3 && !resume) {
 		udelay(1);
 		mchbar_setbits32(0x1434, 1 << 9);
 		mchbar_clrbits32(0x1434, 1 << 10);
 		udelay(500);
 	}
 }
-static void dram_program_timings(const timings_t *const timings)
+
+static void dram_program_timings(const int spd_type, const timings_t *const timings)
 {
 	/* Values are for DDR3. */
 	const int burst_length = 8;
-	const int tWTR = 4, tRTP = 1;
+	const int tWTR = (spd_type == DDR2) ? 3 : 4, tRTP = 1;
 	int i;
 
 	FOR_EACH_CHANNEL(i) {
 		u32 reg = mchbar_read32(CxDRT0_MCHBAR(i));
 		const int btb_wtp = timings->tWL + burst_length/2 + timings->tWR;
-		const int btb_wtr = timings->tWL + burst_length/2 + tWTR;
+		const int btb_wtr =
+			((spd_type == DDR2) ? timings->CAS - 1 : timings->tWL)
+			+ burst_length/2 + tWTR;
 		reg = (reg & ~(CxDRT0_BtB_WtP_MASK  | CxDRT0_BtB_WtR_MASK)) |
 			((btb_wtp << CxDRT0_BtB_WtP_SHIFT) & CxDRT0_BtB_WtP_MASK) |
 			((btb_wtr << CxDRT0_BtB_WtR_SHIFT) & CxDRT0_BtB_WtR_MASK);
-		if (timings->mem_clock != MEM_CLOCK_1067MT) {
+		if (spd_type == DDR2) {
+			reg = (reg & ~(0x7 << 15)) | (2 << 15);
+			if (timings->mem_clock == MEM_CLOCK_667MT)
+				reg = (reg & ~(0xf << 10)) | (2 << 10);
+			else
+				reg = (reg & ~(0xf << 10)) | (3 << 10);
+			reg = (reg & ~(0x7 <<  5)) | (3 << 5);
+		} else if (timings->mem_clock != MEM_CLOCK_1067MT) {
 			reg = (reg & ~(0x7 << 15)) | ((9 - timings->CAS) << 15);
 			reg = (reg & ~(0xf << 10)) | ((timings->CAS - 3) << 10);
+			reg = (reg & ~(0x7 <<  5)) | (3 << 5);
 		} else {
 			reg = (reg & ~(0x7 << 15)) | ((10 - timings->CAS) << 15);
 			reg = (reg & ~(0xf << 10)) | ((timings->CAS - 4) << 10);
+			reg = (reg & ~(0x7 <<  5)) | (3 << 5);
 		}
-		reg = (reg & ~(0x7 << 5)) | (3 << 5);
 		reg = (reg & ~(0x7 << 0)) | (1 << 0);
 		mchbar_write32(CxDRT0_MCHBAR(i), reg);
 
@@ -947,7 +1140,10 @@ static void dram_program_timings(const timings_t *const timings)
 
 		reg = mchbar_read32(CxDRT2_MCHBAR(i));
 		reg = (reg & ~(0x1f << 17)) | ((timings->tFAW & 0x1f) << 17);
-		if (timings->mem_clock != MEM_CLOCK_1067MT) {
+		if (spd_type == DDR2) {
+			reg = (reg & ~(0x7 << 12)) | (0x1 << 12);
+			reg = (reg & ~(0xf <<  6)) | (0x1 <<  6);
+		} else if (timings->mem_clock != MEM_CLOCK_1067MT) {
 			reg = (reg & ~(0x7 << 12)) | (0x2 << 12);
 			reg = (reg & ~(0xf <<  6)) | (0x9 <<  6);
 		} else {
@@ -958,7 +1154,10 @@ static void dram_program_timings(const timings_t *const timings)
 		mchbar_write32(CxDRT2_MCHBAR(i), reg);
 
 		reg = mchbar_read32(CxDRT3_MCHBAR(i));
-		reg |= 0x3 << 28;
+		if (spd_type == DDR2)
+			reg &= ~(0x3 << 28);
+		else
+			reg |=  (0x3 << 28);
 		reg = (reg & ~(0x03 << 26));
 		reg = (reg & ~(0x07 << 23)) | (((timings->CAS - 3) & 0x07) << 23);
 		reg = (reg & ~(0xff << 13)) | ((timings->tRFC & 0xff) << 13);
@@ -985,15 +1184,26 @@ static void dram_program_timings(const timings_t *const timings)
 		if (timings->mem_clock == MEM_CLOCK_1067MT)
 			reg = (reg & ~(0xf << 28)) | (0x8 << 28);
 		reg = (reg & ~(0x00f << 22)) | ((burst_length/2 + timings->CAS + 2) << 22);
-		reg = (reg & ~(0x3ff << 12)) | (0x190 << 12);
+		if (spd_type == DDR2) {
+			if (timings->mem_clock == MEM_CLOCK_667MT)
+				reg = (reg & ~(0x1ff << 12)) | (0x21 << 12);
+			else
+				reg = (reg & ~(0x1ff << 12)) | (0x28 << 12);
+		} else {
+			reg = (reg & ~(0x1ff << 12)) | (0x190 << 12);
+		}
 		reg = (reg & ~(0x00f <<  4)) | ((timings->CAS - 2) << 4);
 		reg = (reg & ~(0x003 <<  2)) | (0x001 <<  2);
 		reg = (reg & ~(0x003 <<  0));
 		mchbar_write32(CxDRT5_MCHBAR(i), reg);
 
 		reg = mchbar_read32(CxDRT6_MCHBAR(i));
-		reg = (reg & ~(0xffff << 16)) | (0x066a << 16); /* always 7.8us refresh rate for DDR3 */
-		reg |= (1 <<  2);
+		if (spd_type == DDR2) {
+			reg &= ~(1 << 2);
+		} else {
+			reg = (reg & ~(0xffff << 16)) | (0x066a << 16); /* always 7.8us refresh rate for DDR3 */
+			reg |= (1 << 2);
+		}
 		mchbar_write32(CxDRT6_MCHBAR(i), reg);
 	}
 }
@@ -1018,9 +1228,8 @@ static void dram_program_banks(const dimminfo_t *const dimms)
 	}
 }
 
-static void odt_setup(const timings_t *const timings, const int sff)
+static void ddr3_odt_setup(const timings_t *const timings, const int sff)
 {
-	/* Values are for DDR3. */
 	int ch;
 
 	FOR_EACH_CHANNEL(ch) {
@@ -1058,6 +1267,45 @@ static void odt_setup(const timings_t *const timings, const int sff)
 			reg = (reg & ~0x7) | 0x5;
 			break;
 		}
+		mchbar_write32(CxODT_LOW(ch), reg);
+	}
+}
+
+static void ddr2_odt_setup(const timings_t *const timings, const int sff)
+{
+	int ch;
+
+	FOR_EACH_CHANNEL(ch) {
+		u32 reg = mchbar_read32(CxODT_HIGH(ch));
+		if (sff && (timings->mem_clock == MEM_CLOCK_667MT))
+			reg &= ~(0x3 << (61 - 32));
+		else
+			reg |= 0x3 << (61 - 32);
+		reg = (reg & ~(0x3 << (52 - 32))) | (1 << (52 - 32));
+		reg = (reg & ~(0x7 << (48 - 32))) | ((timings->CAS - 2) << (48 - 32));
+		reg = (reg & ~(0xf << (44 - 32))) | (8 << (44 - 32));
+		reg = (reg & ~(0xf << (40 - 32))) | (7 << (40 - 32));
+		if (timings->mem_clock == MEM_CLOCK_667MT) {
+			reg = (reg & ~(0xf << (36 - 32))) | (4 << (36 - 32));
+			reg = (reg & ~(0xf << (32 - 32))) | (4 << (32 - 32));
+		} else {
+			reg = (reg & ~(0xf << (36 - 32))) | (5 << (36 - 32));
+			reg = (reg & ~(0xf << (32 - 32))) | (5 << (32 - 32));
+		}
+		mchbar_write32(CxODT_HIGH(ch), reg);
+
+		reg = mchbar_read32(CxODT_LOW(ch));
+		if (timings->mem_clock == MEM_CLOCK_667MT)
+			reg = (reg & ~(0x7 << 28)) | (2 << 28);
+		else
+			reg = (reg & ~(0x7 << 28)) | (3 << 28);
+		reg = (reg & ~(0x3 << 22)) | (1 << 22);
+		if (timings->mem_clock == MEM_CLOCK_667MT)
+			reg = (reg & ~(0x7 << 12)) | ((timings->tWL - 1) << 12);
+		else
+			reg = (reg & ~(0x7 << 12)) | ((timings->tWL - 2) << 12);
+		reg = (reg & ~(0x7 <<  4)) | ((timings->tWL - 1) <<  4);
+		reg = (reg & ~(0x7 <<  0));
 		mchbar_write32(CxODT_LOW(ch), reg);
 	}
 }
@@ -1336,6 +1584,7 @@ static void ddr3_select_clock_mux(const mem_clock_t ddr3clock,
 					 ((( clk1067 && !cardF[ch])?3:2) << 11) | mixed);
 	}
 }
+
 static void ddr3_write_io_init(const mem_clock_t ddr3clock,
 			       const dimminfo_t *const dimms,
 			       const stepping_t stepping,
@@ -1402,9 +1651,10 @@ static void ddr3_write_io_init(const mem_clock_t ddr3clock,
 	mchbar_write32(0x1590, 0x00e70067);
 	mchbar_write32(0x1594, 0x000d8000);
 }
-static void ddr3_read_io_init(const mem_clock_t ddr3clock,
-			      const dimminfo_t *const dimms,
-			      const int sff)
+
+static void ddr_read_io_init(const mem_clock_t ddr_clock,
+			     const dimminfo_t *const dimms,
+			     const int sff)
 {
 	int ch;
 
@@ -1415,7 +1665,7 @@ static void ddr3_read_io_init(const mem_clock_t ddr3clock,
 			tmp = mchbar_read32(addr);
 			tmp &= ~((3 << 25) | (1 << 8) | (7 << 16) | (0xf << 20) | (1 << 27));
 			tmp |= (1 << 27);
-			switch (ddr3clock) {
+			switch (ddr_clock) {
 				case MEM_CLOCK_667MT:
 					tmp |= (1 << 16) | (4 << 20);
 					break;
@@ -1436,10 +1686,10 @@ static void ddr3_read_io_init(const mem_clock_t ddr3clock,
 	}
 }
 
-static void memory_io_init(const mem_clock_t ddr3clock,
-			   const dimminfo_t *const dimms,
-			   const stepping_t stepping,
-			   const int sff)
+static void ddr3_memory_io_init(const mem_clock_t ddr3clock,
+				const dimminfo_t *const dimms,
+				const stepping_t stepping,
+				const int sff)
 {
 	u32 tmp;
 
@@ -1532,31 +1782,129 @@ static void memory_io_init(const mem_clock_t ddr3clock,
 
 	ddr3_write_io_init(ddr3clock, dimms, stepping, sff);
 
-	ddr3_read_io_init(ddr3clock, dimms, sff);
+	ddr_read_io_init(ddr3clock, dimms, sff);
 }
 
-static void jedec_init(const timings_t *const timings,
-		       const dimminfo_t *const dimms)
+static void ddr2_select_clock_mux(const dimminfo_t *const dimms)
+{
+	int ch;
+	unsigned int o;
+	FOR_EACH_POPULATED_CHANNEL(dimms, ch) {
+		const unsigned int b = 0x14b0 + (ch * 0x0100);
+		for (o = 0; o < 0x20; o += 4)
+			mchbar_clrbits32(b + o, 7 << 11);
+	}
+}
+
+static void ddr2_write_io_init(const dimminfo_t *const dimms)
+{
+	int s;
+
+	mchbar_clrsetbits32(CxWRTy_MCHBAR(0, 0), 0xf7bff71f, 0x008b0008);
+
+	for (s = 1; s < 4; ++s) {
+		mchbar_clrsetbits32(CxWRTy_MCHBAR(0, s), 0xf7bff71f, 0x00800000);
+	}
+
+	mchbar_clrsetbits32(0x1490, 0xf7fff77f, 0x00800000);
+	mchbar_clrsetbits32(0x1494, 0xf71f8000, 0x00040000);
+
+	mchbar_clrsetbits32(CxWRTy_MCHBAR(1, 0), 0xf7bff71f, 0x00890008);
+
+	for (s = 1; s < 4; ++s) {
+		mchbar_clrsetbits32(CxWRTy_MCHBAR(1, s), 0xf7bff71f, 0x00890000);
+	}
+
+	mchbar_clrsetbits32(0x1590, 0xf7fff77f, 0x00800000);
+	mchbar_clrsetbits32(0x1594, 0xf71f8000, 0x00040000);
+}
+
+static void ddr2_memory_io_init(const mem_clock_t ddr2clock,
+				const dimminfo_t *const dimms,
+				const stepping_t stepping,
+				const int sff)
+{
+	u32 tmp;
+	u32 tmp2;
+
+	if (stepping < STEPPING_B1)
+		die("Stepping <B1 unsupported in DDR2 memory i/o initialization.\n");
+	if (sff)
+		die("SFF platform unsupported in DDR2 memory i/o initialization.\n");
+
+	tmp = mchbar_read32(0x140c);
+	tmp &= ~(0xff | (1<<11) | (0xf<<28));
+	tmp |= (1<<0) | (1<<12) | (1<<16) | (1<<18) | (1<<27);
+	mchbar_write32(0x140c, tmp);
+
+	tmp = mchbar_read32(0x1440);
+	tmp &= ~(1<<5);
+	tmp |= (1<<0) | (1<<2) | (1<<3) | (1<<4) | (1<<6);
+	mchbar_write32(0x1440, tmp);
+
+	tmp = mchbar_read32(0x1414);
+	tmp &= ~((1<<20) | (7<<11) | (0xf << 24) | (0xf << 16));
+	tmp |= (3<<11);
+	tmp2 = mchbar_read32(0x142c);
+	tmp2 &= ~((0xf << 8) | (0x7 << 20) | 0xf);
+	tmp2 |= (0x3 << 20);
+	switch (ddr2clock) {
+	case MEM_CLOCK_667MT:
+		tmp |= (2 << 24) | (10 << 16);
+		tmp2 |= (2 << 8) | 0xc;
+		break;
+	case MEM_CLOCK_800MT:
+		tmp |= (3 << 24) | (7 << 16);
+		tmp2 |= (3 << 8) | 0xa;
+		break;
+	default:
+		die("Wrong clock");
+	}
+	mchbar_write32(0x1414, tmp);
+	mchbar_write32(0x142c, tmp2);
+
+	mchbar_clrbits32(0x1418, (1<<3) | (1<<11) | (1<<19) | (1<<27));
+	mchbar_clrbits32(0x141c, (1<<3) | (1<<11) | (1<<19) | (1<<27));
+
+	tmp = mchbar_read32(0x400);
+	tmp &= ~((3 << 4) | (3 << 16) | (3 << 30));
+	tmp |= (2 << 4) | (2 << 16);
+	mchbar_write32(0x400, tmp);
+
+	mchbar_clrbits32(0x404, 0xf << 20);
+
+	mchbar_clrbits32(0x40c, 1 << 6);
+
+	tmp = mchbar_read32(0x410);
+	tmp &= ~(0xf << 28);
+	tmp |= 2 << 28;
+	mchbar_write32(0x410, tmp);
+
+	tmp = mchbar_read32(0x41c);
+	tmp &= ~((7<<0) | (7<<4));
+	tmp |= (1<<0) | (1<<3) | (1<<4) | (1<<7);
+	mchbar_write32(0x41c, tmp);
+
+	ddr2_select_clock_mux(dimms);
+
+	ddr2_write_io_init(dimms);
+
+	ddr_read_io_init(ddr2clock, dimms, sff);
+}
+
+static void jedec_command(const uintptr_t rankaddr, const u32 cmd, const u32 val)
+{
+	mchbar_clrsetbits32(DCC_MCHBAR, DCC_SET_EREG_MASK, cmd);
+	read32p(rankaddr | val);
+}
+
+static void jedec_init_ddr3(const timings_t *const timings,
+			    const dimminfo_t *const dimms)
 {
 	if ((timings->tWR < 5) || (timings->tWR > 12))
 		die("tWR value unsupported in Jedec initialization.\n");
 
-	/* Pre-jedec settings */
-	mchbar_setbits32(0x40, 1 << 1);
-	mchbar_setbits32(0x230, 3 << 1);
-	mchbar_setbits32(0x238, 3 << 24);
-	mchbar_setbits32(0x23c, 3 << 24);
 
-	/* Normal write pointer operation */
-	mchbar_setbits32(0x14f0, 1 << 9);
-	mchbar_setbits32(0x15f0, 1 << 9);
-
-	mchbar_clrsetbits32(DCC_MCHBAR, DCC_CMD_MASK, DCC_CMD_NOP);
-
-	pci_and_config8(PCI_DEV(0, 0, 0), 0xf0, ~(1 << 2));
-
-	pci_or_config8(PCI_DEV(0, 0, 0), 0xf0, 1 << 2);
-	udelay(2);
 
 				  /* 5  6  7  8  9 10 11 12 */
 	static const u8 wr_lut[] = { 1, 2, 3, 4, 5, 5, 6, 6 };
@@ -1574,18 +1922,82 @@ static void jedec_init(const timings_t *const timings,
 		/* We won't do this in dual-interleaved mode,
 		   so don't care about the offset.
 		   Mirrored ranks aren't taken into account here. */
-		const u32 rankaddr = raminit_get_rank_addr(ch, r);
-		printk(BIOS_DEBUG, "JEDEC init @0x%08x\n", rankaddr);
-		mchbar_clrsetbits32(DCC_MCHBAR, DCC_SET_EREG_MASK, DCC_SET_EREGx(2));
-		read32p(rankaddr | WL);
-		mchbar_clrsetbits32(DCC_MCHBAR, DCC_SET_EREG_MASK, DCC_SET_EREGx(3));
-		read32p(rankaddr);
-		mchbar_clrsetbits32(DCC_MCHBAR, DCC_SET_EREG_MASK, DCC_SET_EREGx(1));
-		read32p(rankaddr | ODT_120OHMS | ODS_34OHMS);
-		mchbar_clrsetbits32(DCC_MCHBAR, DCC_CMD_MASK, DCC_SET_MREG);
-		read32p(rankaddr | WR | DLL1 | CAS | INTERLEAVED);
-		mchbar_clrsetbits32(DCC_MCHBAR, DCC_CMD_MASK, DCC_SET_MREG);
-		read32p(rankaddr | WR | CAS | INTERLEAVED);
+		const uintptr_t rankaddr = raminit_get_rank_addr(ch, r);
+		printk(BIOS_DEBUG, "JEDEC init @0x%08x\n", (u32)rankaddr);
+
+		jedec_command(rankaddr, DCC_SET_EREGx(2), WL);
+		jedec_command(rankaddr, DCC_SET_EREGx(3), 0);
+		jedec_command(rankaddr, DCC_SET_EREGx(1), ODT_120OHMS | ODS_34OHMS);
+		jedec_command(rankaddr, DCC_SET_MREG, WR | DLL1 | CAS | INTERLEAVED);
+		jedec_command(rankaddr, DCC_SET_MREG, WR | CAS | INTERLEAVED);
+	}
+}
+
+static void jedec_init_ddr2(const timings_t *const timings,
+			    const dimminfo_t *const dimms)
+{
+	/* All bit offsets are off by 3 (2^3 bytes bus width). */
+
+	/* Mode Register (MR) settings */
+	const int WR = ((timings->tWR - 1) & 7) << 12;
+	const int DLLreset = 1 << 11;
+	const int CAS = (timings->CAS & 7) << 7;
+	const int BTinterleaved = 1 << 6;
+	const int BL8 = 3 << 3;
+
+	/* Extended Mode Register 1 (EMR1) */
+	const int OCDdefault = 7 << 10;
+	const int ODT_150OHMS = 1 << 9 | 0 << 5;
+
+	int ch, r;
+	FOR_EACH_POPULATED_RANK(dimms, ch, r) {
+		/* We won't do this in dual-interleaved mode,
+		   so don't care about the offset.
+		   Mirrored ranks aren't taken into account here. */
+		const uintptr_t rankaddr = raminit_get_rank_addr(ch, r);
+		printk(BIOS_DEBUG, "JEDEC init @0x%08x\n", (u32)rankaddr);
+
+		jedec_command(rankaddr, DCC_CMD_ABP, 0);
+		jedec_command(rankaddr, DCC_SET_EREGx(2), 0);
+		jedec_command(rankaddr, DCC_SET_EREGx(3), 0);
+		jedec_command(rankaddr, DCC_SET_EREGx(1), ODT_150OHMS);
+		jedec_command(rankaddr, DCC_SET_MREG, WR | DLLreset | CAS | BTinterleaved | BL8);
+		jedec_command(rankaddr, DCC_CMD_ABP, 0);
+		jedec_command(rankaddr, DCC_CMD_CBR, 0);
+		udelay(1);
+		read32((void *)(rankaddr));
+
+		jedec_command(rankaddr, DCC_SET_MREG, WR | CAS | BTinterleaved | BL8);
+		jedec_command(rankaddr, DCC_SET_EREGx(1), OCDdefault | ODT_150OHMS);
+		jedec_command(rankaddr, DCC_SET_EREGx(1), ODT_150OHMS);
+	}
+}
+
+static void jedec_init(const int spd_type,
+		       const timings_t *const timings,
+		       const dimminfo_t *const dimms)
+{
+	/* Pre-jedec settings */
+	mchbar_setbits32(0x40, 1 << 1);
+	mchbar_setbits32(0x230, 3 << 1);
+	mchbar_setbits32(0x238, 3 << 24);
+	mchbar_setbits32(0x23c, 3 << 24);
+
+	/* Normal write pointer operation */
+	mchbar_setbits32(0x14f0, 1 << 9);
+	mchbar_setbits32(0x15f0, 1 << 9);
+
+	mchbar_clrsetbits32(DCC_MCHBAR, DCC_CMD_MASK, DCC_CMD_NOP);
+
+	pci_and_config8(PCI_DEV(0, 0, 0), 0xf0, ~(1 << 2));
+
+	pci_or_config8(PCI_DEV(0, 0, 0), 0xf0, 1 << 2);
+	udelay(2);
+
+	if (spd_type == DDR2) {
+		jedec_init_ddr2(timings, dimms);
+	} else if (spd_type == DDR3) {
+		jedec_init_ddr3(timings, dimms);
 	}
 }
 
@@ -1729,12 +2141,12 @@ void raminit(sysinfo_t *const sysinfo, const int s3resume)
 	configure_dram_control_mode(timings, dimms);
 
 	/* Initialize RCOMP. */
-	rcomp_initialization(sysinfo->stepping, sysinfo->sff);
+	rcomp_initialization(sysinfo->spd_type, sysinfo->stepping, sysinfo->sff);
 
 	/* Power-up DRAM. */
-	dram_powerup(s3resume);
+	dram_powerup(sysinfo->spd_type, sysinfo->stepping, s3resume);
 	/* Program DRAM timings. */
-	dram_program_timings(timings);
+	dram_program_timings(sysinfo->spd_type, timings);
 	/* Program number of banks. */
 	dram_program_banks(dimms);
 	/* Enable DRAM clock pairs for populated DIMMs. */
@@ -1742,7 +2154,10 @@ void raminit(sysinfo_t *const sysinfo, const int s3resume)
 		mchbar_setbits32(CxDCLKDIS_MCHBAR(ch), CxDCLKDIS_ENABLE);
 
 	/* Enable On-Die Termination. */
-	odt_setup(timings, sysinfo->sff);
+	if (sysinfo->spd_type == DDR2)
+		ddr2_odt_setup(timings, sysinfo->sff);
+	else
+		ddr3_odt_setup(timings, sysinfo->sff);
 	/* Miscellaneous settings. */
 	misc_settings(timings, sysinfo->stepping);
 	/* Program clock crossing registers. */
@@ -1750,15 +2165,20 @@ void raminit(sysinfo_t *const sysinfo, const int s3resume)
 	/* Program egress VC1 timings. */
 	vc1_program_timings(timings->fsb_clock);
 	/* Perform system-memory i/o initialization. */
-	memory_io_init(timings->mem_clock, dimms,
-		       sysinfo->stepping, sysinfo->sff);
+	if (sysinfo->spd_type == DDR2) {
+		ddr2_memory_io_init(timings->mem_clock, dimms,
+				    sysinfo->stepping, sysinfo->sff);
+	} else {
+		ddr3_memory_io_init(timings->mem_clock, dimms,
+				    sysinfo->stepping, sysinfo->sff);
+	}
 
 	/* Initialize memory map with dummy values of 128MB per rank with a
 	   page size of 4KB. This makes the JEDEC initialization code easier. */
 	prejedec_memory_map(dimms, timings->channel_mode);
 	if (!s3resume)
 		/* Perform JEDEC initialization of DIMMS. */
-		jedec_init(timings, dimms);
+		jedec_init(sysinfo->spd_type, timings, dimms);
 	/* Some programming steps after JEDEC initialization. */
 	post_jedec_sequence(sysinfo->cores);
 
@@ -1776,7 +2196,7 @@ void raminit(sysinfo_t *const sysinfo, const int s3resume)
 		ddr3_calibrate_zq();
 
 	/* Perform receive-enable calibration. */
-	raminit_receive_enable_calibration(timings, dimms);
+	raminit_receive_enable_calibration(sysinfo->spd_type, timings, dimms);
 	/* Lend clock values from receive-enable calibration. */
 	mchbar_clrsetbits32(CxDRT5_MCHBAR(0), 0xf0,
 		(((mchbar_read32(CxDRT3_MCHBAR(0)) >> 7) - 1) & 0xf) << 4);

@@ -16,6 +16,7 @@
 #include <soc/hsphy.h>
 #include <soc/intel/common/vbt.h>
 #include <soc/itss.h>
+#include <soc/p2sb.h>
 #include <soc/pci_devs.h>
 #include <soc/pcie.h>
 #include <soc/ramstage.h>
@@ -93,7 +94,7 @@ const char *soc_acpi_name(const struct device *dev)
 	case SA_DEVFN_TBT2:		return "TRP2";
 	case SA_DEVFN_TBT3:		return "TRP3";
 	case SA_DEVFN_IPU:		return "IPU0";
-	case SA_DEVFN_DPTF:		return "DPTF";
+	case SA_DEVFN_DPTF:		return "TCPU";
 	case PCH_DEVFN_ISH:		return "ISHB";
 	case PCH_DEVFN_XHCI:		return "XHCI";
 	case PCH_DEVFN_I2C0:		return "I2C0";
@@ -161,6 +162,26 @@ const char *soc_acpi_name(const struct device *dev)
 }
 #endif
 
+#if CONFIG(SOC_INTEL_STORE_CSE_FPT_PARTITION_VERSION)
+/*
+ * SoC override API to identify if ISH Firmware existed inside CSE FPT.
+ *
+ * SoC with UFS enabled would like to keep ISH enabled as well, hence
+ * identifying the UFS enabled device is enough to conclude that the ISH
+ * partition also is available.
+ */
+bool soc_is_ish_partition_enabled(void)
+{
+	struct device *ufs = pcidev_path_on_root(PCH_DEVFN_UFS);
+	uint16_t ufs_pci_id = ufs ? pci_read_config16(ufs, PCI_DEVICE_ID) : 0xFFFF;
+
+	if (ufs_pci_id == 0xFFFF)
+		return false;
+
+	return true;
+}
+#endif
+
 /* SoC routine to fill GPIO PM mask and value for GPIO_MISCCFG register */
 static void soc_fill_gpio_pm_configuration(void)
 {
@@ -203,7 +224,8 @@ void soc_init_pre_device(void *chip_info)
 	 * current boot sequence) to reduce message response time from CSE hence moving
 	 * sending EOP to earlier stage.
 	 */
-	if (CONFIG(SOC_INTEL_CSE_SEND_EOP_EARLY)) {
+	if (CONFIG(SOC_INTEL_CSE_SEND_EOP_EARLY) ||
+	    CONFIG(SOC_INTEL_CSE_SEND_EOP_ASYNC)) {
 		printk(BIOS_INFO, "Sending EOP early from SoC\n");
 		cse_send_end_of_post();
 	}
@@ -243,6 +265,7 @@ static struct device_operations cpu_bus_ops = {
 
 static void soc_enable(struct device *dev)
 {
+	struct device_operations *soc_p2sb_ops = (struct device_operations *)&p2sb_ops;
 	/*
 	 * Set the operations if it is a special bus type or a hidden PCI
 	 * device.
@@ -254,6 +277,9 @@ static void soc_enable(struct device *dev)
 	else if (dev->path.type == DEVICE_PATH_PCI &&
 		 dev->path.pci.devfn == PCH_DEVFN_PMC)
 		dev->ops = &pmc_ops;
+	else if (dev->path.type == DEVICE_PATH_PCI &&
+		 dev->path.pci.devfn == PCH_DEVFN_P2SB)
+		dev->ops = soc_p2sb_ops;
 	else if (dev->path.type == DEVICE_PATH_GPIO)
 		block_gpio_enable(dev);
 }

@@ -5,15 +5,12 @@ ifeq ($(CONFIG_SOC_AMD_STONEYRIDGE),y)
 subdirs-y += ../../../cpu/amd/mtrr/
 
 bootblock-y += aoac.c
-bootblock-y += uart.c
 bootblock-y += BiosCallOuts.c
 bootblock-y += bootblock.c
 bootblock-y += early_fch.c
 bootblock-y += gpio.c
 bootblock-y += i2c.c
 bootblock-y += enable_usbdebug.c
-bootblock-y += monotonic_timer.c
-bootblock-y += tsc_freq.c
 
 romstage-y += BiosCallOuts.c
 romstage-y += i2c.c
@@ -21,24 +18,15 @@ romstage-y += romstage.c
 romstage-y += enable_usbdebug.c
 romstage-y += fch_agesa.c
 romstage-y += gpio.c
-romstage-y += monotonic_timer.c
 romstage-y += smbus_spd.c
 romstage-y += memmap.c
-romstage-y += uart.c
-romstage-y += tsc_freq.c
 romstage-y += psp.c
 
 verstage-y += gpio.c
 verstage-y += i2c.c
-verstage-y += monotonic_timer.c
-verstage-y += uart.c
-verstage-y += tsc_freq.c
 
-postcar-y += monotonic_timer.c
-postcar-y += uart.c
 postcar-y += memmap.c
 postcar-$(CONFIG_VBOOT_MEASURED_BOOT) += i2c.c
-postcar-y += tsc_freq.c
 
 ramstage-y += BiosCallOuts.c
 ramstage-y += i2c.c
@@ -50,17 +38,20 @@ ramstage-$(CONFIG_HAVE_ACPI_TABLES) += acpi.c
 ramstage-y += fch.c
 ramstage-y += fch_agesa.c
 ramstage-y += gpio.c
-ramstage-y += monotonic_timer.c
+ramstage-y += graphics.c
 ramstage-y += northbridge.c
 ramstage-y += sata.c
 ramstage-y += memmap.c
-ramstage-y += uart.c
 ramstage-y += usb.c
-ramstage-y += tsc_freq.c
 ramstage-y += psp.c
 
+all-y += monotonic_timer.c
+all-y += pstate_util.c
 all-y += reset.c
+all-y += tsc_freq.c
+all-y += uart.c
 
+smm-y += pstate_util.c
 smm-y += monotonic_timer.c
 smm-y += smihandler.c
 smm-y += tsc_freq.c
@@ -122,11 +113,6 @@ SMUFWM_FN_FILE=
 SMUFIRMWARE2_FN_FILE=
 endif
 
-ifeq ($(FIRMWARE_TYPE),ST)
-OPT_COMBOCAPABLE=--combo-capable
-OPT_SOCNAME=--soc-name "Stoneyridge"
-endif
-
 ifeq ($(CONFIG_USE_PSPSECUREOS),y)
 PSP_USE_PSPSECUREOS="--use-pspsecureos"
 endif
@@ -145,12 +131,11 @@ $(obj)/amdfw.rom:	$(call strip_quotes, $(CONFIG_STONEYRIDGE_XHCI_FWM_FILE)) \
 	$(AMDFWTOOL) \
 		$(OPT_STONEYRIDGE_XHCI_FWM_FILE) \
 		$(OPT_STONEYRIDGE_GEC_FWM_FILE) \
-		$(OPT_COMBOCAPABLE)\
 		$(OPT_PSP_USE_PSPSECUREOS) \
 		$(OPT_EFS_SPI_READ_MODE) \
 		$(OPT_EFS_SPI_SPEED) \
+		$(OPT_DEBUG_AMDFWTOOL) \
 		--config $(CONFIG_AMDFW_CONFIG_FILE) \
-		$(OPT_SOCNAME) \
 		--flashsize $(CONFIG_ROM_SIZE) \
 		--location $(shell printf "0x%x" $(STONEYRIDGE_FWM_POSITION)) \
 		--output	$@

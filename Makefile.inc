@@ -107,6 +107,9 @@ classes-y := ramstage romstage bootblock decompressor postcar smm smmstub cpu_mi
 $(call add-special-class,all)
 all-handler = $(foreach class,bootblock verstage romstage postcar ramstage,$(eval $(class)-y += $(2)))
 
+$(call add-special-class,all_x86)
+all_x86-handler = $(foreach class,bootblock verstage_x86 romstage postcar ramstage,$(eval $(class)-y += $(2)))
+
 $(call add-special-class,verstage_x86)
 ifeq ($(CONFIG_ARCH_VERSTAGE_X86_32)$(CONFIG_ARCH_VERSTAGE_X86_64),y)
 verstage_x86-handler = $(eval verstage-y += $(2))
@@ -141,6 +144,7 @@ $(foreach supported_arch,$(ARCH_SUPPORTED), \
 # toupper:        returns the value in all uppercase
 # ws_to_under:    returns the value with any whitespace changed to underscores
 _toint=$(shell printf "%d" $1)
+_tohex=$(shell printf 0x"%x" $1)
 _int-add2=$(shell expr $(call _toint,$1) + $(call _toint,$2))
 int-add=$(if $(filter 1,$(words $1)),$(strip $1),$(call int-add,$(call _int-add2,$(word 1,$1),$(word 2,$1)) $(wordlist 3,$(words $1),$1)))
 int-subtract=$(if $(filter 1,$(words $1)),$(strip $1),$(shell expr $(call _toint,$(word 1,$1)) - $(call _toint,$(word 2,$1))))
@@ -310,7 +314,7 @@ cbfs-files-processor-nvramtool= \
 # arg1: input
 # arg2: output
 define cbfs-files-processor-config
-	$(eval $(2): $(1) $(obj)/build.h; \
+	$(eval $(2): $(1) $(obj)/build.h $(objutil)/kconfig/conf; \
 		+printf "    CREATE     $(2) (from $(1))\n"; \
 		printf "# This image was built using coreboot " > $(2).tmp && \
 		grep "\<COREBOOT_VERSION\>" $(obj)/build.h |cut -d\" -f2 >> $(2).tmp && \
@@ -372,8 +376,11 @@ cbfs-files-handler= \
 #######################################################################
 # a variety of flags for our build
 CBFS_COMPRESS_FLAG:=none
-ifeq ($(CONFIG_COMPRESS_RAMSTAGE),y)
+ifeq ($(CONFIG_COMPRESS_RAMSTAGE_LZMA),y)
 CBFS_COMPRESS_FLAG:=LZMA
+endif
+ifeq ($(CONFIG_COMPRESS_RAMSTAGE_LZ4),y)
+CBFS_COMPRESS_FLAG:=LZ4
 endif
 
 CBFS_PAYLOAD_COMPRESS_FLAG:=none
@@ -420,7 +427,7 @@ CFLAGS_common += -pipe -g -nostdinc -std=gnu11
 CFLAGS_common += -nostdlib -Wall -Wundef -Wstrict-prototypes -Wmissing-prototypes
 CFLAGS_common += -Wwrite-strings -Wredundant-decls -Wno-trigraphs -Wimplicit-fallthrough
 CFLAGS_common += -Wshadow -Wdate-time -Wtype-limits -Wvla -Wold-style-definition
-CFLAGS_common += -Wdangling-else
+CFLAGS_common += -Wdangling-else -Wmissing-include-dirs
 CFLAGS_common += -fno-common -ffreestanding -fno-builtin -fomit-frame-pointer
 CFLAGS_common += -fstrict-aliasing -ffunction-sections -fdata-sections -fno-pie
 ifeq ($(CONFIG_COMPILER_GCC),y)
@@ -430,8 +437,6 @@ CFLAGS_common += -Wno-packed-not-aligned
 CFLAGS_common += -fconserve-stack
 CFLAGS_common += -Wnull-dereference -Wreturn-type
 CFLAGS_common += -Wlogical-op -Wduplicated-cond -Wno-array-compare
-# cf. commit f69a99db (coreboot: x86: enable gc-sections)
-CFLAGS_common += -Wno-unused-but-set-variable
 endif
 endif
 
@@ -649,6 +654,14 @@ bootblock-c-deps+=$(DEVICETREE_STATIC_C)
 postcar-c-deps+=$(DEVICETREE_STATIC_C)
 smm-c-deps+=$(DEVICETREE_STATIC_C)
 
+# Ensure fmap_config.h are created before any objects are compiled
+ramstage-c-deps+=$(obj)/fmap_config.h
+romstage-c-deps+=$(obj)/fmap_config.h
+verstage-c-deps+=$(obj)/fmap_config.h
+bootblock-c-deps+=$(obj)/fmap_config.h
+postcar-c-deps+=$(obj)/fmap_config.h
+smm-c-deps+=$(obj)/fmap_config.h
+
 .PHONY: devicetree
 devicetree: $(DEVICETREE_STATIC_C)
 
@@ -819,7 +832,7 @@ extract_nth=$(subst *,$(spc),$(patsubst -%-,%,$(word $(1), $(subst |,- -,-$(2)-)
 #
 # This is the default implementation. When using a boot strategy employing
 # multiple CBFSes in fmap regions, override it.
-regions-for-file ?= COREBOOT
+regions-for-file ?= $(if $(value regions-for-file-$(1)), $(regions-for-file-$(1)), COREBOOT)
 
 ifeq ($(CONFIG_CBFS_AUTOGEN_ATTRIBUTES),y)
 	cbfs-autogen-attributes=-g
@@ -922,11 +935,22 @@ prebuild-files = $(foreach region,$(all-regions), \
 		$(call sort-files,$(call placed-files-in-region,$(region))), \
 		$(call cbfs-add-cmd,$(file),$(region),$(CONFIG_UPDATE_IMAGE))))
 
+# If no FMD file (Flashmap) is supplied by mainboard, fall back to a default
 ifeq ($(CONFIG_FMDFILE),)
-# For a description of the flash layout described by these variables, check
-# the $(DEFAULT_FLASHMAP) .fmd files.
+
 ifeq ($(CONFIG_ARCH_X86),y)
+
 DEFAULT_FLASHMAP:=$(top)/util/cbfstool/default-x86.fmd
+# check if IFD_CHIPSET is set and if yes generate a FMAP template from IFD descriptor
+ifneq ($(CONFIG_IFD_CHIPSET),)
+ifeq ($(CONFIG_HAVE_IFD_BIN),y)
+DEFAULT_FLASHMAP:=$(obj)/fmap-template.fmd
+$(DEFAULT_FLASHMAP): $(call strip_quotes,$(CONFIG_IFD_BIN_PATH)) $(IFDTOOL)
+	echo "    IFDTOOL    -p $(CONFIG_IFD_CHIPSET) -F $@ $<"
+	$(IFDTOOL) -p $(CONFIG_IFD_CHIPSET) -F $@ $<
+endif # ifeq($(CONFIG_HAVE_IFD_BIN),y)
+endif # ifneq($(CONFIG_IFD_CHIPSET),)
+
 # entire flash
 FMAP_ROM_ADDR := $(call int-subtract, 0x100000000 $(CONFIG_ROM_SIZE))
 FMAP_ROM_SIZE := $(CONFIG_ROM_SIZE)

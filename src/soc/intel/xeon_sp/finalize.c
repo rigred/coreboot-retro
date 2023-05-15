@@ -3,24 +3,43 @@
 #include <bootstate.h>
 #include <console/console.h>
 #include <console/debug.h>
+#include <cpu/x86/mp.h>
 #include <cpu/x86/smm.h>
 #include <device/pci.h>
 #include <intelpch/lockdown.h>
+#include <soc/msr.h>
 #include <soc/pci_devs.h>
 #include <soc/pm.h>
 #include <soc/util.h>
+#include <soc/soc_util.h>
+#include <smp/spinlock.h>
 
 #include "chip.h"
 
-static void lock_pam0123(void)
-{
-	const struct device *dev;
+DECLARE_SPIN_LOCK(msr_ppin_lock);
 
-	if (get_lockdown_config() != CHIPSET_LOCKDOWN_COREBOOT)
+static void lock_msr_ppin_ctl(void *unused)
+{
+	msr_t msr;
+
+	msr = rdmsr(MSR_PLATFORM_INFO);
+	if ((msr.lo & MSR_PPIN_CAP) == 0)
 		return;
 
-	dev = pcidev_path_on_bus(get_stack_busno(1), PCI_DEVFN(SAD_ALL_DEV, SAD_ALL_FUNC));
-	pci_or_config32(dev, SAD_ALL_PAM0123_CSR, PAM_LOCK);
+	spin_lock(&msr_ppin_lock);
+
+	msr = rdmsr(MSR_PPIN_CTL);
+	if (msr.lo & MSR_PPIN_CTL_LOCK) {
+		spin_unlock(&msr_ppin_lock);
+		return;
+	}
+
+	/* Clear enable and lock it */
+	msr.lo &= ~MSR_PPIN_CTL_ENABLE;
+	msr.lo |= MSR_PPIN_CTL_LOCK;
+	wrmsr(MSR_PPIN_CTL, msr);
+
+	spin_unlock(&msr_ppin_lock);
 }
 
 static void soc_finalize(void *unused)
@@ -43,7 +62,30 @@ static void soc_finalize(void *unused)
 	apm_control(APM_CNT_FINALIZE);
 	lock_pam0123();
 
+	if (CONFIG_MAX_SOCKET > 1) {
+		/* This MSR is package scope but run for all cpus for code simplicity */
+		if (mp_run_on_all_cpus(&lock_msr_ppin_ctl, NULL) != CB_SUCCESS)
+			printk(BIOS_ERR, "Lock PPIN CTL MSR failed\n");
+	} else {
+		lock_msr_ppin_ctl(NULL);
+	}
+
 	post_code(POST_OS_BOOT);
 }
 
+static void bios_done_finalize(void *unused)
+{
+	if (!CONFIG(SOC_INTEL_HAS_BIOS_DONE_MSR))
+		return;
+
+	printk(BIOS_DEBUG, "Setting BIOS_DONE\n");
+	/* bios_done_msr() only defined for some Xeon-SP, such as SPR-SP */
+	if (mp_run_on_all_cpus(&bios_done_msr, NULL) != CB_SUCCESS)
+		printk(BIOS_ERR, "Fail to set BIOS_DONE MSR\n");
+
+}
+
 BOOT_STATE_INIT_ENTRY(BS_PAYLOAD_LOAD, BS_ON_ENTRY, soc_finalize, NULL);
+/* FSP programs certain registers via Notify phase ReadyToBoot that can only be programmed
+   before BIOS_DONE MSR is set, so coreboot sets BIOS_DONE as late as possible. */
+BOOT_STATE_INIT_ENTRY(BS_PAYLOAD_BOOT, BS_ON_ENTRY, bios_done_finalize, NULL);

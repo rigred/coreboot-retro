@@ -20,12 +20,12 @@ doubt if you can bring yourself up to speed in a required time frame
 with the projects. We can then try together to figure out if you're a
 good match for a project, even when requirements might not all be met.
 
-## Easy projects
+## Small projects
 
 This is a collection of tasks which don't require deep knowledge on
 coreboot itself. If you are a beginner and want to get familiar with the
 the project and the code base, or if you just want to get your hands
-dirty with some easy tasks, then these are for you.
+dirty with some small tasks, then these are for you.
 
   * Resolve static analysis issues reported by [scan-build] and
     [Coverity scan]. More details on the page for
@@ -36,7 +36,7 @@ dirty with some easy tasks, then these are for you.
 [scan-build]: https://coreboot.org/scan-build/
 [Coverity scan]: https://scan.coverity.com/projects/coreboot
 [Coverity scan integration]: ../infrastructure/coverity.md
-[Linter issues]: https://qa.coreboot.org/job/untested-coreboot-files/lastSuccessfulBuild/artifact/lint.txt
+[Linter issues]: https://qa.coreboot.org/job/coreboot-untested-files/lastSuccessfulBuild/artifact/lint.txt
 
 ## Provide toolchain binaries
 Our crossgcc subproject provides a uniform compiler environment for
@@ -63,7 +63,6 @@ non-Linux builds or Docker for different Linux distributions.
 * hardware requirements: Nothing special
 
 ### Mentors
-* Patrick Georgi <patrick@georgi.software>
 
 ## Support Power9/Power8 in coreboot
 There are some basic PPC64 stubs in coreboot, and there's open hardware
@@ -88,7 +87,7 @@ across architectures.
 While we have a rather big set of payloads for x86 based platforms, all other
 architectures are rather limited. Improve the situation by porting a payload
 to one of the platforms, for example GRUB2, U-Boot (the UI part), edk2,
-yabits, FILO, or Linux-as-Payload.
+FILO, or Linux-as-Payload.
 
 Since this is a bit of a catch-all idea, an application to GSoC should pick a
 combination of payload and architecture to support.
@@ -130,7 +129,6 @@ their bug reports.
   going on from the resulting logs.
 
 ### Mentors
-* Patrick Georgi <patrick@georgi.software>
 
 ## Extend Ghidra to support analysis of firmware images
 [Ghidra](https://ghidra-sre.org) is a recently released cross-platform

@@ -59,10 +59,10 @@ static struct device_operations cpu_dev_ops = {
 };
 
 static const struct cpu_device_id cpu_table[] = {
-	{ X86_VENDOR_INTEL, 0x406c4 },
-	{ X86_VENDOR_INTEL, 0x406c3 },
-	{ X86_VENDOR_INTEL, 0x406c2 },
-	{ 0, 0 },
+	{ X86_VENDOR_INTEL, 0x406c4, CPUID_EXACT_MATCH_MASK },
+	{ X86_VENDOR_INTEL, 0x406c3, CPUID_EXACT_MATCH_MASK },
+	{ X86_VENDOR_INTEL, 0x406c2, CPUID_EXACT_MATCH_MASK },
+	CPU_TABLE_END
 };
 
 static const struct cpu_driver driver __cpu_driver = {

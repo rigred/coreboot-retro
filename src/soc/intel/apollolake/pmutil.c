@@ -9,7 +9,6 @@
 #include <console/console.h>
 #include <device/device.h>
 #include <device/pci.h>
-#include <device/pci_def.h>
 #include <intelblocks/msr.h>
 #include <intelblocks/pmclib.h>
 #include <intelblocks/rtc.h>
@@ -56,7 +55,7 @@ const char *const *soc_smi_sts_array(size_t *a)
 		[SERIRQ_SMI_STS_BIT] = "SERIRQ",
 		[SMBUS_SMI_STS_BIT] = "SMBUS_SMI",
 		[XHCI_SMI_STS_BIT] = "XHCI",
-		[SCS_SMI_STS_BIT] = "HOST_SMBUS",
+		[HSMBUS_SMI_STS_BIT] = "HOST_SMBUS",
 		[SCS_SMI_STS_BIT] = "SCS",
 		[PCI_EXP_SMI_STS_BIT] = "PCI_EXP_SMI",
 		[SCC2_SMI_STS_BIT] = "SCC2",
@@ -224,15 +223,16 @@ uint16_t get_pmbase(void)
 	return (uint16_t)ACPI_BASE_ADDRESS;
 }
 
+/* Set which power state system will be after reapplying the power (from G3 State) */
 void pmc_soc_set_afterg3_en(const bool on)
 {
-	const uintptr_t gen_pmcon1 = soc_read_pmc_base() + GEN_PMCON1;
-	uint32_t reg32;
+	uint8_t reg8;
+	uint8_t *const pmcbase = pmc_mmio_regs();
 
-	reg32 = read32p(gen_pmcon1);
+	reg8 = read8(pmcbase + GEN_PMCON_A);
 	if (on)
-		reg32 &= ~SLEEP_AFTER_POWER_FAIL;
+		reg8 &= ~SLEEP_AFTER_POWER_FAIL;
 	else
-		reg32 |= SLEEP_AFTER_POWER_FAIL;
-	write32p(gen_pmcon1, reg32);
+		reg8 |= SLEEP_AFTER_POWER_FAIL;
+	write8(pmcbase + GEN_PMCON_A, reg8);
 }

@@ -4,12 +4,12 @@
 #include <arch/cbconfig.h>
 #include <console/console.h>
 #include <console/uart.h>
+#include <identity.h>
 #include <ip_checksum.h>
 #include <boot/coreboot_tables.h>
 #include <boot/tables.h>
 #include <boot_device.h>
 #include <string.h>
-#include <version.h>
 #include <boardid.h>
 #include <device/device.h>
 #include <drivers/tpm/tpm_ppi.h>
@@ -23,6 +23,7 @@
 #include <spi_flash.h>
 #include <smmstore.h>
 #include <types.h>
+#include <version.h>
 
 #if CONFIG(USE_OPTION_TABLE)
 #include <option_table.h>
@@ -267,7 +268,7 @@ static void add_cbmem_pointers(struct lb_header *header)
 		{CBMEM_ID_ACPI_CNVS, LB_TAG_ACPI_CNVS},
 		{CBMEM_ID_VPD, LB_TAG_VPD},
 		{CBMEM_ID_WIFI_CALIBRATION, LB_TAG_WIFI_CALIBRATION},
-		{CBMEM_ID_TCPA_LOG, LB_TAG_TCPA_LOG},
+		{CBMEM_ID_TPM_CB_LOG, LB_TAG_TPM_CB_LOG},
 		{CBMEM_ID_FMAP, LB_TAG_FMAP},
 		{CBMEM_ID_VBOOT_WORKBUF, LB_TAG_VBOOT_WORKBUF},
 		{CBMEM_ID_TYPE_C_INFO, LB_TAG_TYPE_C_INFO},

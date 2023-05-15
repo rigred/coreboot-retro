@@ -2,13 +2,13 @@
 
 Device (ALSD)
 {
-	Name (_HID, "ACPI0008")  // _HID: Hardware ID
-	Method (_STA, 0, NotSerialized)  // _STA: Status
+	Name (_HID, "ACPI0008")
+	Method (_STA, 0, NotSerialized)
 	{
 		Return (0x0f)
 	}
 
-	Method (_ALI, 0, NotSerialized)  // _ALI: Ambient Light Illuminance
+	Method (_ALI, 0, NotSerialized)
 	{
 		Local0 = \_SB.PCI0.LPCB.EC0.LUXH
 		Local0 = (Local0 << 8) | \_SB.PCI0.LPCB.EC0.LUXL
@@ -17,7 +17,7 @@ Device (ALSD)
 		Return (Local0)
 	}
 
-	Name (_ALR, Package (0x05)  // _ALR: Ambient Light Response
+	Name (_ALR, Package (0x05)
 	{
 		Package (0x02)
 		{

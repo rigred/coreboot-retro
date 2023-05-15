@@ -11,7 +11,6 @@
 #include <cpu/intel/msr.h>
 #include <cpu/intel/turbo.h>
 #include <cpu/x86/lapic.h>
-#include <cpu/x86/smm.h>
 #include <intelblocks/acpi_wake_source.h>
 #include <intelblocks/acpi.h>
 #include <intelblocks/lpc_lib.h>
@@ -24,9 +23,11 @@
 
 #define  CPUID_6_EAX_ISST	(1 << 7)
 
-static int acpi_sci_irq(void)
+#define ACPI_SCI_IRQ 9
+
+void ioapic_get_sci_pin(u8 *gsi, u8 *irq, u8 *flags)
 {
-	int sci_irq = 9;
+	int sci_irq = ACPI_SCI_IRQ;
 	uint32_t scis;
 
 	scis = soc_read_sci_irq_select();
@@ -47,31 +48,17 @@ static int acpi_sci_irq(void)
 		sci_irq = scis - SCIS_IRQ20 + 20;
 		break;
 	default:
-		printk(BIOS_DEBUG, "Invalid SCI route! Defaulting to IRQ9.\n");
-		sci_irq = 9;
+		printk(BIOS_DEBUG, "Invalid SCI route! Defaulting to IRQ%d.\n", sci_irq);
 		break;
 	}
 
-	printk(BIOS_DEBUG, "SCI is IRQ%d\n", sci_irq);
-	return sci_irq;
+	*gsi = sci_irq;
+	*irq = (sci_irq < 16) ? sci_irq : ACPI_SCI_IRQ;
+	*flags = MP_IRQ_TRIGGER_LEVEL | soc_madt_sci_irq_polarity(sci_irq);
+
+	printk(BIOS_DEBUG, "SCI is IRQ %d, GSI %d\n", *irq, *gsi);
 }
 
-static unsigned long acpi_madt_irq_overrides(unsigned long current)
-{
-	int sci = acpi_sci_irq();
-	uint16_t flags = MP_IRQ_TRIGGER_LEVEL;
-
-	/* INT_SRC_OVR */
-	current += acpi_create_madt_irqoverride((void *)current, 0, 0, 2, 0);
-
-	flags |= soc_madt_sci_irq_polarity(sci);
-
-	/* SCI */
-	current +=
-	    acpi_create_madt_irqoverride((void *)current, 0, sci, sci, flags);
-
-	return current;
-}
 
 static const uintptr_t default_ioapic_bases[] = { IO_APIC_ADDR };
 
@@ -87,27 +74,25 @@ unsigned long acpi_fill_madt(unsigned long current)
 	size_t ioapic_entries;
 
 	/* Local APICs */
-	current = acpi_create_madt_lapics_with_nmis(current);
+	if (!CONFIG(ACPI_COMMON_MADT_LAPIC))
+		current = acpi_create_madt_lapics_with_nmis_hybrid(current);
 
 	/* IOAPIC */
 	ioapic_entries = soc_get_ioapic_info(&ioapic_table);
-	for (int i = 0; i < ioapic_entries; i++)
+
+	/* Default SOC IOAPIC entry */
+	ASSERT(ioapic_table[0] == IO_APIC_ADDR);
+
+	for (int i = 1; i < ioapic_entries; i++)
 		current += acpi_create_madt_ioapic_from_hw((void *)current, ioapic_table[i]);
 
-	return acpi_madt_irq_overrides(current);
+	return current;
 }
 
 void acpi_fill_fadt(acpi_fadt_t *fadt)
 {
 	const uint16_t pmbase = ACPI_BASE_ADDRESS;
 
-	fadt->sci_int = acpi_sci_irq();
-
-	if (permanent_smi_handler()) {
-		fadt->smi_cmd = APM_CNT;
-		fadt->acpi_enable = APM_CNT_ACPI_ENABLE;
-		fadt->acpi_disable = APM_CNT_ACPI_DISABLE;
-	}
 
 	fadt->pm1a_evt_blk = pmbase + PM1_STS;
 	fadt->pm1a_cnt_blk = pmbase + PM1_CNT;
@@ -120,7 +105,6 @@ void acpi_fill_fadt(acpi_fadt_t *fadt)
 	/* GPE0 STS/EN pairs each 32 bits wide. */
 	fadt->gpe0_blk_len = 2 * GPE0_REG_MAX * sizeof(uint32_t);
 
-	fadt->day_alrm = 0xd;
 
 	fadt->flags |= ACPI_FADT_WBINVD | ACPI_FADT_C1_SUPPORTED |
 			ACPI_FADT_SLEEP_BUTTON |
@@ -131,11 +115,15 @@ void acpi_fill_fadt(acpi_fadt_t *fadt)
 
 	fadt->x_pm1a_evt_blk.space_id = ACPI_ADDRESS_SPACE_IO;
 	fadt->x_pm1a_evt_blk.bit_width = fadt->pm1_evt_len * 8;
+	fadt->x_pm1a_evt_blk.bit_offset = 0;
+	fadt->x_pm1a_evt_blk.addrh = 0x0;
 	fadt->x_pm1a_evt_blk.addrl = fadt->pm1a_evt_blk;
 	fadt->x_pm1a_evt_blk.access_size = ACPI_ACCESS_SIZE_WORD_ACCESS;
 
 	fadt->x_pm1a_cnt_blk.space_id = ACPI_ADDRESS_SPACE_IO;
 	fadt->x_pm1a_cnt_blk.bit_width = fadt->pm1_cnt_len * 8;
+	fadt->x_pm1a_cnt_blk.bit_offset = 0;
+	fadt->x_pm1a_cnt_blk.addrh = 0x0;
 	fadt->x_pm1a_cnt_blk.addrl = fadt->pm1a_cnt_blk;
 	fadt->x_pm1a_cnt_blk.access_size = ACPI_ACCESS_SIZE_WORD_ACCESS;
 
@@ -150,7 +138,7 @@ void acpi_fill_fadt(acpi_fadt_t *fadt)
 	fadt->x_gpe0_blk.bit_offset = 0;
 	fadt->x_gpe0_blk.access_size = ACPI_ACCESS_SIZE_BYTE_ACCESS;
 	fadt->x_gpe0_blk.addrl = fadt->gpe0_blk;
-	fadt->x_gpe0_blk.addrh = 0;
+	fadt->x_gpe0_blk.addrh = 0x0;
 }
 
 unsigned long southbridge_write_acpi_tables(const struct device *device,
@@ -383,6 +371,22 @@ __weak void soc_power_states_generation(int core_id,
 {
 }
 
+static void generate_cpu_entry(int cpu, int core, int cores_per_package)
+{
+	/* Generate processor \_SB.CPUx */
+	acpigen_write_processor_device(cpu * cores_per_package + core);
+
+	/* Generate C-state tables */
+	generate_c_state_entries();
+
+	generate_cppc_entries(core);
+
+	/* Soc specific power states generation */
+	soc_power_states_generation(core, cores_per_package);
+
+	acpigen_write_processor_device_end();
+}
+
 void generate_cpu_entries(const struct device *device)
 {
 	int core_id, cpu_id;
@@ -397,22 +401,10 @@ void generate_cpu_entries(const struct device *device)
 	printk(BIOS_DEBUG, "Found %d CPU(s) with %d/%d physical/logical core(s) each.\n",
 	       numcpus, num_phys, num_virt);
 
-	for (cpu_id = 0; cpu_id < numcpus; cpu_id++) {
-		for (core_id = 0; core_id < num_virt; core_id++) {
-			/* Generate processor \_SB.CPUx */
-			acpigen_write_processor((cpu_id) * num_virt + core_id, 0, 0);
+	for (cpu_id = 0; cpu_id < numcpus; cpu_id++)
+		for (core_id = 0; core_id < num_virt; core_id++)
+			generate_cpu_entry(cpu_id, core_id, num_virt);
 
-			/* Generate C-state tables */
-			generate_c_state_entries();
-
-			generate_cppc_entries(core_id);
-
-			/* Soc specific power states generation */
-			soc_power_states_generation(core_id, num_virt);
-
-			acpigen_pop_len();
-		}
-	}
 	/* PPKG is usually used for thermal management
 	   of the first and only package. */
 	acpigen_write_processor_package("PPKG", 0, num_virt);

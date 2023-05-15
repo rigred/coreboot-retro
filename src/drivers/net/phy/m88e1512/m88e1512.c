@@ -52,9 +52,6 @@ static void m88e1512_init(struct device *dev)
 		clrsetbits16(&reg, LED_FUNC_CTRL_MASK, config->led_0_ctrl |
 				(config->led_1_ctrl << 4) | (config->led_2_ctrl << 8));
 		mdio_write(dev, LED_FUNC_CTRL_REG, reg);
-
-		/* Switch back to page 0. */
-		switch_page(dev, 0);
 	}
 
 	/* INTn can be routed to LED[2] pin. */
@@ -68,10 +65,29 @@ static void m88e1512_init(struct device *dev)
 		reg = mdio_read(dev, LED_TIMER_CTRL_REG);
 		setbits16(&reg, LED_IRQ_ENABLE);
 		mdio_write(dev, LED_TIMER_CTRL_REG, reg);
-
-		/* Switch back to page 0. */
-		switch_page(dev, 0);
 	}
+
+	/* Set RGMII output impedance manually. */
+	if (config->force_mos) {
+		printk(BIOS_DEBUG, "%s: Set RGMII driver strength manually for %s.\n",
+				dev_path(dev->bus->dev), dev->chip_ops->name);
+
+		/* Select page 2 to access RGMII output impedance calibration override
+		   register. */
+		switch_page(dev, 2);
+
+		reg = mdio_read(dev, OUT_IMP_CAL_OVERRIDE_REG);
+		/* Set first only NMOS/PMOS values. */
+		clrsetbits16(&reg, MOS_VALUE_MASK, PMOS_VALUE(config->pmos_val) |
+				NMOS_VALUE(config->nmos_val));
+		mdio_write(dev, OUT_IMP_CAL_OVERRIDE_REG, reg);
+		/* Activate the new setting. */
+		setbits16(&reg, FORCE_MOS);
+		mdio_write(dev, OUT_IMP_CAL_OVERRIDE_REG, reg);
+	}
+
+	/* Switch back to page 0. */
+	switch_page(dev, 0);
 }
 
 struct device_operations m88e1512_ops = {

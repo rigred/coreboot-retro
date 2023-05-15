@@ -4,32 +4,25 @@ bootblock-y += bootblock.c
 bootblock-y += early_gpio.c
 bootblock-y += ec.c
 
-romstage-y += port_descriptors.c
+romstage-$(CONFIG_BOARD_AMD_BIRMAN_PHOENIX) += port_descriptors_phoenix.c
+romstage-$(CONFIG_BOARD_AMD_BIRMAN_GLINDA) += port_descriptors_glinda.c
 
 ramstage-y += chromeos.c
 ramstage-y += gpio.c
-ramstage-y += port_descriptors.c
+ramstage-$(CONFIG_BOARD_AMD_BIRMAN_PHOENIX) += port_descriptors_phoenix.c
+ramstage-$(CONFIG_BOARD_AMD_BIRMAN_GLINDA) += port_descriptors_glinda.c
 
-ifneq ($(wildcard $(MAINBOARD_BLOBS_DIR)/APCB_Updatable.bin),)
-APCB_SOURCES = $(MAINBOARD_BLOBS_DIR)/APCB_Updatable.bin
-APCB_SOURCES_RECOVERY = $(MAINBOARD_BLOBS_DIR)/APCB_DefaultRecovery.bin
+ifneq ($(wildcard $(MAINBOARD_BLOBS_DIR)/APCB_FP8_LPDDR5.bin),)
+APCB_SOURCES = $(MAINBOARD_BLOBS_DIR)/APCB_FP8_LPDDR5.bin
+APCB_SOURCES_RECOVERY = $(MAINBOARD_BLOBS_DIR)/APCB_FP8_LPDDR5_DefaultRecovery.bin
 else
-$(info APCB sources not found. Skipping APCB. The resulting image won't boot.)
+files_added:: warn_no_apcb
 endif
 
 ifeq ($(CONFIG_BIRMAN_HAVE_MCHP_FW),y)
 $(call add_intermediate, add_mchp_fw)
-	$(CBFSTOOL) $(obj)/coreboot.pre write -r EC -f $(CONFIG_BIRMAN_MCHP_SIG_FILE) --fill-upward
-
-# calculate the absolute position from the config offset
-BIRMAN_EC_POSITION=$(call int-add, \
-	$(call int-subtract, 0xffffffff \
-	$(CONFIG_ROM_SIZE)) $(CONFIG_BIRMAN_MCHP_FW_OFFSET) 1)
-
-cbfs-files-y += apu/ecfw
-apu/ecfw-file := $(CONFIG_BIRMAN_MCHP_FW_FILE)
-apu/ecfw-position := $(BIRMAN_EC_POSITION)
-apu/ecfw-type := raw
+	$(CBFSTOOL) $(obj)/coreboot.pre write -r EC_SIG -f $(CONFIG_BIRMAN_MCHP_SIG_FILE) --fill-upward
+	$(CBFSTOOL) $(obj)/coreboot.pre write -r EC_BODY -f $(CONFIG_BIRMAN_MCHP_FW_FILE) --fill-upward
 
 else
 files_added:: warn_no_mchp

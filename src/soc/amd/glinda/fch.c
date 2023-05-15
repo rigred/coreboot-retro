@@ -6,6 +6,7 @@
 #include <amdblocks/acpimmio.h>
 #include <amdblocks/amd_pci_util.h>
 #include <amdblocks/gpio.h>
+#include <amdblocks/reset.h>
 #include <amdblocks/smi.h>
 #include <assert.h>
 #include <bootstate.h>
@@ -25,7 +26,7 @@
  * amd_pci_int_defs.h, just add the pair at the end of this table.
  * Order is not important.
  */
-const static struct irq_idx_name irq_association[] = {
+static const struct irq_idx_name irq_association[] = {
 	{ PIRQ_A,	"INTA#" },
 	{ PIRQ_B,	"INTB#" },
 	{ PIRQ_C,	"INTC#" },
@@ -52,7 +53,6 @@ const static struct irq_idx_name irq_association[] = {
 	{ PIRQ_GPIOA,	"GPIOa" },
 	{ PIRQ_GPIOB,	"GPIOb" },
 	{ PIRQ_GPIOC,	"GPIOc" },
-	{ PIRQ_EMMC,	"eMMC" },
 	{ PIRQ_GPP0,	"GPP0" },
 	{ PIRQ_GPP1,	"GPP1" },
 	{ PIRQ_GPP2,	"GPP2" },
@@ -196,6 +196,7 @@ static void cgpll_clock_gate_init(void)
 
 void fch_init(void *chip_info)
 {
+	set_resets_to_cold();
 	i2c_soc_init();
 	fch_init_acpi_ports();
 

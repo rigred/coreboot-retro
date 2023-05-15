@@ -97,12 +97,42 @@ config TPM_MEASURED_BOOT
 choice
 	prompt "TPM event log format"
 	depends on TPM_MEASURED_BOOT
-	default TPM_LOG_CB
+	default TPM_LOG_TPM1 if TPM1
+	default TPM_LOG_TPM2 if TPM2
 
 config TPM_LOG_CB
 	bool "coreboot's custom format"
 	help
 	  Custom coreboot-specific format of the log derived from TPM1 log format.
+config TPM_LOG_TPM1
+	bool "TPM 1.2 format"
+	depends on TPM1
+	help
+	  Log per TPM 1.2 specification.
+	  See "TCG PC Client Specific Implementation Specification for Conventional BIOS".
+config TPM_LOG_TPM2
+	bool "TPM 2.0 format"
+	depends on TPM2
+	help
+	  Log per TPM 2.0 specification.
+	  See "TCG PC Client Platform Firmware Profile Specification".
+
+endchoice
+
+choice
+	prompt "TPM2 hashing algorithm"
+	depends on TPM_MEASURED_BOOT && TPM_LOG_TPM2
+	default TPM_HASH_SHA1 if TPM1
+	default TPM_HASH_SHA256 if TPM2
+
+config TPM_HASH_SHA1
+	bool "SHA1"
+config TPM_HASH_SHA256
+	bool "SHA256"
+config TPM_HASH_SHA384
+	bool "SHA384"
+config TPM_HASH_SHA512
+	bool "SHA512"
 
 endchoice
 
@@ -121,5 +151,24 @@ config TPM_MEASURED_BOOT_RUNTIME_DATA
 	help
 	  Runtime data whitelist of cbfs filenames. Needs to be a
 	  space delimited list
+
+config PCR_BOOT_MODE
+	int
+	default 0 if CHROMEOS
+	default 1
+
+config PCR_HWID
+	int
+	default 1
+
+config PCR_SRTM
+	int
+	default 2
+
+# PCR for measuring data which changes during runtime
+# e.g. CMOS, NVRAM...
+config PCR_RUNTIME_DATA
+	int
+	default 3
 
 endmenu # Trusted Platform Module (tpm)

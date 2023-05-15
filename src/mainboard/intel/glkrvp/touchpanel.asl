@@ -7,8 +7,8 @@ Scope(\_SB.PCI0.I2C7) {
 //------------------------
   Device (TPL1) {
     Name (HID2, 1)
-    Name (_HID, "WCOM508E")  // _HID: Hardware ID
-    Name (_CID, "PNP0C50")  // _CID: Compatible ID
+    Name (_HID, "WCOM508E")
+    Name (_CID, "PNP0C50")
     Name (_S0W, 0x04)  // _S0W: S0 Device Wake State
     Name (SBFB, ResourceTemplate () {
       I2cSerialBus (
@@ -46,7 +46,7 @@ Scope(\_SB.PCI0.I2C7) {
     {
     }
 
-    Method (_STA, 0, NotSerialized)  // _STA: Status
+    Method (_STA, 0, NotSerialized)
     {
         Return (0x0F)
     }

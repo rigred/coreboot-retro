@@ -5,8 +5,23 @@ subdirs-$(CONFIG_HAVE_SMI_HANDLER) += smm
 subdirs-$(CONFIG_UDELAY_TSC) += tsc
 # Use ARCH_BOOTBLOCK_X86_64 as a proxy for knowing if 64bit is going to be used
 subdirs-$(CONFIG_ARCH_BOOTBLOCK_X86_64) += 64bit
+subdirs-y += cache
 
 subdirs-$(CONFIG_PARALLEL_MP) += name
+
+ifeq ($(CONFIG_HAVE_SMI_HANDLER),y)
+$(obj)/ramstage/cpu/x86/smm_start32_offset.h: $(dir)/smm_start32_offset.h.template $(obj)/smmstub/smmstub.elf
+	cp $< $@.temp
+	sed -i 's/##START32_OFFSET##/0x'$$($(NM_smmstub) -an $(obj)/smmstub/smmstub.elf | grep smm_trampolin | cut -d' ' -f1)'/' $@.temp
+	mv $@.temp $@
+else
+$(obj)/ramstage/cpu/x86/smm_start32_offset.h: $(dir)/smm_start32_offset.h.template
+	cp $< $@.temp
+	sed -i 's/##START32_OFFSET##/0x0/' $@.temp
+	mv $@.temp $@
+endif
+
+$(call src-to-obj,ramstage,$(dir)/mp_init.c): $(obj)/ramstage/cpu/x86/smm_start32_offset.h
 ramstage-$(CONFIG_PARALLEL_MP) += mp_init.c
 
 ramstage-y += backup_default_smm.c
@@ -50,3 +65,5 @@ $(SIPI_BIN): $(SIPI_RMOD)
 $(call src-to-obj,$(TARGET_STAGE),$(SIPI_BIN).manual): $(SIPI_BIN)
 	@printf "    OBJCOPY    $(subst $(obj)/,,$(@))\n"
 	cd $(dir $<); $(OBJCOPY_rmodules_$(ARCH-$(TARGET_STAGE)-y)) -I binary $(notdir $<) $(target-objcopy) $(abspath $@)
+
+ramstage-y += topology.c

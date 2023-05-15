@@ -388,36 +388,48 @@ void acpigen_set_package_element_namestr(const char *package, unsigned int eleme
 	acpigen_emit_byte(ZERO_OP); /* Ignore Index() Destination */
 }
 
+void acpigen_write_processor_namestring(unsigned int cpu_index)
+{
+	char buffer[16];
+	snprintf(buffer, sizeof(buffer), "\\_SB." CONFIG_ACPI_CPU_STRING, cpu_index);
+	acpigen_emit_namestring(buffer);
+}
+
+/* Processor() operator is deprecated as of ACPI 6.0, use Device() instead. */
 void acpigen_write_processor(u8 cpuindex, u32 pblock_addr, u8 pblock_len)
 {
 /*
 	Processor (\_SB.CPcpuindex, cpuindex, pblock_addr, pblock_len)
 	{
 */
-	char pscope[16];
 	acpigen_emit_ext_op(PROCESSOR_OP);
 	acpigen_write_len_f();
-
-	snprintf(pscope, sizeof(pscope),
-		 CONFIG_ACPI_CPU_STRING, (unsigned int)cpuindex);
-	acpigen_emit_namestring(pscope);
+	acpigen_write_processor_namestring(cpuindex);
 	acpigen_emit_byte(cpuindex);
 	acpigen_emit_dword(pblock_addr);
 	acpigen_emit_byte(pblock_len);
+}
+
+void acpigen_write_processor_device(unsigned int cpu_index)
+{
+	acpigen_emit_ext_op(DEVICE_OP);
+	acpigen_write_len_f();
+	acpigen_write_processor_namestring(cpu_index);
+	acpigen_write_name_string("_HID", "ACPI0007");
+	acpigen_write_name_integer("_UID", cpu_index);
 }
 
 void acpigen_write_processor_package(const char *const name, const unsigned int first_core,
 				     const unsigned int core_count)
 {
 	unsigned int i;
-	char pscope[16];
 
 	acpigen_write_name(name);
 	acpigen_write_package(core_count);
-	for (i = first_core; i < first_core + core_count; ++i) {
-		snprintf(pscope, sizeof(pscope), CONFIG_ACPI_CPU_STRING, i);
-		acpigen_emit_namestring(pscope);
-	}
+
+	for (i = first_core; i < first_core + core_count; ++i)
+		acpigen_write_processor_namestring(i);
+
 	acpigen_pop_len();
 }
 
@@ -428,10 +440,8 @@ void acpigen_write_processor_cnot(const unsigned int number_of_cores)
 
 	acpigen_write_method("\\_SB.CNOT", 1);
 	for (core_id = 0; core_id < number_of_cores; core_id++) {
-		char buffer[DEVICE_PATH_MAX];
-		snprintf(buffer, sizeof(buffer), CONFIG_ACPI_CPU_STRING, core_id);
 		acpigen_emit_byte(NOTIFY_OP);
-		acpigen_emit_namestring(buffer);
+		acpigen_write_processor_namestring(core_id);
 		acpigen_emit_byte(ARG0_OP);
 	}
 	acpigen_pop_len();
@@ -701,7 +711,7 @@ void acpigen_write_empty_PCT(void)
 	acpigen_emit_stream(stream, ARRAY_SIZE(stream));
 }
 
-void acpigen_write_empty_PTC(void)
+void acpigen_write_PTC(uint8_t duty_width, uint8_t duty_offset, uint16_t p_cnt)
 {
 /*
 	Name (_PTC, Package (0x02)
@@ -709,30 +719,34 @@ void acpigen_write_empty_PTC(void)
 		ResourceTemplate ()
 		{
 			Register (FFixedHW,
-				0x00,               // Bit Width
-				0x00,               // Bit Offset
-				0x0000000000000000, // Address
+				0x00,               // Duty Width
+				0x00,               // Duty Offset
+				0x0000000000000000, // P_CNT IO Address
 				,)
 		},
 
 		ResourceTemplate ()
 		{
 			Register (FFixedHW,
-				0x00,               // Bit Width
-				0x00,               // Bit Offset
-				0x0000000000000000, // Address
+				0x00,               // Duty Width
+				0x00,               // Duty Offset
+				0x0000000000000000, // P_CNT IO Address
 				,)
 		}
 	})
 */
 	acpi_addr_t addr = {
-		.space_id    = ACPI_ADDRESS_SPACE_FIXED,
-		.bit_width   = 0,
-		.bit_offset  = 0,
+		.bit_width   = duty_width,
+		.bit_offset  = duty_offset,
 		.access_size = ACPI_ACCESS_SIZE_UNDEFINED,
-		.addrl       = 0,
+		.addrl       = p_cnt,
 		.addrh       = 0,
 	};
+
+	if (addr.addrl != 0)
+		addr.space_id = ACPI_ADDRESS_SPACE_IO;
+	else
+		addr.space_id = ACPI_ADDRESS_SPACE_FIXED;
 
 	acpigen_write_name("_PTC");
 	acpigen_write_package(2);
@@ -744,6 +758,11 @@ void acpigen_write_empty_PTC(void)
 	acpigen_write_register_resource(&addr);
 
 	acpigen_pop_len();
+}
+
+void acpigen_write_empty_PTC(void)
+{
+	acpigen_write_PTC(0, 0, 0);
 }
 
 static void __acpigen_write_method(const char *name, uint8_t flags)
@@ -799,6 +818,17 @@ void acpigen_write_STA_ext(const char *namestring)
 	acpigen_write_method("_STA", 0);
 	acpigen_emit_byte(RETURN_OP);
 	acpigen_emit_namestring(namestring);
+	acpigen_pop_len();
+}
+
+void acpigen_write_BBN(uint8_t base_bus_number)
+{
+	/*
+	 * Method (_BBN, 0, NotSerialized) { Return (status) }
+	 */
+	acpigen_write_method("_BBN", 0);
+	acpigen_emit_byte(RETURN_OP);
+	acpigen_write_byte(base_bus_number);
 	acpigen_pop_len();
 }
 
@@ -1359,12 +1389,28 @@ void acpigen_write_store_int_to_namestr(uint64_t src, const char *dst)
 	acpigen_emit_namestring(dst);
 }
 
+/* Store ("namestr", dst) */
+void acpigen_write_store_namestr_to_op(const char *src, uint8_t dst)
+{
+	acpigen_write_store();
+	acpigen_emit_namestring(src);
+	acpigen_emit_byte(dst);
+}
+
 /* Store (src, dst) */
 void acpigen_write_store_int_to_op(uint64_t src, uint8_t dst)
 {
 	acpigen_write_store();
 	acpigen_write_integer(src);
 	acpigen_emit_byte(dst);
+}
+
+/* Store ("namestr", "namestr") */
+void acpigen_write_store_namestr_to_namestr(const char *src, const char *dst)
+{
+	acpigen_write_store();
+	acpigen_emit_namestring(src);
+	acpigen_emit_namestring(dst);
 }
 
 /* Or (arg1, arg2, res) */
@@ -1402,6 +1448,33 @@ void acpigen_write_not(uint8_t arg, uint8_t res)
 	acpigen_emit_byte(res);
 }
 
+/* Concatenate (str1, str2, res) */
+void acpigen_concatenate_string_string(const char *str1, const char *str2, uint8_t res)
+{
+	acpigen_emit_byte(CONCATENATE_OP);
+	acpigen_write_string(str1);
+	acpigen_write_string(str2);
+	acpigen_emit_byte(res);
+}
+
+/* Concatenate (str, val, tmp_res) */
+void acpigen_concatenate_string_int(const char *str, uint64_t val, uint8_t res)
+{
+	acpigen_emit_byte(CONCATENATE_OP);
+	acpigen_write_string(str);
+	acpigen_write_integer(val);
+	acpigen_emit_byte(res);
+}
+
+/* Concatenate (str, src_res, dest_res) */
+void acpigen_concatenate_string_op(const char *str, uint8_t src_res, uint8_t dest_res)
+{
+	acpigen_emit_byte(CONCATENATE_OP);
+	acpigen_write_string(str);
+	acpigen_emit_byte(src_res);
+	acpigen_emit_byte(dest_res);
+}
+
 /* Store (str, DEBUG) */
 void acpigen_write_debug_string(const char *str)
 {
@@ -1434,6 +1507,33 @@ void acpigen_write_debug_namestr(const char *str)
 	acpigen_emit_ext_op(DEBUG_OP);
 }
 
+/* Concatenate (str1, str2, tmp_res)
+   Store(tmp_res, DEBUG) */
+void acpigen_write_debug_concatenate_string_string(const char *str1, const char *str2,
+	uint8_t tmp_res)
+{
+	acpigen_concatenate_string_string(str1, str2, tmp_res);
+	acpigen_write_debug_op(tmp_res);
+}
+
+/* Concatenate (str1, val, tmp_res)
+   Store(tmp_res, DEBUG) */
+void acpigen_write_debug_concatenate_string_int(const char *str, uint64_t val,
+	uint8_t tmp_res)
+{
+	acpigen_concatenate_string_int(str, val, tmp_res);
+	acpigen_write_debug_op(tmp_res);
+}
+
+/* Concatenate (str1, res, tmp_res)
+   Store(tmp_res, DEBUG) */
+void acpigen_write_debug_concatenate_string_op(const char *str, uint8_t res,
+	uint8_t tmp_res)
+{
+	acpigen_concatenate_string_op(str, res, tmp_res);
+	acpigen_write_debug_op(tmp_res);
+}
+
 void acpigen_write_if(void)
 {
 	acpigen_emit_byte(IF_OP);
@@ -1464,6 +1564,20 @@ void acpigen_write_if_lequal_op_op(uint8_t op1, uint8_t op2)
 }
 
 /*
+ * Generates ACPI code for checking if operand1 is greater than operand2.
+ * Both operand1 and operand2 are ACPI ops.
+ *
+ * If (Lgreater (op1 op2))
+ */
+void acpigen_write_if_lgreater_op_op(uint8_t op1, uint8_t op2)
+{
+	acpigen_write_if();
+	acpigen_emit_byte(LGREATER_OP);
+	acpigen_emit_byte(op1);
+	acpigen_emit_byte(op2);
+}
+
+/*
  * Generates ACPI code for checking if operand1 and operand2 are equal, where,
  * operand1 is ACPI op and operand2 is an integer.
  *
@@ -1478,6 +1592,20 @@ void acpigen_write_if_lequal_op_int(uint8_t op, uint64_t val)
 }
 
 /*
+ * Generates ACPI code for checking if operand is greater than the value, where,
+ * operand is ACPI op and val is an integer.
+ *
+ * If (Lgreater (op, val))
+ */
+void acpigen_write_if_lgreater_op_int(uint8_t op, uint64_t val)
+{
+	acpigen_write_if();
+	acpigen_emit_byte(LGREATER_OP);
+	acpigen_emit_byte(op);
+	acpigen_write_integer(val);
+}
+
+/*
  * Generates ACPI code for checking if operand1 and operand2 are equal, where,
  * operand1 is namestring and operand2 is an integer.
  *
@@ -1487,6 +1615,20 @@ void acpigen_write_if_lequal_namestr_int(const char *namestr, uint64_t val)
 {
 	acpigen_write_if();
 	acpigen_emit_byte(LEQUAL_OP);
+	acpigen_emit_namestring(namestr);
+	acpigen_write_integer(val);
+}
+
+/*
+ * Generates ACPI code for checking if operand1 and operand2 are equal, where,
+ * operand1 is namestring and operand2 is an integer.
+ *
+ * If (Lgreater ("namestr", val))
+ */
+void acpigen_write_if_lgreater_namestr_int(const char *namestr, uint64_t val)
+{
+	acpigen_write_if();
+	acpigen_emit_byte(LGREATER_OP);
 	acpigen_emit_namestring(namestr);
 	acpigen_write_integer(val);
 }
@@ -1797,7 +1939,8 @@ void acpigen_write_CPPC_package(const struct cppc_config *config)
 void acpigen_write_CPPC_method(void)
 {
 	char pscope[16];
-	snprintf(pscope, sizeof(pscope), CONFIG_ACPI_CPU_STRING "." CPPC_PACKAGE_NAME, 0);
+	snprintf(pscope, sizeof(pscope),
+		 "\\_SB." CONFIG_ACPI_CPU_STRING "." CPPC_PACKAGE_NAME, 0);
 
 	acpigen_write_method("_CPC", 0);
 	acpigen_emit_byte(RETURN_OP);
@@ -1890,40 +2033,26 @@ void acpigen_write_rom(void *bios, const size_t length)
 	acpigen_write_field(opreg.name, l, 2, FIELD_ANYACC | FIELD_NOLOCK | FIELD_PRESERVE);
 
 	/* Store (Arg0, Local0) */
-	acpigen_write_store();
-	acpigen_emit_byte(ARG0_OP);
-	acpigen_emit_byte(LOCAL0_OP);
+	acpigen_write_store_ops(ARG0_OP, LOCAL0_OP);
 
 	/* Store (Arg1, Local1) */
-	acpigen_write_store();
-	acpigen_emit_byte(ARG1_OP);
-	acpigen_emit_byte(LOCAL1_OP);
+	acpigen_write_store_ops(ARG1_OP, LOCAL1_OP);
 
 	/* ACPI SPEC requires to return at maximum 4KiB */
 	/* If (LGreater (Local1, 0x1000)) */
-	acpigen_write_if();
-	acpigen_emit_byte(LGREATER_OP);
-	acpigen_emit_byte(LOCAL1_OP);
-	acpigen_write_integer(0x1000);
+	acpigen_write_if_lgreater_op_int(LOCAL1_OP, 0x1000);
 
 	/* Store (0x1000, Local1) */
-	acpigen_write_store();
-	acpigen_write_integer(0x1000);
-	acpigen_emit_byte(LOCAL1_OP);
+	acpigen_write_store_int_to_op(0x1000, LOCAL1_OP);
 
 	/* Pop if */
 	acpigen_pop_len();
 
 	/* Store (Local1, Local3) */
-	acpigen_write_store();
-	acpigen_emit_byte(LOCAL1_OP);
-	acpigen_emit_byte(LOCAL3_OP);
+	acpigen_write_store_ops(LOCAL1_OP, LOCAL3_OP);
 
 	/* If (LGreater (Local0, length)) */
-	acpigen_write_if();
-	acpigen_emit_byte(LGREATER_OP);
-	acpigen_emit_byte(LOCAL0_OP);
-	acpigen_write_integer(length);
+	acpigen_write_if_lgreater_op_int(LOCAL0_OP, length);
 
 	/* Return(Buffer(Local1){0}) */
 	acpigen_emit_byte(RETURN_OP);
@@ -1937,10 +2066,7 @@ void acpigen_write_rom(void *bios, const size_t length)
 	acpigen_pop_len();
 
 	/* If (LGreater (Local0, length - 4096)) */
-	acpigen_write_if();
-	acpigen_emit_byte(LGREATER_OP);
-	acpigen_emit_byte(LOCAL0_OP);
-	acpigen_write_integer(length - 4096);
+	acpigen_write_if_lgreater_op_int(LOCAL0_OP, length - 4096);
 
 	/* Subtract (length, Local0, Local2) */
 	acpigen_emit_byte(SUBTRACT_OP);
@@ -1949,15 +2075,10 @@ void acpigen_write_rom(void *bios, const size_t length)
 	acpigen_emit_byte(LOCAL2_OP);
 
 	/* If (LGreater (Local1, Local2)) */
-	acpigen_write_if();
-	acpigen_emit_byte(LGREATER_OP);
-	acpigen_emit_byte(LOCAL1_OP);
-	acpigen_emit_byte(LOCAL2_OP);
+	acpigen_write_if_lgreater_op_op(LOCAL1_OP, LOCAL2_OP);
 
 	/* Store (Local2, Local1) */
-	acpigen_write_store();
-	acpigen_emit_byte(LOCAL2_OP);
-	acpigen_emit_byte(LOCAL1_OP);
+	acpigen_write_store_ops(LOCAL2_OP, LOCAL1_OP);
 
 	/* Pop if */
 	acpigen_pop_len();
@@ -1993,9 +2114,7 @@ void acpigen_write_rom(void *bios, const size_t length)
 	acpigen_emit_namestring("TMPB");
 
 	/* Store (TMPB, ROM1) */
-	acpigen_write_store();
-	acpigen_emit_namestring("TMPB");
-	acpigen_emit_namestring("ROM1");
+	acpigen_write_store_namestr_to_namestr("TMPB", "ROM1");
 
 	/* Return (ROM1) */
 	acpigen_emit_byte(RETURN_OP);
@@ -2048,6 +2167,7 @@ void acpigen_get_tx_gpio(const struct acpi_gpio *gpio)
 void acpigen_resource_word(u16 res_type, u16 gen_flags, u16 type_flags, u16 gran, u16 range_min,
 			   u16 range_max, u16 translation, u16 length)
 {
+	/* Byte 0: Type 1, Large Item Value 0x8: Word Address Space Descriptor */
 	acpigen_emit_byte(0x88);
 	/* Byte 1+2: length (0x000d) */
 	acpigen_emit_byte(0x0d);
@@ -2071,6 +2191,7 @@ void acpigen_resource_word(u16 res_type, u16 gen_flags, u16 type_flags, u16 gran
 void acpigen_resource_dword(u16 res_type, u16 gen_flags, u16 type_flags, u32 gran,
 			    u32 range_min, u32 range_max, u32 translation, u32 length)
 {
+	/* Byte 0: Type 1, Large Item Value 0x7: DWord Address Space Descriptor */
 	acpigen_emit_byte(0x87);
 	/* Byte 1+2: length (0023) */
 	acpigen_emit_byte(23);
@@ -2100,6 +2221,7 @@ static void acpigen_emit_qword(u64 data)
 void acpigen_resource_qword(u16 res_type, u16 gen_flags, u16 type_flags, u64 gran,
 			    u64 range_min, u64 range_max, u64 translation, u64 length)
 {
+	/* Byte 0: Type 1, Large Item Value 0xa: QWord Address Space Descriptor */
 	acpigen_emit_byte(0x8a);
 	/* Byte 1+2: length (0x002b) */
 	acpigen_emit_byte(0x2b);
@@ -2117,6 +2239,34 @@ void acpigen_resource_qword(u16 res_type, u16 gen_flags, u16 type_flags, u64 gra
 	acpigen_emit_qword(range_max);
 	acpigen_emit_qword(translation);
 	acpigen_emit_qword(length);
+}
+
+void acpigen_resource_bus_number(u16 bus_base, u16 bus_limit)
+{
+	acpigen_resource_word(RSRC_TYPE_BUS, /* res_type */
+			      ADDR_SPACE_GENERAL_FLAG_MAX_FIXED
+			      | ADDR_SPACE_GENERAL_FLAG_MIN_FIXED
+			      | ADDR_SPACE_GENERAL_FLAG_DEC_POS, /* gen_flags */
+			      BUS_NUM_RANGE_RESOURCE_FLAG, /* type_flags */
+			      0, /* gran */
+			      bus_base, /* range_min */
+			      bus_limit, /* range_max */
+			      0x0, /* translation */
+			      bus_limit - bus_base + 1); /* length */
+}
+
+void acpigen_resource_io(u16 io_base, u16 io_limit)
+{
+	acpigen_resource_word(RSRC_TYPE_IO, /* res_type */
+			      ADDR_SPACE_GENERAL_FLAG_MAX_FIXED
+			      | ADDR_SPACE_GENERAL_FLAG_MIN_FIXED
+			      | ADDR_SPACE_GENERAL_FLAG_DEC_POS, /* gen_flags */
+			      IO_RSRC_FLAG_ENTIRE_RANGE, /* type_flags */
+			      0, /* gran */
+			      io_base, /* range_min */
+			      io_limit, /* range_max */
+			      0x0, /* translation */
+			      io_limit - io_base + 1); /* length */
 }
 
 void acpigen_write_ADR(uint64_t adr)
@@ -2256,4 +2406,18 @@ void acpigen_write_delay_until_namestr_int(uint32_t wait_ms, const char *name, u
 	acpigen_emit_byte(DECREMENT_OP);
 	acpigen_emit_byte(LOCAL7_OP);
 	acpigen_pop_len(); /* While */
+}
+
+void acpigen_ssdt_override_sleep_states(bool enable_s1, bool enable_s2, bool enable_s3,
+					bool enable_s4)
+{
+	assert(!(enable_s1 && CONFIG(ACPI_S1_NOT_SUPPORTED)));
+	assert(!(enable_s3 && !CONFIG(HAVE_ACPI_RESUME)));
+	assert(!(enable_s4 && CONFIG(DISABLE_ACPI_HIBERNATE)));
+
+	acpigen_write_scope("\\");
+	uint32_t sleep_enable = (enable_s1 << 0) | (enable_s2 << 1)
+		| (enable_s3 << 2) | (enable_s4 << 3);
+	acpigen_write_name_dword("OSFG", sleep_enable);
+	acpigen_pop_len();
 }

@@ -4,7 +4,6 @@
 #include <amdblocks/smm.h>
 #include <console/console.h>
 #include <cbmem.h>
-#include <cpu/amd/msr.h>
 #include <cpu/x86/smm.h>
 #include <fsp/util.h>
 #include <FspGuids.h>
@@ -39,7 +38,6 @@ void smm_region(uintptr_t *start, size_t *size)
 	static int once;
 	static uintptr_t smm_start;
 	static size_t smm_size;
-	int status;
 
 	*start = smm_start;
 	*size = smm_size;
@@ -47,9 +45,8 @@ void smm_region(uintptr_t *start, size_t *size)
 		return;
 
 	struct range_entry tseg;
-	status = fsp_find_range_hob(&tseg, AMD_FSP_TSEG_HOB_GUID.b);
 
-	if (status < 0) {
+	if (fsp_find_range_hob(&tseg, AMD_FSP_TSEG_HOB_GUID.b) != CB_SUCCESS) {
 		printk(BIOS_ERR, "unable to find TSEG HOB\n");
 		return;
 	}

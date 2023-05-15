@@ -8,13 +8,13 @@ if BOARD_GOOGLE_BASEBOARD_SKYRIM
 config AMD_FWM_POSITION_INDEX
 	int
 	default 3
-	help
-	  TODO: might need to be adapted for better placement of files in cbfs
 
 config BOARD_SPECIFIC_OPTIONS
 	def_bool y
 	select AMD_SOC_CONSOLE_UART
 	select BOARD_ROMSIZE_KB_16384
+	select DISABLE_KEYBOARD_RESET_PIN
+	select DISABLE_SPI_FLASH_ROM_SHARING
 	select DRIVERS_GENERIC_GPIO_KEYS
 	select DRIVERS_GENERIC_MAX98357A
 	select DRIVERS_ACPI_THERMAL_ZONE
@@ -34,12 +34,15 @@ config BOARD_SPECIFIC_OPTIONS
 	select FW_CONFIG
 	select FW_CONFIG_SOURCE_CHROMEEC_CBI
 	select GOOGLE_SMBIOS_MAINBOARD_VERSION
+	select HAS_RECOVERY_MRC_CACHE
 	select I2C_TPM
 	select MAINBOARD_HAS_CHROMEOS
 	select MAINBOARD_HAS_TPM2
+	select MB_COMPRESS_RAMSTAGE_LZ4
 	select SOC_AMD_MENDOCINO
 	select SOC_AMD_COMMON_BLOCK_I2C3_TPM_SHARED_WITH_PSP
 	select SOC_AMD_COMMON_BLOCK_USE_ESPI
+	select SYSTEM_TYPE_LAPTOP
 	select TPM_GOOGLE_TI50
 	select PCIEXP_ASPM
 	select PCIEXP_CLK_PM
@@ -56,6 +59,17 @@ config DRIVER_TPM_I2C_BUS
 config DRIVER_TPM_I2C_ADDR
 	hex
 	default 0x50
+
+config AMDFW_CONFIG_FILE
+	string
+	default "src/mainboard/\$(CONFIG_MAINBOARD_DIR)/amdfw.cfg"
+	help
+	  Custom firmware list excluding the fwTPM binary.
+
+config PSP_LOAD_MP2_FW
+	prompt "Load MP2 Firmware"
+	depends on CHROMEOS
+	default n
 
 config HAVE_SPL_FILE
 	bool
@@ -75,6 +89,12 @@ config SPL_RW_AB_TABLE_FILE
 	depends on HAVE_SPL_RW_AB_FILE
 	default "3rdparty/blobs/mainboard/google/skyrim/TypeId0x55_SplTableBl_MDN_CHROME.sbin"
 
+config SOC_AMD_COMMON_BLOCK_PSP_FUSE_SPL
+	default y if BOARD_GOOGLE_WINTERHOLD
+	default y if BOARD_GOOGLE_FROSTFLOW
+	default y if BOARD_GOOGLE_MARKARTH
+	default n
+
 config FMDFILE
 	default "src/mainboard/\$(CONFIG_MAINBOARD_DIR)/chromeos.fmd"
 
@@ -88,7 +108,6 @@ config MAINBOARD_FAMILY
 config MAINBOARD_PART_NUMBER
 	default "Skyrim" if BOARD_GOOGLE_SKYRIM
 	default "Winterhold" if BOARD_GOOGLE_WINTERHOLD
-	default "Morthal" if BOARD_GOOGLE_MORTHAL
 	default "Frostflow" if BOARD_GOOGLE_FROSTFLOW
 	default "Crystaldrift" if BOARD_GOOGLE_CRYSTALDRIFT
 	default "Markarth" if BOARD_GOOGLE_MARKARTH
@@ -101,10 +120,18 @@ config VARIANT_DIR
 	string
 	default "skyrim" if BOARD_GOOGLE_SKYRIM
 	default "winterhold" if BOARD_GOOGLE_WINTERHOLD
-	default "morthal" if BOARD_GOOGLE_MORTHAL
 	default "frostflow" if BOARD_GOOGLE_FROSTFLOW
 	default "crystaldrift" if BOARD_GOOGLE_CRYSTALDRIFT
 	default "markarth" if BOARD_GOOGLE_MARKARTH
+
+config USE_VARIANT_DXIO_DESCRIPTOR
+	bool
+	default y if BOARD_GOOGLE_WINTERHOLD
+	default y if BOARD_GOOGLE_MARKARTH
+	default n
+	help
+	  Enable this to allow a variant to override the dxio descriptor values
+	  in port_descriptors.c
 
 config VBOOT
 	select EC_GOOGLE_CHROMEEC_SWITCHES
@@ -126,6 +153,7 @@ config EFS_SPI_READ_MODE
 	default 4                                 # Dual IO (1-2-2)
 
 config EFS_SPI_SPEED
+	default 4 if BOARD_GOOGLE_WINTERHOLD
 	default 0	# 66MHz
 
 config EFS_SPI_MICRON_FLAG
@@ -135,6 +163,7 @@ config NORMAL_READ_SPI_SPEED
 	default 1	# 33MHz
 
 config ALT_SPI_SPEED
+	default 4 if BOARD_GOOGLE_WINTERHOLD
 	default 0	# 66MHz
 
 endif # !EM100
@@ -150,6 +179,8 @@ config OVERRIDE_EFS_SPI_SPEED
 config OVERRIDE_EFS_SPI_SPEED_MIN_BOARD
 	hex
 	default 0x5 if BOARD_GOOGLE_SKYRIM
+	default 0x1 if BOARD_GOOGLE_FROSTFLOW
+	default 0x1 if BOARD_GOOGLE_MARKARTH
 	default 0xffffffff
 	help
 	  Minimum board version starting which the Override EFS SPI Speed
@@ -165,5 +196,25 @@ config ENABLE_STB_SPILL_TO_DRAM
 	  Spill-to-DRAM is an STB feature that extends the buffer from using
 	  just the small SRAM buffer to a much larger area reserved in main
 	  memory.
+
+config CARDBUS_PLUGIN_SUPPORT
+	default n
+
+# Exclude support for SPI ROM types that won't be used on Skyrim platforms
+config SPI_FLASH_DONT_INCLUDE_ALL_DRIVERS
+	default y
+
+# Gigadevice is used on Whiterun as an alternative to Winbond
+config SPI_FLASH_GIGADEVICE
+	default y
+
+# XMC chips used on Markarth as an alternative to Winbond
+# These chips identify as ST Micro (Manufacturer ID: 0x20)
+config SPI_FLASH_STMICRO
+	default y
+
+# Winbond chips are used by all Skyrim devices as the primary flash chip
+config SPI_FLASH_WINBOND
+	default y
 
 endif # BOARD_GOOGLE_BASEBOARD_SKYRIM

@@ -77,7 +77,7 @@ enum {
 	LB_TAG_MAC_ADDRS		= 0x0033,
 	LB_TAG_VBOOT_WORKBUF		= 0x0034,
 	LB_TAG_MMC_INFO			= 0x0035,
-	LB_TAG_TCPA_LOG			= 0x0036,
+	LB_TAG_TPM_CB_LOG		= 0x0036,
 	LB_TAG_FMAP			= 0x0037,
 	LB_TAG_PLATFORM_BLOB_VERSION	= 0x0038,
 	LB_TAG_SMMSTOREV2		= 0x0039,
@@ -85,7 +85,7 @@ enum {
 	LB_TAG_BOARD_CONFIG		= 0x0040,
 	LB_TAG_ACPI_CNVS		= 0x0041,
 	LB_TAG_TYPE_C_INFO		= 0x0042,
-	LB_TAG_ACPI_RSDP                = 0x0043,
+	LB_TAG_ACPI_RSDP		= 0x0043,
 	LB_TAG_PCIE			= 0x0044,
 	/* The following options are CMOS-related */
 	LB_TAG_CMOS_OPTION_TABLE	= 0x00c8,
@@ -140,6 +140,7 @@ struct lb_memory_range {
 #define LB_MEM_UNUSABLE		 5	/* Unusable address space */
 #define LB_MEM_VENDOR_RSVD	 6	/* Vendor Reserved */
 #define LB_MEM_TABLE		16    /* Ram configuration tables are kept in */
+#define LB_MEM_SOFT_RESERVED	0xefffffff /* Specific purpose memory */
 };
 
 struct lb_memory {
@@ -536,7 +537,7 @@ struct lb_smmstorev2 {
 	uint8_t unused[3];		/* Set to zero */
 };
 
-enum lb_tmp_ppi_tpm_version {
+enum lb_tpm_ppi_tpm_version {
 	LB_TPM_VERSION_UNSPEC = 0,
 	LB_TPM_VERSION_TPM_VERSION_1_2,
 	LB_TPM_VERSION_TPM_VERSION_2,

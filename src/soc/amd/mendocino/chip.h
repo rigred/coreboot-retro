@@ -1,7 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 
-/* TODO: Check if this is still correct */
-
 #ifndef MENDOCINO_CHIP_H
 #define MENDOCINO_CHIP_H
 
@@ -14,6 +12,16 @@
 #include <drivers/i2c/designware/dw_i2c.h>
 #include <types.h>
 #include <vendorcode/amd/fsp/mendocino/FspUsb.h>
+
+/* force USB3 port to gen1, bit0 - controller0 Port0, bit1 - Port1, etc */
+union __packed usb3_force_gen1 {
+		struct {
+			uint8_t xhci0_port0:1;
+			uint8_t xhci1_port0:1;
+			uint8_t xhci1_port1:1;
+		} ports;
+		uint8_t usb3_port_force_gen1_en;
+};
 
 struct soc_amd_mendocino_config {
 	struct soc_amd_common_config common_config;
@@ -75,13 +83,15 @@ struct soc_amd_mendocino_config {
 	uint32_t vrm_soc_current_limit_throttle_mA;
 
 	/* tablet mode.*/
-	uint32_t sustained_power_limit_mW_tablet;
+	uint16_t stt_m1_tablet;
+	uint16_t stt_m2_tablet;
+	uint16_t stt_c_apu_tablet;
+	uint16_t stt_alpha_apu_tablet;
 
 	/* Thermal profile B*/
 	uint32_t fast_ppt_limit_mW_B;
 	uint32_t slow_ppt_limit_mW_B;
 	uint32_t slow_ppt_time_constant_s_B;
-	uint32_t sustained_power_limit_mW_B;
 	uint16_t stt_min_limit_B;
 	uint16_t stt_m1_B;
 	uint16_t stt_m2_B;
@@ -92,7 +102,6 @@ struct soc_amd_mendocino_config {
 	uint32_t fast_ppt_limit_mW_C;
 	uint32_t slow_ppt_limit_mW_C;
 	uint32_t slow_ppt_time_constant_s_C;
-	uint32_t sustained_power_limit_mW_C;
 	uint16_t stt_min_limit_C;
 	uint16_t stt_m1_C;
 	uint16_t stt_m2_C;
@@ -103,7 +112,6 @@ struct soc_amd_mendocino_config {
 	uint32_t fast_ppt_limit_mW_D;
 	uint32_t slow_ppt_limit_mW_D;
 	uint32_t slow_ppt_time_constant_s_D;
-	uint32_t sustained_power_limit_mW_D;
 	uint16_t stt_min_limit_D;
 	uint16_t stt_m1_D;
 	uint16_t stt_m2_D;
@@ -114,7 +122,6 @@ struct soc_amd_mendocino_config {
 	uint32_t fast_ppt_limit_mW_E;
 	uint32_t slow_ppt_limit_mW_E;
 	uint32_t slow_ppt_time_constant_s_E;
-	uint32_t sustained_power_limit_mW_E;
 	uint16_t stt_min_limit_E;
 	uint16_t stt_m1_E;
 	uint16_t stt_m2_E;
@@ -126,7 +133,6 @@ struct soc_amd_mendocino_config {
 	uint32_t fast_ppt_limit_mW_F;
 	uint32_t slow_ppt_limit_mW_F;
 	uint32_t slow_ppt_time_constant_s_F;
-	uint32_t sustained_power_limit_mW_F;
 	uint16_t stt_min_limit_F;
 	uint16_t stt_m1_F;
 	uint16_t stt_m2_F;
@@ -167,6 +173,15 @@ struct soc_amd_mendocino_config {
 	/* Set for PCIe optimization w/a and a double confirming on the result of PCIe Signal
 	   Integrity is highly recommended. */
 	uint8_t dxio_tx_vboost_enable;
+
+	/* Force USB3 port to gen1, bit0 - controller0 Port0, bit1 - Port1 */
+	union usb3_force_gen1 usb3_port_force_gen1;
+
+	/* Set for eDP power sequence adjustment timing T8 (from varybl to blon). */
+	uint8_t edp_panel_t8_ms;
+	/* Set for eDP power sequence adjustment timing T9 (from bloff to varybloff). */
+	uint8_t edp_panel_t9_ms;
+
 };
 
 #endif /* MENDOCINO_CHIP_H */

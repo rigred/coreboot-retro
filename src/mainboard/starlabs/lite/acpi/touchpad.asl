@@ -4,9 +4,9 @@ Scope (\_SB.PCI0.I2C7)
 {
 	Device (H02C)
 	{
-		Name (_HID, "STAR0001")						// _HID: Hardware ID
-		Name (_CID, "PNP0C50" /* HID Protocol Device (I2C bus) */)	// _CID: Compatible ID
-		Name (_UID, 0x01)						// _UID: Unique ID
+		Name (_HID, "STAR0001")
+		Name (_CID, "PNP0C50" /* HID Protocol Device (I2C bus) */)
+		Name (_UID, 0x01)
 		Name (_DDN, "Touchpad")						// _DDN: DOS Device Name
 		Name (_DEP, Package (0x02)					// _DEP: Dependencies
 		{
@@ -14,7 +14,7 @@ Scope (\_SB.PCI0.I2C7)
 			I2C7
 		})
 
-		Method (_STA, 0, NotSerialized)					// _STA: Status
+		Method (_STA, 0, NotSerialized)
 		{
 			Return (0x0F)
 		}

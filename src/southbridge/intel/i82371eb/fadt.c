@@ -7,7 +7,6 @@
 #include <acpi/acpi.h>
 #include <device/device.h>
 #include <device/pci.h>
-#include <version.h>
 
 #include "i82371eb.h"
 
@@ -17,12 +16,6 @@
  */
 void acpi_fill_fadt(acpi_fadt_t *fadt)
 {
-	fadt->sci_int = 9;
-
-	if (permanent_smi_handler()) {
-		/* TODO: SMI handler is not implemented. */
-		fadt->smi_cmd = 0x00;
-	}
 
 	fadt->pm1a_evt_blk = DEFAULT_PMBASE;
 	fadt->pm1a_cnt_blk = DEFAULT_PMBASE + PMCNTRL;
@@ -36,12 +29,6 @@ void acpi_fill_fadt(acpi_fadt_t *fadt)
 	fadt->pm_tmr_len = 4;
 	fadt->gpe0_blk_len = 4;
 
-	fadt->p_lvl2_lat = 101; /* >100 means c2 not supported */
-	fadt->p_lvl3_lat = 1001; /* >1000 means c3 not supported */
-	fadt->duty_offset = 1; /* bit 1:3 in PCNTRL reg (pmbase+0x10) */
-	fadt->duty_width = 3; /* this width is in bits */
-	fadt->day_alrm = 0x0d; /* rtc CMOS RAM offset */
-	fadt->mon_alrm = 0x0; /* not supported */
 	/*
 	 * bit  meaning
 	 * 0    1: We have user-visible legacy devices

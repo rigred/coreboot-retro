@@ -28,8 +28,11 @@ enum pch_pmc_xtal {
  */
 enum pch_pmc_xtal pmc_get_xtal_freq(void);
 
-/* pmc_send_pci_enum_done() - send PMC IPC to inform PCI enumeration is done. */
-void pmc_send_pci_enum_done(void);
+/*
+ * pmc_send_pci_enum_done() - send PMC IPC to inform both BIOS Reset
+ * and PCI enumeration is done.
+ */
+void pmc_send_bios_reset_pci_enum_done(void);
 
 /* Forward declare the power state struct here */
 struct chipset_power_state;
@@ -182,6 +185,9 @@ int pmc_fill_power_state(struct chipset_power_state *ps);
  * in GPIO_CFG register which is assigned to ACPI register.
  */
 void pmc_gpe_init(void);
+
+/* Clear PMC GEN_PMCON_X register power failure status bits */
+void pmc_clear_pmcon_pwr_failure_sts(void);
 
 /* Clear PMC GEN_PMCON_A register status bits */
 void pmc_clear_pmcon_sts(void);

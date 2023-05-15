@@ -367,6 +367,14 @@ config CONSOLE_SYSTEM76_EC
 	help
 	  Send coreboot debug output to a System76 embedded controller.
 
+config CONSOLE_AMD_SIMNOW
+	bool "AMD SimNow console output"
+	default n
+	depends on SOC_AMD_COMMON && !POST_IO
+	select CONSOLE_POST
+	help
+	  Send coreboot debug output to IO ports for SimNow
+
 config CONSOLE_OVERRIDE_LOGLEVEL
 	bool
 	help
@@ -446,7 +454,7 @@ config CONSOLE_USE_LOGLEVEL_PREFIX
 
 config CONSOLE_USE_ANSI_ESCAPES
 	bool "Use ANSI escape sequences for console highlighting"
-	default y
+	default y if !CONSOLE_AMD_SIMNOW
 	help
 	  If enabled, certain consoles (e.g. UART) that are meant to be read on
 	  a terminal will use ANSI escape sequences (like `ESC [1m`) to

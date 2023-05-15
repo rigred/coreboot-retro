@@ -7,7 +7,7 @@ const u32 cim_verb_data[] = {
 	/* coreboot specific header */
 	0x10ec0269, /* Codec Vendor / Device ID: Realtek ALC269 */
 	0x1e507007, /* Subsystem ID */
-	36,	    /* Number of jacks (NID entries) */
+	17,	    /* Number of jacks (NID entries) */
 
 	/* Reset Codec First */
 	AZALIA_RESET(0x1),
@@ -19,13 +19,13 @@ const u32 cim_verb_data[] = {
 	AZALIA_PIN_CFG(0, 0x01, 0x00000000),
 	AZALIA_PIN_CFG(0, 0x12, 0x90a61120),
 	AZALIA_PIN_CFG(0, 0x14, 0x90171110),
-	AZALIA_PIN_CFG(0, 0x17, 0x042B1010),
-	AZALIA_PIN_CFG(0, 0x18, 0x411111F0),
-	AZALIA_PIN_CFG(0, 0x19, 0x04AB1020),
-	AZALIA_PIN_CFG(0, 0x1a, 0x411111F0),
-	AZALIA_PIN_CFG(0, 0x1b, 0x411111F0),
-	AZALIA_PIN_CFG(0, 0x1d, 0x411111F0),
-	AZALIA_PIN_CFG(0, 0x1e, 0x411111F0),
+	AZALIA_PIN_CFG(0, 0x17, 0x40000000),
+	AZALIA_PIN_CFG(0, 0x18, 0x04a19030),
+	AZALIA_PIN_CFG(0, 0x19, 0x04ab1020),
+	AZALIA_PIN_CFG(0, 0x1a, 0x411111f0),
+	AZALIA_PIN_CFG(0, 0x1b, 0x411111f0),
+	AZALIA_PIN_CFG(0, 0x1d, 0x411111f0),
+	AZALIA_PIN_CFG(0, 0x1e, 0x411111f0),
 	AZALIA_PIN_CFG(0, 0x21, 0x042b1010),
 
 	/* ALC269 Default 1 */
@@ -54,7 +54,7 @@ const u32 cim_verb_data[] = {
 
 	0x80862815, /* Codec Vendor / Device ID: Intel */
 	0x80860101, /* Subsystem ID */
-	9,	    /* Number of 4 dword sets */
+	10,	    /* Number of 4 dword sets */
 
 	AZALIA_SUBVENDOR(2, 0x80860101),
 

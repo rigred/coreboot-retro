@@ -6,26 +6,18 @@ subdirs-$(CONFIG_VBOOT_STARTS_BEFORE_BOOTBLOCK) += psp_verstage
 subdirs-$(CONFIG_VBOOT_STARTS_BEFORE_BOOTBLOCK) += ../common/psp_verstage
 
 # Beware that all-y also adds the compilation unit to verstage on PSP
-all-y += config.c
 all-y += aoac.c
+all-y += config.c
+all-y += i2c.c
+
+# all_x86-y adds the compilation unit to all stages that run on the x86 cores
+all_x86-y += gpio.c
+all_x86-y += uart.c
 
 bootblock-y += early_fch.c
-bootblock-y += gpio.c
-bootblock-y += i2c.c
-bootblock-y += reset.c
-bootblock-y += uart.c
 
 romstage-y += fsp_m_params.c
-romstage-y += gpio.c
-romstage-y += i2c.c
-romstage-y += reset.c
 romstage-y += romstage.c
-romstage-y += uart.c
-
-verstage-y += i2c.c
-verstage_x86-y += gpio.c
-verstage_x86-y += reset.c
-verstage_x86-y += uart.c
 
 ramstage-$(CONFIG_HAVE_ACPI_TABLES) += acpi.c
 ramstage-$(CONFIG_HAVE_ACPI_TABLES) += agesa_acpi.c
@@ -33,16 +25,12 @@ ramstage-y += chip.c
 ramstage-y += cpu.c
 ramstage-y += fch.c
 ramstage-y += fsp_s_params.c
-ramstage-y += gpio.c
 ramstage-y += graphics.c
-ramstage-y += i2c.c
 ramstage-y += mca.c
 ramstage-y += pcie_gpp.c
-ramstage-y += reset.c
 ramstage-y += root_complex.c
 ramstage-y += sata.c
 ramstage-y += soc_util.c
-ramstage-y += uart.c
 ramstage-y += xhci.c
 
 smm-y += smihandler.c
@@ -50,14 +38,11 @@ ifeq ($(CONFIG_DEBUG_SMI),y)
 smm-y += uart.c
 endif
 smm-y += gpio.c
-smm-y += smu.c
 
 CPPFLAGS_common += -I$(src)/soc/amd/picasso/include
 CPPFLAGS_common += -I$(src)/soc/amd/picasso/acpi
 CPPFLAGS_common += -I$(src)/vendorcode/amd/fsp/picasso
 CPPFLAGS_common += -I$(src)/vendorcode/amd/fsp/picasso/include
-
-MAINBOARD_BLOBS_DIR:=$(top)/3rdparty/blobs/mainboard/$(MAINBOARDDIR)
 
 # ROMSIG Normally At ROMBASE + 0x20000
 # Overridden by CONFIG_AMD_FWM_POSITION_INDEX
@@ -217,6 +202,7 @@ AMDFW_COMMON_ARGS=$(OPT_PSP_APCB_FILES) \
 		$(OPT_PSP_NVRAM_SIZE) \
 		$(OPT_PSP_APCB_FILES_BK) \
 		$(OPT_APOB_ADDR) \
+		$(OPT_DEBUG_AMDFWTOOL) \
 		$(OPT_PSP_BIOSBIN_FILE) \
 		$(OPT_PSP_BIOSBIN_DEST) \
 		$(OPT_PSP_BIOSBIN_SIZE) \
@@ -228,13 +214,11 @@ AMDFW_COMMON_ARGS=$(OPT_PSP_APCB_FILES) \
 		$(OPT_WHITELIST_FILE) \
 		$(OPT_PSP_SHAREDMEM_BASE) \
 		$(OPT_PSP_SHAREDMEM_SIZE) \
-		--combo-capable \
 		$(OPT_TOKEN_UNLOCK) \
 		$(OPT_EFS_SPI_READ_MODE) \
 		$(OPT_EFS_SPI_SPEED) \
 		$(OPT_EFS_SPI_MICRON_FLAG) \
 		--config $(CONFIG_AMDFW_CONFIG_FILE) \
-		--soc-name "Picasso" \
 		--flashsize $(CONFIG_ROM_SIZE)
 
 $(obj)/amdfw.rom:	$(call strip_quotes, $(PSP_BIOSBIN_FILE)) \

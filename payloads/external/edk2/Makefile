@@ -6,7 +6,22 @@ export SHELL := env bash
 project_name = edk2
 export WORKSPACE := $(CURDIR)/workspace
 export EDK2_PATH := $(WORKSPACE)/$(word 3,$(subst /, ,$(CONFIG_EDK2_REPOSITORY)))
+
+ifeq ($(CONFIG_EDK2_USE_EDK2_PLATFORMS),y)
+export EDK2_PLATFORMS_PATH := $(WORKSPACE)/edk2-platforms
+export PACKAGES_PATH := $(EDK2_PATH):\
+			$(EDK2_PLATFORMS_PATH)/Platform/Intel:\
+			$(EDK2_PLATFORMS_PATH)/Silicon/Intel:\
+			$(EDK2_PLATFORMS_PATH)/Features/Intel:\
+			$(EDK2_PLATFORMS_PATH)/Features/Intel/Debugging:\
+			$(EDK2_PLATFORMS_PATH)/Features/Intel/Network:\
+			$(EDK2_PLATFORMS_PATH)/Features/Intel/OutOfBandManagement:\
+			$(EDK2_PLATFORMS_PATH)/Features/Intel/PowerManagement:\
+			$(EDK2_PLATFORMS_PATH)/Features/Intel/SystemInformation:\
+			$(EDK2_PLATFORMS_PATH)/Features/Intel/UserInterface
+else
 export PACKAGES_PATH := $(EDK2_PATH)
+endif
 
 OBJCOPY = $(GCC_PREFIX)objcopy
 
@@ -15,7 +30,7 @@ BUILD_STR = -p UefiPayloadPkg/UefiPayloadPkg.dsc
 endif
 BUILD_STR += -t COREBOOT
 BUILD_STR += -D BOOTLOADER=COREBOOT
-ifneq ($(CONFIG_EDK2_VERBOSE_BUILD),y)
+ifneq ($(V),1)
 BUILD_STR += -q
 ifeq ($(CONFIG_EDK2_UEFIPAYLOAD),y)
 BUILD_STR += -s
@@ -28,10 +43,6 @@ endif
 #
 # OPTION			= DEFAULT_VALUE
 #
-# ABOVE_4G_MEMORY		= TRUE
-ifneq ($(CONFIG_EDK2_ABOVE_4G_MEMORY),y)
-BUILD_STR += -D ABOVE_4G_MEMORY=FALSE
-endif
 # BOOTSPLASH_IMAGE		= FALSE
 ifneq ($(CONFIG_EDK2_BOOTSPLASH_FILE),)
 BUILD_STR += -D BOOTSPLASH_IMAGE=TRUE
@@ -96,6 +107,10 @@ endif
 ifneq ($(CONFIG_EDK2_SD_MMC_TIMEOUT),)
 BUILD_STR += -D SD_MMC_TIMEOUT=$(shell echo $$(( $(CONFIG_EDK2_SD_MMC_TIMEOUT) * 1000)) )
 endif
+# EDK2_SECURE_BOOT_SUPPORT      = FALSE
+ifeq ($(CONFIG_EDK2_SECURE_BOOT_SUPPORT), y)
+BUILD_STR += -D SECURE_BOOT_ENABLE=TRUE
+endif
 
 #
 # EDKII has the below PCDs that are relevant to coreboot:
@@ -118,6 +133,23 @@ all: UefiPayloadPkg
 
 $(WORKSPACE):
 	mkdir $(WORKSPACE)
+
+$(EDK2_PLATFORMS_PATH): $(WORKSPACE)
+	if [ ! -d "$(EDK2_PLATFORMS_PATH)" ]; then \
+		git clone --recurse-submodules $(CONFIG_EDK2_PLATFORMS_REPOSITORY) $(EDK2_PLATFORMS_PATH) -j5; \
+	fi
+	cd $(EDK2_PLATFORMS_PATH); \
+		if ! git rev-parse --verify -q $(CONFIG_EDK2_PLATFORMS_TAG_OR_REV) >/dev/null; then \
+			echo "    $(CONFIG_EDK2_PLATFORMS_TAG_OR_REV) is not a valid git reference"; \
+			exit 1; \
+		fi; \
+		if git status --ignore-submodules=dirty | grep -q "nothing to commit, working tree clean"; then \
+			echo "    Checking out edk2-platforms revision $(CONFIG_EDK2_PLATFORMS_TAG_OR_REV)"; \
+			git checkout --detach $(CONFIG_EDK2_PLATFORMS_TAG_OR_REV) -f; \
+		else \
+			echo "    Working directory not clean; will not overwrite"; \
+		fi; \
+		git submodule update --init --checkout
 
 $(EDK2_PATH): $(WORKSPACE)
 	if [ ! -d "$(EDK2_PATH)" ]; then \
@@ -176,6 +208,7 @@ print:
 	echo "   ##### $(project_name) Build Summary #####"
 	echo "   Repository:     $(CONFIG_EDK2_REPOSITORY)"
 	echo "   Branch:         $(CONFIG_EDK2_TAG_OR_REV)"
+	echo "   Packages path:  $(PACKAGES_PATH)"
 	echo " $(BUILD_STR)" | \
 		sed -e 's/--/-/g' -e 's/-/\n   /g' | sort | sed \
 		-e 's/a /Architecture:   /g' \
@@ -187,7 +220,7 @@ print:
 		-e 's/s /Build:          Silent/' \
 		-e 's/t /Toolchain:      /'
 
-prep: $(EDK2_PATH) clean checktools logo
+prep: $(EDK2_PATH) $(EDK2_PLATFORMS_PATH) clean checktools logo
 	cd $(WORKSPACE); \
 		source $(EDK2_PATH)/edksetup.sh; \
 		unset CC; $(MAKE) -C $(EDK2_PATH)/BaseTools 2>&1; \

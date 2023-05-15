@@ -12,7 +12,6 @@
 #include <gpio.h>
 #include <intelblocks/power_limit.h>
 #include <smbios.h>
-#include <soc/gpio.h>
 #include <soc/pci_devs.h>
 #include <soc/nhlt.h>
 #include <string.h>
@@ -178,6 +177,25 @@ const char *smbios_system_sku(void)
 	snprintf(sku_str, sizeof(sku_str), "sku%d", board_oem_id());
 
 	return sku_str;
+}
+
+const char *fizz_oem_name[] = {
+	"Kench",
+	"Teemo",
+	"Sion",
+	"Wukong",
+	"Wukong",
+	"Wukong",
+	"Teemo",
+	"",
+	"Jax",
+	"",
+	"Excelsior"
+};
+
+const char *smbios_mainboard_product_name(void)
+{
+	return fizz_oem_name[board_oem_id()];
 }
 
 static void mainboard_init(struct device *dev)

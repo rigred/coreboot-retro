@@ -28,5 +28,11 @@ void mainboard_memory_init_params(FSPM_UPD *mupd)
 	memcfg_init(mupd, &mem_config, &ddr4_spd_info, half_populated);
 
 	const uint8_t vtd = get_uint_option("vtd", 1);
-		mupd->FspmConfig.VtdDisable = !vtd;
+	mupd->FspmConfig.VtdDisable = !vtd;
+
+	/* Enable/Disable Wireless (RP05) based on CMOS settings */
+	if (get_uint_option("wireless", 1) == 0)
+		mupd->FspmConfig.PcieRpEnableMask &= ~(1 << 4);
+
+	mupd->FspmConfig.DmiMaxLinkSpeed = 4;
 };

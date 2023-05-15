@@ -49,10 +49,12 @@ static void eventlog_printf(const char *format, ...)
  *
  * Forms the key-value description pair for the event timestamp.
  */
-static void eventlog_print_timestamp(const struct event_header *event)
+static void eventlog_print_timestamp(const struct event_header *event,
+				     enum eventlog_timezone tz)
 {
 	const char *tm_format = "%y-%m-%d%t%H:%M:%S";
 	char tm_string[40];
+	struct tm *tmptr;
 	struct tm tm;
 	time_t time;
 
@@ -78,7 +80,11 @@ static void eventlog_print_timestamp(const struct event_header *event)
 	time = mktime(&tm);
 	time += tm.tm_gmtoff; /* force adjust for timezone */
 
-	strftime(tm_string, sizeof(tm_string), "%Y-%m-%d %H:%M:%S", localtime(&time));
+	if (tz == EVENTLOG_TIMEZONE_UTC)
+		tmptr = gmtime(&time);
+	else
+		tmptr = localtime(&time);
+	strftime(tm_string, sizeof(tm_string), "%Y-%m-%d %H:%M:%S%z", tmptr);
 
 	eventlog_printf("%s", tm_string);
 }
@@ -159,7 +165,7 @@ static void eventlog_print_type(const struct event_header *event)
 		{ELOG_TYPE_EXTENDED_EVENT, "Extended Event"},
 		{ELOG_TYPE_CROS_DIAGNOSTICS, "Diagnostics Mode"},
 		{ELOG_TYPE_FW_VBOOT_INFO, "Firmware vboot info"},
-
+		{ELOG_TYPE_FW_EARLY_SOL, "Early Sign of Life"},
 		{ELOG_TYPE_EOL, "End of log"},
 	};
 
@@ -460,6 +466,39 @@ static int eventlog_print_data(const struct event_header *event)
 		{0, NULL},
 	};
 
+	static const struct valstr early_sol_path_types[] = {
+		{ELOG_FW_EARLY_SOL_CSE_SYNC, "CSE Sync Early SOL Screen Shown"},
+		{ELOG_FW_EARLY_SOL_MRC, "MRC Early SOL Screen Shown"},
+		{0, NULL},
+	};
+
+	size_t elog_type_to_min_size[] = {
+		[ELOG_TYPE_LOG_CLEAR]		= sizeof(uint16_t),
+		[ELOG_TYPE_BOOT]		= sizeof(uint32_t),
+		[ELOG_TYPE_LAST_POST_CODE]	= sizeof(uint16_t),
+		[ELOG_TYPE_POST_EXTRA]		= sizeof(uint32_t),
+		[ELOG_TYPE_OS_EVENT]		= sizeof(uint32_t),
+		[ELOG_TYPE_ACPI_ENTER]		= sizeof(uint8_t),
+		[ELOG_TYPE_ACPI_WAKE]		= sizeof(uint8_t),
+		[ELOG_TYPE_ACPI_DEEP_WAKE]	= sizeof(uint8_t),
+		[ELOG_TYPE_WAKE_SOURCE]		= sizeof(struct elog_event_data_wake),
+		[ELOG_TYPE_EC_EVENT]		= sizeof(uint8_t),
+		[ELOG_TYPE_EC_DEVICE_EVENT]	= sizeof(uint8_t),
+		[ELOG_DEPRECATED_TYPE_CROS_RECOVERY_MODE] = sizeof(uint8_t),
+		[ELOG_TYPE_MANAGEMENT_ENGINE]	= sizeof(uint8_t),
+		[ELOG_TYPE_MEM_CACHE_UPDATE]	= sizeof(struct elog_event_mem_cache_update),
+		[ELOG_TYPE_EXTENDED_EVENT]	= sizeof(struct elog_event_extended_event),
+		[ELOG_TYPE_CROS_DIAGNOSTICS]	= sizeof(uint8_t),
+		[ELOG_TYPE_FW_VBOOT_INFO]	= sizeof(uint16_t),
+		[ELOG_TYPE_FW_EARLY_SOL]	= sizeof(uint8_t),
+		[0xff]				= 0,
+	};
+
+	if (event->length <= sizeof(*event) + elog_type_to_min_size[event->type]) {
+		eventlog_printf("INVALID DATA (length = %u)", event->length - sizeof(*event));
+		return 0;
+	}
+
 	switch (event->type) {
 	case ELOG_TYPE_LOG_CLEAR: {
 		const uint16_t *bytes = event_get_data(event);
@@ -587,15 +626,25 @@ static int eventlog_print_data(const struct event_header *event)
 		eventlog_printf("boot_mode=%s", vb2_boot_mode_string(info->boot_mode));
 
 		if (info->boot_mode == VB2_BOOT_MODE_BROKEN_SCREEN ||
-		    info->boot_mode == VB2_BOOT_MODE_MANUAL_RECOVERY)
-			eventlog_printf("recovery_reason=%#x/%#x (%s)",
+		    info->boot_mode == VB2_BOOT_MODE_MANUAL_RECOVERY) {
+			if (event->length <= sizeof(*event) + sizeof(*info))
+				eventlog_printf("INVALID DATA (length = %u)",
+				  event->length - sizeof(*event));
+			else
+				eventlog_printf("recovery_reason=%#x/%#x (%s)",
 				  info->recovery_reason, info->recovery_subcode,
 				  vb2_get_recovery_reason_string(info->recovery_reason));
+		}
 
 		eventlog_printf("fw_tried=%s", vb2_slot_string(info->slot));
 		eventlog_printf("fw_try_count=%d", info->tries);
 		eventlog_printf("fw_prev_tried=%s", vb2_slot_string(info->prev_slot));
 		eventlog_printf("fw_prev_result=%s", vb2_result_string(info->prev_result));
+		break;
+	}
+	case ELOG_TYPE_FW_EARLY_SOL: {
+		const uint8_t *sol_event = event_get_data(event);
+		eventlog_printf("%s", val2str(*sol_event, early_sol_path_types));
 		break;
 	}
 	default:
@@ -605,13 +654,14 @@ static int eventlog_print_data(const struct event_header *event)
 	return 0;
 }
 
-void eventlog_print_event(const struct event_header *event, int count)
+void eventlog_print_event(const struct event_header *event, int count,
+			  enum eventlog_timezone tz)
 {
 	/* Ignore the printf separator at the beginning and end of each line */
 	eventlog_printf_ignore_separator_once = 1;
 
 	eventlog_printf("%d", count);
-	eventlog_print_timestamp(event);
+	eventlog_print_timestamp(event, tz);
 	eventlog_print_type(event);
 	eventlog_print_data(event);
 

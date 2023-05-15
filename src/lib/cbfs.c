@@ -142,7 +142,7 @@ static inline bool cbfs_lzma_enabled(void)
 		return false;
 	if (ENV_ROMSTAGE && CONFIG(POSTCAR_STAGE))
 		return false;
-	if ((ENV_ROMSTAGE || ENV_POSTCAR) && !CONFIG(COMPRESS_RAMSTAGE))
+	if ((ENV_ROMSTAGE || ENV_POSTCAR) && !CONFIG(COMPRESS_RAMSTAGE_LZMA))
 		return false;
 	if (ENV_SMM)
 		return false;
@@ -190,7 +190,7 @@ static bool cbfs_file_hash_mismatch(const void *buffer, size_t size,
 
 		if (!hash ||
 		    tspi_cbfs_measurement(mdata->h.filename, be32toh(mdata->h.type), hash))
-			ERROR("failed to measure '%s' into TCPA log\n", mdata->h.filename);
+			ERROR("failed to measure '%s' into TPM log\n", mdata->h.filename);
 			/* We intentionally continue to boot on measurement errors. */
 	}
 

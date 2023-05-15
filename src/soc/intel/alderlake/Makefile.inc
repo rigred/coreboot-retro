@@ -18,11 +18,11 @@ bootblock-y += espi.c
 bootblock-y += p2sb.c
 bootblock-$(CONFIG_ALDERLAKE_CONFIGURE_DESCRIPTOR) += bootblock/update_descriptor.c
 
+romstage-$(CONFIG_SOC_INTEL_CSE_PRE_CPU_RESET_TELEMETRY) += cse_telemetry.c
 romstage-y += espi.c
 romstage-y += meminit.c
 romstage-y += pcie_rp.c
 romstage-y += reset.c
-romstage-y += cpu.c
 
 ramstage-y += acpi.c
 ramstage-y += chip.c
@@ -34,7 +34,6 @@ ramstage-y += fsp_params.c
 ramstage-y += graphics.c
 ramstage-y += hsphy.c
 ramstage-y += lockdown.c
-ramstage-y += me.c
 ramstage-y += p2sb.c
 ramstage-y += pcie_rp.c
 ramstage-y += pmc.c
@@ -78,6 +77,8 @@ ifeq ($(CONFIG_SOC_INTEL_ALDERLAKE_PCH_S),y)
 cpu_microcode_bins += 3rdparty/intel-microcode/intel-ucode/06-97-02
 # ADL-S H0
 cpu_microcode_bins += 3rdparty/intel-microcode/intel-ucode/06-97-05
+# RPL-S/HX B0
+cpu_microcode_bins += 3rdparty/intel-microcode/intel-ucode/06-b7-01
 else
 ifneq ($(CONFIG_SOC_INTEL_ALDERLAKE_PCH_N),y)
 # 06-9a-00, 06-9a-01 are ADL-P/ADL-M Engineering Samples
@@ -86,6 +87,8 @@ ifneq ($(CONFIG_SOC_INTEL_ALDERLAKE_PCH_N),y)
 cpu_microcode_bins += 3rdparty/intel-microcode/intel-ucode/06-9a-03
 # ADL-P R0 and ADL-M R0
 cpu_microcode_bins += 3rdparty/intel-microcode/intel-ucode/06-9a-04
+# RPL-P/H J0, RPL-U Q0
+cpu_microcode_bins += 3rdparty/intel-microcode/intel-ucode/06-ba-02
 endif
 endif
 

@@ -15,7 +15,6 @@
 #include <device/device.h>
 #include <device/pci.h>
 #include <device/pci_ids.h>
-#include <device/pci_def.h>
 #include <string.h>
 #include <delay.h>
 #include <elog.h>
@@ -924,6 +923,7 @@ static struct device_operations device_ops = {
 
 static const unsigned short pci_device_ids[] = {
 	PCI_DID_INTEL_LPT_H_MEI,
+	PCI_DID_INTEL_LPT_H_MEI_9,
 	PCI_DID_INTEL_LPT_LP_MEI,
 	0
 };

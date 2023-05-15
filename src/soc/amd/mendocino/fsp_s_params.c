@@ -4,12 +4,23 @@
 
 #include <acpi/acpi.h>
 #include <amdblocks/apob_cache.h>
+#include <amdblocks/vbios_cache.h>
+#include <bootmode.h>
+#include <console/console.h>
 #include <device/pci.h>
 #include <fsp/api.h>
 #include <program_loading.h>
 
 static void fsp_assign_vbios_upds(FSP_S_CONFIG *scfg)
 {
+	if (CONFIG(USE_SELECTIVE_GOP_INIT) && vbios_cache_is_valid() &&
+			!display_init_required()) {
+		scfg->vbios_buffer = 0;
+		printk(BIOS_SPEW, "%s: using VBIOS cache; skipping GOP driver.\n", __func__);
+		return;
+
+	}
+	printk(BIOS_SPEW, "%s: not using VBIOS cache; running GOP driver.\n", __func__);
 	scfg->vbios_buffer = CONFIG(RUN_FSP_GOP) ? PCI_VGA_RAM_IMAGE_START : 0;
 }
 

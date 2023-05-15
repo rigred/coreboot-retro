@@ -29,7 +29,7 @@ static const struct pad_config gpio_table[] = {
 	/* GPP_A13 : [] ==> SD_PE_LS_PRSNT_L */
 	PAD_CFG_GPI_LOCK(GPP_A13, NONE, LOCK_CONFIG),
 	/* GPP_A14 : [] ==> WWAN_RF_DISABLE_ODL */
-	PAD_CFG_GPO(GPP_A14, 1, DEEP),
+	PAD_NC_LOCK(GPP_A14, NONE, LOCK_CONFIG),
 	/* GPP_A15 : [] ==> WWAN_RST_L */
 	PAD_CFG_GPO(GPP_A15, 1, DEEP),
 	/* GPP_A16 : GPP_A16 ==> ESPI_SOC_ALERT_L configured on reset, do not touch */
@@ -94,9 +94,9 @@ static const struct pad_config gpio_table[] = {
 	/* GPP_B23 : [] ==> WWAN_CONFIG0 */
 	PAD_CFG_GPI_LOCK(GPP_B23, NONE, LOCK_CONFIG),
 
-	/* GPP_C00 : [] ==> EN_PP3300_TCHSCR */
+	/* GPP_C00 : [] ==> EN_TCHSCR_PWR */
 	PAD_CFG_GPO(GPP_C00, 0, DEEP),
-	/* GPP_C01 : [] ==> USI_RST_L */
+	/* GPP_C01 : [] ==>  SOC_TCHSCR_RST_L */
 	PAD_CFG_GPO(GPP_C01, 0, DEEP),
 	/* GPP_C02 : SOC_TCHSCR_SPI_INT_STRAP ==> Component NC */
 	PAD_NC(GPP_C02, NONE),
@@ -107,20 +107,7 @@ static const struct pad_config gpio_table[] = {
 	/* GPP_C05 : [] ==> WWAN_PERST_L_STRAP */
 	PAD_CFG_GPO(GPP_C05, 1, PLTRST),
 	/* GPP_C06 : [] ==> SOC_TCHSCR_RPT_EN */
-	/*
-	 * FIXME: Remove this code after resolving b/247029304.
-	 *
-	 * ELAN6918 Power Sequencing seems not perfectly matching
-	 * with the previous platforms and setting GPP_C06 to high prior
-	 * to the power sequencing is actually makes it work.
-	 *
-	 * Ideally Power Sequencing should be as below for ELAN6918 (in ACPI)
-	 * `POWER enabled -> RESET deasserted -> Report EN enabled`
-	 *
-	 * But below sequence is only working currently:
-	 * `Report EN enabled (ramstage) -> POWER enabled (ACPI) -> RESET deasserted (ACPI)`
-	 */
-	PAD_CFG_GPO(GPP_C06, 1, DEEP),
+	PAD_CFG_GPO(GPP_C06, 0, DEEP),
 	/* GPP_C07 : [] ==> SOC_TCHSCR_INT */
 	PAD_CFG_GPI_APIC(GPP_C07, NONE, PLTRST, LEVEL, NONE),
 	/* GPP_C08 : [] ==> SOCHOT_ODL */
@@ -270,15 +257,15 @@ static const struct pad_config gpio_table[] = {
 	PAD_CFG_NF(GPP_F12, NONE, DEEP, NF5),
 	/* GPP_F13 : GSPI1_SOC_DI_FPMCU_DO_LS */
 	PAD_CFG_NF(GPP_F13, NONE, DEEP, NF5),
-	/* GPP_F14 : GSPI_SOC_DO_TCHSCR_DI */
+	/* GPP_F14 : GSPI0_SOC_DO_TCHSCR_DI */
 	PAD_CFG_NF(GPP_F14, NONE, DEEP, NF8),
-	/* GPP_F15 : [] ==> GSPI_SOC_DI_TCHSCR_DO */
+	/* GPP_F15 : [] ==> GSPI0_SOC_DI_TCHSCR_DO */
 	PAD_CFG_NF(GPP_F15, NONE, DEEP, NF8),
-	/* GPP_F16 : [] ==> GSPI_SOC_TCHSCR_CLK */
+	/* GPP_F16 : [] ==> GSPI0_SOC_TCHSCR_CLK */
 	PAD_CFG_NF(GPP_F16, NONE, DEEP, NF8),
 	/* GPP_F17 : [] ==> GSPI1_SOC_CS_L */
 	PAD_CFG_NF(GPP_F17, NONE, DEEP, NF5),
-	/* GPP_F18 : [] ==> GSPI_SOC_TCHSCR_CS_L */
+	/* GPP_F18 : [] ==> GSPI0_SOC_TCHSCR_CS_L */
 	PAD_CFG_NF(GPP_F18, NONE, DEEP, NF8),
 	/* GPP_F19 : [] ==> GPP_F19_STRAP */
 	PAD_NC(GPP_F19, NONE),
@@ -453,4 +440,4 @@ static const struct cros_gpio cros_gpios[] = {
 	CROS_GPIO_WP_AH(GPIO_PCH_WP, CROS_GPIO_DEVICE_NAME),
 };
 
-DECLARE_WEAK_CROS_GPIOS(cros_gpios);
+DECLARE_CROS_GPIOS(cros_gpios);

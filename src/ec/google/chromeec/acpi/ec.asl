@@ -128,7 +128,7 @@ Device (EC0)
 		Name (_PRW, Package () { EC_ENABLE_WAKE_PIN, 0x5 })
 #endif
 	}
-#endif
+#endif /* EC_ENABLE_LID_SWITCH */
 
 	Method (TINS, 1, Serialized)
 	{
@@ -177,8 +177,10 @@ Device (EC0)
 		 */
 		\PNOT ()
 
+#ifndef EC_ENABLE_LID_SWITCH
 		// Initialize LID switch state
 		\LIDS = LIDS
+#endif
 
 #if CONFIG(SOC_AMD_COMMON_BLOCK_ACPI_DPTC)
 		/*
@@ -234,9 +236,10 @@ Device (EC0)
 			\_SB.DPTC()
 		}
 #endif
-		\LIDS = LIDS
 #ifdef EC_ENABLE_LID_SWITCH
 		Notify (LID0, 0x80)
+#else
+		\LIDS = LIDS
 #endif
 	}
 
@@ -249,10 +252,11 @@ Device (EC0)
 			\_SB.DPTC()
 		}
 #endif
-		\LIDS = LIDS
 		Notify (CREC, 0x2)
 #ifdef EC_ENABLE_LID_SWITCH
 		Notify (LID0, 0x80)
+#else
+		\LIDS = LIDS
 #endif
 	}
 
@@ -455,6 +459,17 @@ Device (EC0)
 #ifdef EC_ENABLE_TBMC_DEVICE
 		Notify (TBMC, 0x80)
 #endif
+#if CONFIG(SOC_AMD_COMMON_BLOCK_ACPI_DPTC)
+		If (CondRefOf (\_SB.DPTC)) {
+			\_SB.DPTC()
+		}
+#endif
+	}
+
+	// Body Detect Change Event
+	Method (_Q21, 0, NotSerialized)
+	{
+		Printf ("EC: Body Detect Change Event")
 #if CONFIG(SOC_AMD_COMMON_BLOCK_ACPI_DPTC)
 		If (CondRefOf (\_SB.DPTC)) {
 			\_SB.DPTC()

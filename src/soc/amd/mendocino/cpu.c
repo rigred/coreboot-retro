@@ -1,7 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 
-/* TODO: Check if this is still correct */
-
 #include <acpi/acpi.h>
 #include <amdblocks/cpu.h>
 #include <amdblocks/iomap.h>
@@ -50,8 +48,8 @@ static struct device_operations cpu_dev_ops = {
 };
 
 static struct cpu_device_id cpu_table[] = {
-	{ X86_VENDOR_AMD, MENDOCINO_A0_CPUID},
-	{ 0, 0 },
+	{ X86_VENDOR_AMD, MENDOCINO_A0_CPUID, CPUID_ALL_STEPPINGS_MASK },
+	CPU_TABLE_END
 };
 
 static const struct cpu_driver zen_2_3 __cpu_driver = {

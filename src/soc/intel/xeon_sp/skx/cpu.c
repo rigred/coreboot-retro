@@ -4,11 +4,11 @@
 #include <console/debug.h>
 #include <intelblocks/cpulib.h>
 #include <cpu/cpu.h>
+#include <cpu/intel/cpu_ids.h>
 #include <cpu/x86/mtrr.h>
 #include <cpu/x86/mp.h>
 #include <cpu/intel/turbo.h>
 #include <soc/msr.h>
-#include <soc/cpu.h>
 #include <soc/soc_util.h>
 #include <soc/smmrelocate.h>
 #include <soc/util.h>
@@ -59,8 +59,9 @@ static void xeon_sp_core_init(struct device *cpu)
 {
 	msr_t msr;
 
-	printk(BIOS_INFO, "%s dev: %s, cpu: %lu, apic_id: 0x%x\n",
-		__func__, dev_path(cpu), cpu_index(), cpu->path.apic.apic_id);
+	printk(BIOS_INFO, "%s dev: %s, cpu: %lu, apic_id: 0x%x, package_id: 0x%x\n",
+	       __func__, dev_path(cpu), cpu_index(), cpu->path.apic.apic_id,
+	       cpu->path.apic.package_id);
 	assert(chip_config);
 
 	/* set MSR_PKG_CST_CONFIG_CONTROL - scope per core*/
@@ -148,18 +149,20 @@ static struct device_operations cpu_dev_ops = {
 
 static const struct cpu_device_id cpu_table[] = {
 	/* Skylake-SP A0/A1 CPUID 0x506f0*/
-	{X86_VENDOR_INTEL, CPUID_SKYLAKE_SP_A0_A1},
+	{X86_VENDOR_INTEL, CPUID_SKYLAKE_SP_A0_A1, CPUID_EXACT_MATCH_MASK },
 	/* Skylake-SP B0 CPUID 0x506f1*/
-	{X86_VENDOR_INTEL, CPUID_SKYLAKE_SP_B0},
+	{X86_VENDOR_INTEL, CPUID_SKYLAKE_SP_B0, CPUID_EXACT_MATCH_MASK },
 	/* Skylake-SP 4 CPUID 0x50654*/
-	{X86_VENDOR_INTEL, CPUID_SKYLAKE_SP_4},
-	{0, 0},
+	{X86_VENDOR_INTEL, CPUID_SKYLAKE_SP_4, CPUID_EXACT_MATCH_MASK },
+	CPU_TABLE_END
 };
 
 static const struct cpu_driver driver __cpu_driver = {
 	.ops = &cpu_dev_ops,
 	.id_table = cpu_table,
 };
+
+#define CPU_BCLK 100
 
 static void set_max_turbo_freq(void)
 {
@@ -228,7 +231,7 @@ static const struct mp_ops mp_ops = {
 	.post_mp_init = post_mp_init,
 };
 
-void xeon_sp_init_cpus(struct device *dev)
+void mp_init_cpus(struct bus *bus)
 {
 	FUNC_ENTER();
 
@@ -237,16 +240,13 @@ void xeon_sp_init_cpus(struct device *dev)
 	 * rest of the CPU devices do not have
 	 * chip_info updated. Global chip_config is used as workaround
 	 */
-	chip_config = dev->chip_info;
+	chip_config = bus->dev->chip_info;
 
 	config_reset_cpl3_csrs();
 
 	/* calls src/cpu/x86/mp_init.c */
 	/* TODO: Handle mp_init_with_smm failure? */
-	mp_init_with_smm(dev->link_list, &mp_ops);
-
-	/* update numa domain for all cpu devices */
-	xeonsp_init_cpu_config();
+	mp_init_with_smm(bus, &mp_ops);
 
 	FUNC_EXIT();
 }

@@ -14,7 +14,7 @@ static const struct pad_config gpio_table[] = {
 	PAD_NC(GPP_B10, NONE),				/* Not connected */
 	PAD_CFG_NF(GPP_B11, NONE, PLTRST, NF1),		/* PMC_ALERT_N */
 	PAD_NC(GPP_B14, NONE),				/* Not connected */
-	PAD_CFG_NF(GPP_B15, NONE, PLTRST, NF5),		/* ESPI_CS1_N */
+	PAD_NC(GPP_B15, NONE),				/* Not connected */
 	PAD_NC(GPP_B18, NONE),				/* Not connected */
 	PAD_NC(GPP_B19, NONE),				/* Not connected */
 	PAD_NC(GPP_B23, NONE),				/* Not connected */
@@ -72,8 +72,7 @@ static const struct pad_config gpio_table[] = {
 	/* Community 2 - GpioGroup DSW */
 	PAD_CFG_NF(GPD1, NONE, PLTRST, NF1),		/* ACPRESENT */
 	PAD_NC(GPD9, NONE),				/* Not connected */
-	/* ONBOARD_X4_PCIE_SLOT1_RESET_N */
-	PAD_CFG_GPO(GPD11, 1, PLTRST),
+	PAD_NC(GPD11, NONE),				/* Not connected */
 
 	/* Community 3 - GpioGroup GPP_S */
 	PAD_NC(GPP_S0, NONE),				/* Not connected */
@@ -108,8 +107,9 @@ static const struct pad_config gpio_table[] = {
 	/* Community 4 - GpioGroup GPP_C */
 	PAD_CFG_NF(GPP_C3, NONE, DEEP, NF1),		/* PSE_GBE0_MDC */
 	PAD_CFG_NF(GPP_C4, NONE, DEEP, NF1),		/* PSE_GBE0_MDIO */
-	PAD_CFG_NF(GPP_C6, NONE, DEEP, NF1),		/* PSE_GBE0_AUXTS */
-	PAD_CFG_NF(GPP_C7, NONE, DEEP, NF1),		/* PSE_GBE0_PPS */
+	PAD_CFG_NF(GPP_C6, NONE, DEEP, NF1),		/* PSE_GBE1_MDC */
+	PAD_CFG_NF(GPP_C7, NONE, DEEP, NF1),		/* PSE_GBE1_MDIO */
+	PAD_NC(GPP_C8, NONE),				/* Not connected */
 	PAD_CFG_NF(GPP_C12, NONE, DEEP, NF4),		/* SIO_UART1_RXD */
 	PAD_CFG_NF(GPP_C13, NONE, DEEP, NF4),		/* SIO_UART1_TXD */
 	PAD_CFG_NF(GPP_C16, NONE, DEEP, NF1),		/* GBE_MDIO */
@@ -134,7 +134,7 @@ static const struct pad_config gpio_table[] = {
 	PAD_NC(GPP_E15, NONE),				/* Not connected */
 	PAD_NC(GPP_E16, NONE),				/* Not connected */
 	PAD_NC(GPP_E18, NONE),				/* Not connected */
-	PAD_CFG_NF(GPP_E19, NONE, DEEP, NF1),		/* DDI0_DDC_SCL */
+	PAD_NC(GPP_E19, NONE),				/* Not connected */
 	PAD_NC(GPP_E23, NONE),				/* Not connected */
 
 	/* Community 5 - GpioGroup GPP_R */

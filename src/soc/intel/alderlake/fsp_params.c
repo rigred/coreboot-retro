@@ -3,9 +3,12 @@
 #include <assert.h>
 #include <console/console.h>
 #include <cpu/intel/microcode.h>
+#include <delay.h>
 #include <device/device.h>
 #include <device/pci.h>
 #include <device/pci_ids.h>
+#include <device/pci_ops.h>
+#include <drivers/intel/gma/i915_reg.h>
 #include <fsp/api.h>
 #include <fsp/fsp_debug_event.h>
 #include <fsp/ppi/mp_service_ppi.h>
@@ -429,7 +432,7 @@ static const SI_PCH_DEVICE_INTERRUPT_CONFIG *pci_irq_to_fsp(size_t *out_count)
 
 	/* Count PCH devices */
 	while (entry) {
-		if (PCI_SLOT(entry->devfn) >= MIN_PCH_SLOT)
+		if (is_pch_slot(entry->devfn))
 			++pch_total;
 		entry = entry->next;
 	}
@@ -438,7 +441,7 @@ static const SI_PCH_DEVICE_INTERRUPT_CONFIG *pci_irq_to_fsp(size_t *out_count)
 	config = calloc(pch_total, sizeof(*config));
 	entry = get_cached_pci_irqs();
 	while (entry) {
-		if (PCI_SLOT(entry->devfn) < MIN_PCH_SLOT) {
+		if (!is_pch_slot(entry->devfn)) {
 			entry = entry->next;
 			continue;
 		}
@@ -594,7 +597,7 @@ static void fill_fsps_cpu_params(FSP_S_CONFIG *s_cfg,
 	 */
 	s_cfg->CpuMpPpi = (uintptr_t)mp_fill_ppi_services_data();
 
-	if (CONFIG(USE_FSP_MP_INIT))
+	if (CONFIG(USE_FSP_FEATURE_PROGRAM_ON_APS))
 		/*
 		 * Fill `2nd microcode loading FSP UPD` if FSP is running CPU feature
 		 * programming.
@@ -645,7 +648,7 @@ static void fill_fsps_tcss_params(FSP_S_CONFIG *s_cfg,
 
 	/* D3Hot and D3Cold for TCSS */
 	s_cfg->D3HotEnable = !config->tcss_d3_hot_disable;
-	s_cfg->D3ColdEnable = !CONFIG(SOC_INTEL_ALDERLAKE_S3) && !config->tcss_d3_cold_disable;
+	s_cfg->D3ColdEnable = CONFIG(D3COLD_SUPPORT);
 
 	s_cfg->UsbTcPortEn = 0;
 	for (int i = 0; i < MAX_TYPE_C_PORTS; i++) {
@@ -934,6 +937,7 @@ static void fill_fsps_cpu_pcie_params(FSP_S_CONFIG *s_cfg,
 static void fill_fsps_misc_power_params(FSP_S_CONFIG *s_cfg,
 		const struct soc_intel_alderlake_config *config)
 {
+	u32 cpu_id = cpu_get_cpuid();
 	/* Skip setting D0I3 bit for all HECI devices */
 	s_cfg->DisableD0I3SettingForHeci = 1;
 	/*
@@ -1002,7 +1006,16 @@ static void fill_fsps_misc_power_params(FSP_S_CONFIG *s_cfg,
 
 	s_cfg->VrPowerDeliveryDesign = config->vr_power_delivery_design;
 
-	s_cfg->PkgCStateDemotion = !config->disable_package_c_state_demotion;
+	/* FIXME: Disable package C state demotion on Raptorlake as a W/A for S0ix issues */
+	if ((cpu_id == CPUID_RAPTORLAKE_P_J0) || (cpu_id == CPUID_RAPTORLAKE_P_Q0))
+		s_cfg->PkgCStateDemotion = 0;
+	else
+		s_cfg->PkgCStateDemotion = !config->disable_package_c_state_demotion;
+
+	if (cpu_id == CPUID_RAPTORLAKE_P_J0 || cpu_id == CPUID_RAPTORLAKE_P_Q0)
+		s_cfg->C1e = 0;
+	else
+		s_cfg->C1e = 1;
 }
 
 static void fill_fsps_irq_params(FSP_S_CONFIG *s_cfg,
@@ -1205,6 +1218,46 @@ static void soc_silicon_init_params(FSP_S_CONFIG *s_cfg,
 		fill_fsps_params[i](s_cfg, config);
 }
 
+/*
+ * The Alder Lake PEIM graphics driver executed as part of the FSP does not wait
+ * for the panel power cycle to complete before it initializes communication
+ * with the display. It can result in AUX channel communication time out and
+ * PEIM graphics driver failing to bring up graphics.
+ *
+ * If we have performed some graphics operations in romstage, it is possible
+ * that a panel power cycle is still in progress. To prevent any issue with the
+ * PEIM graphics driver it is preferable to ensure that panel power cycle is
+ * complete.
+ *
+ * BUG:b:264526798
+ */
+static void wait_for_panel_power_cycle_done(const struct soc_intel_alderlake_config *config)
+{
+	const struct i915_gpu_panel_config *panel_cfg;
+	uint32_t bar0;
+	void *mmio;
+
+	if (!CONFIG(RUN_FSP_GOP))
+		return;
+
+	bar0 = pci_s_read_config32(SA_DEV_IGD, PCI_BASE_ADDRESS_0);
+	mmio = (void *)(bar0 & ~PCI_BASE_ADDRESS_MEM_ATTR_MASK);
+	if (!mmio)
+		return;
+
+	panel_cfg = &config->panel_cfg;
+	for (size_t i = 0;; i++) {
+		uint32_t status = read32(mmio + PCH_PP_STATUS);
+		if (!(status & PANEL_POWER_CYCLE_ACTIVE))
+			break;
+		if (i == panel_cfg->cycle_delay_ms) {
+			printk(BIOS_ERR, "Panel power cycle is still active.\n");
+			break;
+		}
+		mdelay(1);
+	}
+}
+
 /* UPD parameters to be initialized before SiliconInit */
 void platform_fsp_silicon_init_params_cb(FSPS_UPD *supd)
 {
@@ -1214,6 +1267,8 @@ void platform_fsp_silicon_init_params_cb(FSPS_UPD *supd)
 	config = config_of_soc();
 	soc_silicon_init_params(s_cfg, config);
 	mainboard_silicon_init_params(s_cfg);
+
+	wait_for_panel_power_cycle_done(config);
 }
 
 /*

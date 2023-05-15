@@ -196,7 +196,7 @@ struct cpu_driver *find_cpu_driver(struct device *cpu)
 		for (id = driver->id_table;
 		     id->vendor != X86_VENDOR_INVALID; id++) {
 			if ((cpu->vendor == id->vendor) &&
-				(cpu->device == id->device))
+			    cpuid_match(cpu->device, id->device, id->device_match_mask))
 				return driver;
 			if (id->vendor == X86_VENDOR_ANY)
 				return driver;
@@ -209,24 +209,6 @@ static void set_cpu_ops(struct device *cpu)
 {
 	struct cpu_driver *driver = find_cpu_driver(cpu);
 	cpu->ops = driver ? driver->ops : NULL;
-}
-
-/* Keep track of default APIC ids for SMM. */
-static int cpus_default_apic_id[CONFIG_MAX_CPUS];
-
-/* Function to keep track of cpu default apic_id */
-void cpu_add_map_entry(unsigned int index)
-{
-	cpus_default_apic_id[index] = initial_lapicid();
-}
-
-/* Returns default APIC id based on logical_cpu number or < 0 on failure. */
-int cpu_get_apic_id(int logical_cpu)
-{
-	if (logical_cpu >= CONFIG_MAX_CPUS || logical_cpu < 0)
-		return -1;
-
-	return cpus_default_apic_id[logical_cpu];
 }
 
 void cpu_initialize(void)

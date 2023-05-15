@@ -6,29 +6,33 @@
 #include <delay.h>
 #include <device/device.h>
 #include <device/pci.h>
+#include <intelblocks/cfg.h>
 #include <intelblocks/cpulib.h>
+#include <intelpch/lockdown.h>
 #include <soc/pci_devs.h>
 #include <soc/msr.h>
 #include <soc/soc_util.h>
 #include <soc/util.h>
 #include <timer.h>
 
-uint8_t get_stack_busno(const uint8_t stack)
+void lock_pam0123(void)
 {
-	if (stack >= MAX_IIO_STACK) {
-		printk(BIOS_ERR, "%s: Stack %u does not exist!\n", __func__, stack);
-		return 0;
-	}
-	const pci_devfn_t dev = PCI_DEV(UBOX_DECS_BUS, UBOX_DECS_DEV, UBOX_DECS_FUNC);
-	const uint16_t offset = stack / 4 ? UBOX_DECS_CPUBUSNO1_CSR : UBOX_DECS_CPUBUSNO_CSR;
-	return pci_io_read_config32(dev, offset) >> (8 * (stack % 4)) & 0xff;
+	if (get_lockdown_config() != CHIPSET_LOCKDOWN_COREBOOT)
+		return;
+
+	/* section 16.3.19 of Intel doc. #612246 */
+	uint32_t pam0123_lock = 0x33333331;
+	uint32_t bus1 = get_socket_ubox_busno(0);
+
+	pci_s_write_config32(PCI_DEV(bus1, SAD_ALL_DEV, SAD_ALL_FUNC),
+		SAD_ALL_PAM0123_CSR, pam0123_lock);
 }
 
 void unlock_pam_regions(void)
 {
 	uint32_t pam0123_unlock_dram = 0x33333330;
 	uint32_t pam456_unlock_dram = 0x00333333;
-	uint32_t bus1 = get_stack_busno(1);
+	uint32_t bus1 = get_socket_ubox_busno(0);
 
 	pci_io_write_config32(PCI_DEV(bus1, SAD_ALL_DEV, SAD_ALL_FUNC),
 		SAD_ALL_PAM0123_CSR, pam0123_unlock_dram);
@@ -68,9 +72,6 @@ msr_t read_msr_ppin(void)
 		wrmsr(MSR_PPIN_CTL, msr);
 	}
 	ppin = rdmsr(MSR_PPIN);
-	/* Set enable to 0 after reading MSR_PPIN */
-	msr.lo &= ~MSR_PPIN_CTL_ENABLE;
-	wrmsr(MSR_PPIN_CTL, msr);
 	return ppin;
 }
 
@@ -124,108 +125,6 @@ unsigned int soc_get_num_cpus(void)
 }
 
 #if ENV_RAMSTAGE /* Setting devtree variables is only allowed in ramstage. */
-static void get_core_thread_bits(uint32_t *core_bits, uint32_t *thread_bits)
-{
-	register int ecx;
-	struct cpuid_result cpuid_regs;
-
-	/* get max index of CPUID */
-	cpuid_regs = cpuid(0);
-	assert(cpuid_regs.eax >= 0xb); /* cpuid_regs.eax is max input value for cpuid */
-
-	*thread_bits = *core_bits = 0;
-	ecx = 0;
-	while (1) {
-		cpuid_regs = cpuid_ext(0xb, ecx);
-		if (ecx == 0) {
-			*thread_bits = (cpuid_regs.eax & 0x1f);
-		} else {
-			*core_bits = (cpuid_regs.eax & 0x1f) - *thread_bits;
-			break;
-		}
-		ecx++;
-	}
-}
-
-static void get_cpu_info_from_apicid(uint32_t apicid, uint32_t core_bits, uint32_t thread_bits,
-	uint8_t *package, uint8_t *core, uint8_t *thread)
-{
-	if (package)
-		*package = (apicid >> (thread_bits + core_bits));
-	if (core)
-		*core = (uint32_t)((apicid >> thread_bits) & ~((~0) << core_bits));
-	if (thread)
-		*thread = (uint32_t)(apicid & ~((~0) << thread_bits));
-}
-
-void xeonsp_init_cpu_config(void)
-{
-	struct device *dev;
-	int apic_ids[CONFIG_MAX_CPUS] = {0}, apic_ids_by_thread[CONFIG_MAX_CPUS] = {0};
-	int  num_apics = 0;
-	uint32_t core_bits, thread_bits;
-	unsigned int core_count, thread_count;
-	unsigned int num_sockets;
-
-	/*
-	 * sort APIC ids in ascending order to identify apicid ranges for
-	 * each numa domain
-	 */
-	for (dev = all_devices; dev; dev = dev->next) {
-		if ((dev->path.type != DEVICE_PATH_APIC) ||
-			(dev->bus->dev->path.type != DEVICE_PATH_CPU_CLUSTER)) {
-			continue;
-		}
-		if (!dev->enabled)
-			continue;
-		if (num_apics >= ARRAY_SIZE(apic_ids))
-			break;
-	  apic_ids[num_apics++] = dev->path.apic.apic_id;
-	}
-	if (num_apics > 1)
-		bubblesort(apic_ids, num_apics, NUM_ASCENDING);
-
-	num_sockets = soc_get_num_cpus();
-	cpu_read_topology(&core_count, &thread_count);
-	assert(num_apics == (num_sockets * thread_count));
-
-	/* sort them by thread i.e., all cores with thread 0 and then thread 1 */
-	int index = 0;
-	for (int id = 0; id < num_apics; ++id) {
-		int apic_id = apic_ids[id];
-		if (apic_id & 0x1) { /* 2nd thread */
-			apic_ids_by_thread[index + (num_apics/2) - 1] = apic_id;
-		} else { /* 1st thread */
-			apic_ids_by_thread[index++] = apic_id;
-		}
-	}
-
-	/* update apic_id, node_id in sorted order */
-	num_apics = 0;
-	get_core_thread_bits(&core_bits, &thread_bits);
-	for (dev = all_devices; dev; dev = dev->next) {
-		uint8_t package;
-
-		if ((dev->path.type != DEVICE_PATH_APIC) ||
-			(dev->bus->dev->path.type != DEVICE_PATH_CPU_CLUSTER)) {
-			continue;
-		}
-		if (!dev->enabled)
-			continue;
-		if (num_apics >= ARRAY_SIZE(apic_ids))
-			break;
-		dev->path.apic.apic_id = apic_ids_by_thread[num_apics];
-		get_cpu_info_from_apicid(dev->path.apic.apic_id, core_bits, thread_bits,
-			&package, NULL, NULL);
-		dev->path.apic.node_id = package;
-		printk(BIOS_DEBUG, "CPU %d apic_id: 0x%x (%d), node_id: 0x%x\n",
-			num_apics, dev->path.apic.apic_id,
-			dev->path.apic.apic_id, dev->path.apic.node_id);
-
-		++num_apics;
-	}
-}
-
 /* return true if command timed out else false */
 static bool wait_for_bios_cmd_cpl(pci_devfn_t dev, uint32_t reg, uint32_t mask,
 	uint32_t target)
@@ -273,7 +172,7 @@ static bool write_bios_mailbox_cmd(pci_devfn_t dev, uint32_t command, uint32_t d
 static bool set_bios_reset_cpl_for_package(uint32_t socket, uint32_t rst_cpl_mask,
 	uint32_t pcode_init_mask, uint32_t val)
 {
-	const uint32_t bus = get_socket_stack_busno(socket, PCU_IIO_STACK);
+	const uint32_t bus = get_socket_ubox_busno(socket);
 	const pci_devfn_t dev = PCI_DEV(bus, PCU_DEV, PCU_CR1_FUN);
 
 	uint32_t reg = pci_s_read_config32(dev, PCU_CR1_BIOS_RESET_CPL_REG);
@@ -292,7 +191,7 @@ static void set_bios_init_completion_for_package(uint32_t socket)
 {
 	uint32_t data;
 	bool timedout;
-	const uint32_t bus = get_socket_stack_busno(socket, PCU_IIO_STACK);
+	const uint32_t bus = get_socket_ubox_busno(socket);
 	const pci_devfn_t dev = PCI_DEV(bus, PCU_DEV, PCU_CR1_FUN);
 
 	/* read PCU config */
@@ -319,7 +218,9 @@ static void set_bios_init_completion_for_package(uint32_t socket)
 		die("BIOS RESET CPL3 timed out.\n");
 
 	/* Set PMAX_LOCK - must be set before RESET CPL4 */
-	pci_or_config32(PCU_DEV_CR0(bus), PCU_CR0_PMAX, PMAX_LOCK);
+	data = pci_s_read_config32(PCI_DEV(bus, PCU_DEV, PCU_CR0_FUN), PCU_CR0_PMAX);
+	data |= PMAX_LOCK;
+	pci_s_write_config32(PCI_DEV(bus, PCU_DEV, PCU_CR0_FUN), PCU_CR0_PMAX, data);
 
 	/* update RST_CPL4, PCODE_INIT_DONE4 */
 	timedout = set_bios_reset_cpl_for_package(socket, RST_CPL4_MASK,

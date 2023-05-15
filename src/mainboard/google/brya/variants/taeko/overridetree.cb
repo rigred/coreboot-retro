@@ -44,6 +44,10 @@ fw_config
 	end
 end
 chip soc/intel/alderlake
+	register "domain_vr_config[VR_DOMAIN_IA]" = "{
+		.enable_fast_vmode = 1,
+	}"
+
 	# As per Intel Advisory doc#723158, the change is required to prevent possible
 	# display flickering issue.
 	register "usb2_phy_sus_pg_disable" = "1"
@@ -453,7 +457,6 @@ chip soc/intel/alderlake
 				# Parameter T4 >= 1ms
 				register "generic.stop_off_delay_ms" = "1"
 				register "generic.has_power_resource" = "1"
-				register "generic.disable_gpio_export_in_crs" = "1"
 				register "hid_desc_reg_offset" = "0x01"
 				device i2c 5d on end
 			end
@@ -469,7 +472,6 @@ chip soc/intel/alderlake
 						"ACPI_GPIO_OUTPUT_ACTIVE_HIGH(GPP_C0)"
 				register "enable_delay_ms" = "1"
 				register "has_power_resource" = "1"
-				register "disable_gpio_export_in_crs" = "1"
 				device i2c 10 on end
 			end
 		end
@@ -504,6 +506,12 @@ chip soc/intel/alderlake
 					probe AUDIO AUDIO_MAX98357_ALC5682I_VS_I2S
 				end
 			end
+			chip drivers/sof
+				register "spkr_tplg" = "max98357a"
+				register "jack_tplg" = "rt5682"
+				register "mic_tplg" = "_2ch_pdm0"
+				device generic 0 on end
+			end
 		end
 		device ref pcie_rp5 on
 			chip soc/intel/common/block/pcie/rtd3
@@ -530,22 +538,13 @@ chip soc/intel/alderlake
 			end
 		end
 		device ref pcie_rp9 on
-			# Enable NVMe PCIE 9 using clk 0
+			# Enable PCIE 9 using clk 0 for eMMC
 			register "pch_pcie_rp[PCH_RP(9)]" = "{
 				.clk_src = 0,
 				.clk_req = 0,
 				.flags = PCIE_RP_LTR | PCIE_RP_AER,
 				.pcie_rp_aspm = ASPM_L1,
 			}"
-			chip soc/intel/common/block/pcie/rtd3
-				register "enable_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_HIGH(GPP_D11)"
-				register "reset_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_LOW(GPP_B4)"
-				register "srcclk_pin" = "0"
-				register "ext_pm_support" = "ACPI_PCIE_RP_EMIT_ALL"
-				device generic 0 on
-					probe BOOT_EMMC_MASK BOOT_EMMC_ENABLED
-				end
-			end
 			probe BOOT_EMMC_MASK BOOT_EMMC_ENABLED
 		end
 		device ref gspi1 on
@@ -601,6 +600,7 @@ chip soc/intel/alderlake
 						register "type" = "UPC_TYPE_C_USB2_SS_SWITCH"
 						register "use_custom_pld" = "true"
 						register "custom_pld" = "ACPI_PLD_TYPE_C(RIGHT, RIGHT, ACPI_PLD_GROUP(3, 1))"
+						register "usb_lpm_incapable" = "true"
 						device ref tcss_usb3_port3 on
 							probe DB_USB DB_USB3_NO_A
 							probe DB_USB DB_USB3_1C_1A

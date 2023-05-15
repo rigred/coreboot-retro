@@ -72,10 +72,11 @@ static void configure_misc(void)
 	msr.hi = 0;
 	wrmsr(IA32_PACKAGE_THERM_INTERRUPT, msr);
 
-	/* Enable PROCHOT */
+	/* Enable PROCHOT and Power Performance Platform Override */
 	msr = rdmsr(MSR_POWER_CTL);
 	msr.lo |= (1 << 0);	/* Enable Bi-directional PROCHOT as an input*/
 	msr.lo |= (1 << 23);	/* Lock it */
+	msr.lo |= (1 << 18);	/* Power Performance Platform Override */
 	wrmsr(MSR_POWER_CTL, msr);
 }
 
@@ -85,12 +86,6 @@ enum core_type get_soc_cpu_type(void)
 		return cpu_get_cpu_type();
 	else
 		return CPUID_CORE_TYPE_INTEL_CORE;
-}
-
-void soc_get_scaling_factor(u16 *big_core_scal_factor, u16 *small_core_scal_factor)
-{
-	*big_core_scal_factor = 125;
-	*small_core_scal_factor = 100;
 }
 
 bool soc_is_nominal_freq_supported(void)
@@ -130,17 +125,52 @@ void soc_core_init(struct device *cpu)
 	/* Set energy policy */
 	set_energy_perf_bias(ENERGY_POLICY_NORMAL);
 
+	const config_t *conf = config_of_soc();
+	/* Set energy-performance preference */
+	if (conf->enable_energy_perf_pref)
+		if (check_energy_perf_cap())
+			set_energy_perf_pref(conf->energy_perf_pref_value);
+
 	/* Enable Turbo */
 	enable_turbo();
 
+	/* Set core type in struct cpu_info */
+	set_dev_core_type();
+
 	if (CONFIG(INTEL_TME) && is_tme_supported())
 		set_tme_core_activate();
+
+	if (CONFIG(DROP_CPU_FEATURE_PROGRAM_IN_FSP)) {
+		/* Disable 3-strike error */
+		disable_three_strike_error();
+
+		set_aesni_lock();
+
+		/* Enable VMX */
+		set_feature_ctrl_vmx_arg(CONFIG(ENABLE_VMX) && !conf->disable_vmx);
+
+		/* Feature control lock configure */
+		set_feature_ctrl_lock();
+	}
 }
 
 static void per_cpu_smm_trigger(void)
 {
 	/* Relocate the SMM handler. */
 	smm_relocate();
+}
+
+static void pre_mp_init(void)
+{
+	soc_fsp_load();
+
+	const config_t *conf = config_of_soc();
+	if (conf->enable_energy_perf_pref) {
+		if (check_energy_perf_cap())
+			enable_energy_perf_pref();
+		else
+			printk(BIOS_WARNING, "Energy Performance Preference not supported!\n");
+	}
 }
 
 static void post_mp_init(void)
@@ -163,7 +193,7 @@ static const struct mp_ops mp_ops = {
 	 * that are set prior to ramstage.
 	 * Real MTRRs programming are being done after resource allocation.
 	 */
-	.pre_mp_init = soc_fsp_load,
+	.pre_mp_init = pre_mp_init,
 	.get_cpu_count = get_cpu_count,
 	.get_smm_info = smm_info,
 	.get_microcode_info = get_microcode_info,
@@ -173,7 +203,7 @@ static const struct mp_ops mp_ops = {
 	.post_mp_init = post_mp_init,
 };
 
-void soc_init_cpus(struct bus *cpu_bus)
+void mp_init_cpus(struct bus *cpu_bus)
 {
 	if (mp_init_with_smm(cpu_bus, &mp_ops))
 		printk(BIOS_ERR, "MP initialization failure.\n");

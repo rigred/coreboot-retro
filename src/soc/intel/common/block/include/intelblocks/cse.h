@@ -3,15 +3,18 @@
 #ifndef SOC_INTEL_COMMON_CSE_H
 #define SOC_INTEL_COMMON_CSE_H
 
+#include <intelblocks/cse_telemetry.h>
 #include <types.h>
 #include <vb2_api.h>
 
 /* MKHI Command groups */
-#define MKHI_GROUP_ID_CBM	0x0
-#define MKHI_GROUP_ID_HMRFPO	0x5
-#define MKHI_GROUP_ID_GEN	0xff
-#define MKHI_GROUP_ID_BUP_COMMON	0xf0
-#define MKHI_GROUP_ID_FWCAPS	0x3
+enum mkhi_group_id {
+	MKHI_GROUP_ID_CBM	 = 0x0,
+	MKHI_GROUP_ID_HMRFPO	 = 0x5,
+	MKHI_GROUP_ID_GEN	 = 0xff,
+	MKHI_GROUP_ID_BUP_COMMON = 0xf0,
+	MKHI_GROUP_ID_FWCAPS	 = 0x3,
+};
 
 /* Global Reset Command ID */
 #define MKHI_CBM_GLOBAL_RESET_REQ	0xb
@@ -30,6 +33,14 @@
 /* Get Firmware Version Command Id */
 #define MKHI_GEN_GET_FW_VERSION	0x2
 
+/* Firmware Feature Shipment Time State Override Command Id */
+#define MKHI_GEN_FW_FEATURE_SHIPMENT_OVER	0x14
+#define   ME_FW_FEATURE_PTT			BIT(29)
+
+/* Get Firmware Feature State Command Id */
+#define MKHI_FWCAPS_GET_FW_FEATURE_STATE	0x02
+#define   ME_FEATURE_STATE_RULE_ID		0x20
+
 /* MEI bus disable command. Must be sent to MEI client endpoint, not MKHI */
 #define MEI_BUS_DISABLE_COMMAND	0xc
 
@@ -40,6 +51,7 @@
 #define MKHI_BUP_COMMON_GET_BOOT_PARTITION_INFO	0x1c
 #define MKHI_BUP_COMMON_SET_BOOT_PARTITION_INFO	0x1d
 #define MKHI_BUP_COMMON_DATA_CLEAR		0x20
+#define GEN_GET_IMAGE_FW_VERSION	0x1c
 
 /* Get boot performance command id */
 #define MKHI_BUP_COMMON_GET_BOOT_PERF_DATA	0x8
@@ -59,9 +71,11 @@
 #define ME_DISABLE_ATTEMPTS	3
 
 /* ME Firmware SKU Types */
-#define ME_HFS3_FW_SKU_CONSUMER	0x2
-#define ME_HFS3_FW_SKU_CORPORATE	0x3
-#define ME_HFS3_FW_SKU_LITE	0x5
+enum me_fw_sku {
+	ME_HFS3_FW_SKU_CONSUMER	 = 0x2,
+	ME_HFS3_FW_SKU_CORPORATE = 0x3,
+	ME_HFS3_FW_SKU_LITE	 = 0x5,
+};
 
 /* Number of cse boot performance data */
 #define NUM_CSE_BOOT_PERF_DATA	64
@@ -74,6 +88,12 @@ enum {
 	PCI_ME_HFSTS4 = 0x64,
 	PCI_ME_HFSTS5 = 0x68,
 	PCI_ME_HFSTS6 = 0x6C,
+};
+
+/* CSE partition list */
+enum fpt_partition_id {
+	FPT_PARTITION_NAME_UNDEFINED = 0x0,
+	FPT_PARTITION_NAME_ISHC = 0x43485349,
 };
 
 /* MKHI Message Header */
@@ -108,6 +128,37 @@ struct me_fw_ver_resp {
 	struct me_version rec;
 	struct me_version fitc;
 } __packed;
+
+/* Module data from manifest */
+struct flash_partition_data {
+	enum fpt_partition_id partition_id;
+	uint8_t reserved1[8];
+	struct fw_version version;
+	uint32_t vendor_id;
+	uint32_t tcb_svn;
+	uint32_t arb_svn;
+	uint32_t vcn;
+	uint32_t reserved2[13];
+};
+
+/* Response header for partition information request */
+struct fw_version_resp {
+	struct mkhi_hdr hdr;
+	uint32_t module_count;
+	struct flash_partition_data manifest_data;
+};
+
+/* ISHC version */
+struct cse_fw_ish_version_info {
+	struct fw_version prev_cse_fw_version;
+	struct fw_version cur_ish_fw_version;
+};
+
+/* CSE and ISHC version */
+struct cse_fw_partition_info {
+	struct fw_version cur_cse_fw_version;
+	struct cse_fw_ish_version_info ish_partition_info;
+};
 
 /* CSE RX and TX error status */
 enum cse_tx_rx_status {
@@ -202,116 +253,6 @@ enum csme_failure_reason {
 	CSE_LITE_SKU_PART_UPDATE_SUCCESS = 18,
 };
 
-/* Boot performance data */
-enum cse_boot_perf_data {
-	/* CSME ROM start execution  */
-	PERF_DATA_CSME_ROM_START = 0,
-
-	/* EC Boot Load Done (CSME ROM starts main execution) */
-	PERF_DATA_EC_BOOT_LOAD_DONE = 1,
-
-	/* CSME ROM completed execution / CSME RBE started */
-	PERF_DATA_CSME_ROM_COMPLETED = 2,
-
-	/* CSME got ESE Init Done indication from ESE */
-	PERF_DATA_CSME_GOT_ESE_INIT_DONE = 3,
-
-	/* CSME RBE start PMC patch/es loading */
-	PERF_DATA_CSME_RBE_PMC_PATCH_LOADING_START = 4,
-
-	/* CSME RBE completed PMC patch/es loading */
-	PERF_DATA_CSME_RBE_PMC_PATCH_LOADING_COMPLETED = 5,
-
-	/* CSME RBE set "Boot Stall Done" indication to PMC */
-	PERF_DATA_CSME_RBE_BOOT_STALL_DONE_TO_PMC = 6,
-
-	/* CSME start poll for PMC PPS register */
-	PERF_DATA_CSME_POLL_FOR_PMC_PPS_START = 7,
-
-	/* PMC set PPS */
-	PERF_DATA_PMC_SET_PPS = 8,
-
-	/* CSME BUP start running  */
-	PERF_DATA_CSME_BUP_START = 9,
-
-	/* CSME set "Host Boot Prep Done" indication to PMC  */
-	PERF_DATA_CSME_HOST_BOOT_PREP_DONE = 10,
-
-	/* CSME starts PHYs loading */
-	PERF_DATA_CSME_PHY_LOADING_START = 11,
-
-	/* CSME completed PHYs loading */
-	PERF_DATA_CSME_PHY_LOADING_COMPLETED = 12,
-
-	/* PMC indicated CSME that xxPWRGOOD was asserted */
-	PERF_DATA_PMC_PWRGOOD_ASSERTED = 13,
-
-	/* PMC indicated CSME that SYS_PWROK was asserted */
-	PERF_DATA_PMC_SYS_PWROK_ASSERTED = 14,
-
-	/* PMC sent "CPU_BOOT_CONFIG" start message to CSME */
-	PERF_DATA_PMC_CPU_BOOT_CONFIG_START = 15,
-
-	/* CSME sent "CPU_BOOT_CONFIG" done message to PMC */
-	PERF_DATA_CSME_CPU_BOOT_CONFIG_DONW = 16,
-
-	/* PMC indicated CSME that xxPLTRST was de-asserted */
-	PERF_DATA_PMC_PLTRST_DEASSERTED = 17,
-
-	/* PMC indicated CSME that TCO_S0 was asserted */
-	PERF_DATA_PMC_TC0_S0_ASSERTED = 18,
-
-	/* PMC sent "Core Reset Done Ack - Sent" message to CSME */
-	PERF_DATA_PMC_SENT_CRDA = 19,
-
-	/* ACM Active indication - ACM started its execution */
-	PERF_DATA_ACM_START = 20,
-
-	/* ACM Done indication - ACM completed execution */
-	PERF_DATA_ACM_DONE = 21,
-
-	/* BIOS sent DRAM Init Done message */
-	PERF_DATA_BIOS_DRAM_INIT_DONE = 22,
-
-	/* CSME sent DRAM Init Done message back to BIOS */
-	PERF_DATA_CSME_DRAM_INIT_DONE = 23,
-
-	/* CSME completed loading TCSS */
-	PERF_DATA_CSME_LOAD_TCSS_COMPLETED = 24,
-
-	/* CSME started loading ISH Bringup module */
-	PERF_DATA_PERF_DATA_CSME_LOAD_ISH_BRINGUP_START = 25,
-
-	/* CSME completed loading ISH Bringup module */
-	PERF_DATA_CSME_LOAD_ISH_BRINGUP_DONE = 26,
-
-	/* CSME started loading ISH Main module */
-	PERF_DATA_CSME_LOAD_ISH_MAIN_START = 27,
-
-	/* CSME completed loading Main module */
-	PERF_DATA_CSME_LOAD_ISH_MAIN_DONE = 28,
-
-	/* BIOS sent "End Of Post" message to CSME */
-	PERF_DATA_BIOS_END_OF_POST = 29,
-
-	/* CSME sent "End Of Post" ack message back to BIOS */
-	PERF_DATA_CSME_END_OF_POST = 30,
-
-	/* BIOS sent "Core BIOS Done" message to CSME */
-	PERF_DATA_BIOS_BIOS_CORE_DONE = 31,
-
-	/* CSME sent "Core BIOS Done" ack message back to BIOS */
-	PERF_DATA_CSME_BIOS_CORE_DONE = 32,
-
-	/* CSME reached Firmware Init Done */
-	PERF_DATA_CSME_GW_INIT_DONE = 33,
-
-	/* 34 - 62 Reserved */
-
-	/* Timestamp when CSME responded to BupGetBootData message itself */
-	PERF_DATA_CSME_GET_PERF_RESPONSE = 63,
-};
-
 /* CSE boot performance data */
 struct cse_boot_perf_rsp {
 	struct mkhi_hdr hdr;
@@ -335,6 +276,24 @@ void cse_init(uintptr_t bar);
 
 /* Initialize the HECI devices. */
 void heci_init(void);
+
+/*
+ * Send message msg of size len to host from host_addr to cse_addr.
+ * Returns CSE_TX_RX_SUCCESS on success and other enum values on failure scenarios.
+ * Also, in case of errors, heci_reset() is triggered.
+ */
+enum cse_tx_rx_status heci_send(const void *msg, size_t len, uint8_t host_addr,
+				uint8_t client_addr);
+
+/*
+ * Receive message into buff not exceeding maxlen. Message is considered
+ * successfully received if a 'complete' indication is read from ME side
+ * and there was enough space in the buffer to fit that message. maxlen
+ * is updated with size of message that was received.
+ * Returns CSE_TX_RX_SUCCESS on success and other enum values on failure scenarios.
+ * Also, in case of errors, heci_reset() is triggered.
+ */
+enum cse_tx_rx_status heci_receive(void *buff, size_t *maxlen);
 
 /*
  * Send message from BIOS_HOST_ADDR to cse_addr.
@@ -405,7 +364,7 @@ int cse_request_global_reset(void);
  * Returns 0 on failure to send HECI command and to enable HMRFPO mode, and 1 on success.
  *
  */
-int cse_hmrfpo_enable(void);
+enum cb_err cse_hmrfpo_enable(void);
 
 /*
  * Send HMRFPO_GET_STATUS command.
@@ -500,6 +459,9 @@ void cse_fw_sync(void);
 /* Perform a board-specific reset sequence for CSE RO<->RW jump */
 void cse_board_reset(void);
 
+/* Perform a misc operation before CSE firmware update. */
+void cse_fw_update_misc_oper(void);
+
 /* Trigger vboot recovery mode on a CSE error */
 void cse_trigger_vboot_recovery(enum csme_failure_reason reason);
 
@@ -524,7 +486,7 @@ bool skip_cse_sub_part_update(void);
  * This command retrieves a set of boot performance timestamps CSME collected during
  * the last platform boot flow.
  */
-bool cse_get_boot_performance_data(struct cse_boot_perf_rsp *boot_perf);
+enum cb_err cse_get_boot_performance_data(struct cse_boot_perf_rsp *boot_perf);
 
 /* Function to make cse disable using PMC IPC */
 bool cse_disable_mei_devices(void);
@@ -556,6 +518,33 @@ void cse_late_finalize(void);
 void soc_disable_heci1_using_pcr(void);
 
 /*
+ * SoC override API to identify if ISH Firmware existed inside CSE FPT.
+ *
+ * This override is required to avoid making default call into non-ISH
+ * supported SKU to attempt to retrieve ISH version which would results into
+ * increased boot time by 100ms+.
+ *
+ * Ideally SoC with UFS enabled would like to keep ISH enabled as well, hence
+ * identifying the UFS enabled device is enough to conclude if ISH partition is
+ * available.
+ */
+#if CONFIG(SOC_INTEL_STORE_CSE_FPT_PARTITION_VERSION)
+bool soc_is_ish_partition_enabled(void);
+#else
+static inline bool soc_is_ish_partition_enabled(void)
+{
+	/* Default implementation, ISH not enabled. */
+	return false;
+}
+#endif
+
+/*
+ * Injects CSE timestamps into cbmem timestamp table. SoC code needs to
+ * implement it since timestamp definitions differ from SoC to SoC.
+ */
+void soc_cbmem_inject_telemetry_data(s64 *ts, s64 current_time);
+
+/*
  * Get all the timestamps CSE collected using cse_get_boot_performance_data() and
  * insert them into the CBMEM timestamp table.
  */
@@ -563,5 +552,17 @@ void cse_get_telemetry_data(void);
 
 /* Function to log the cse WP information like range, if WP etc. */
 void cse_log_ro_write_protection_info(bool mfg_mode);
+
+/*
+ * Changes Intel PTT feature state at runtime. Global reset is required after
+ * successful HECI command completion.
+ */
+void cse_enable_ptt(bool state);
+
+/*
+ * Queries CSE for runtime status of firmware features.
+ * Returns 0 on success and < 0 on failure.
+ */
+enum cb_err cse_get_fw_feature_state(uint32_t *feature_state);
 
 #endif // SOC_INTEL_COMMON_CSE_H

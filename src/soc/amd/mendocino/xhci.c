@@ -4,6 +4,7 @@
 
 #include <amdblocks/gpio.h>
 #include <amdblocks/smi.h>
+#include <amdblocks/xhci.h>
 #include <bootstate.h>
 #include <device/device.h>
 #include <device/pci_ids.h>
@@ -14,19 +15,19 @@
 static const struct sci_source xhci_sci_sources[] = {
 	{
 		.scimap = SMITYPE_XHC0_PME,
-		.gpe = GEVENT_31,
+		.gpe = XHCI_GEVENT,
 		.direction = SMI_SCI_LVL_HIGH,
 		.level = SMI_SCI_EDG
 	},
 	{
 		.scimap = SMITYPE_XHC1_PME,
-		.gpe = GEVENT_31,
+		.gpe = XHCI_GEVENT,
 		.direction = SMI_SCI_LVL_HIGH,
 		.level = SMI_SCI_EDG
 	},
 	{
 		.scimap = SMITYPE_XHC2_PME,
-		.gpe = GEVENT_31,
+		.gpe = XHCI_GEVENT,
 		.direction = SMI_SCI_LVL_HIGH,
 		.level = SMI_SCI_EDG
 	}
@@ -48,7 +49,7 @@ enum cb_err pci_xhci_get_wake_gpe(const struct device *dev, int *gpe)
 			*gpe = xhci_sci_sources[1].gpe;
 			return CB_SUCCESS;
 		}
-	} else if (dev->bus->dev->path.pci.devfn == PCIE_GPP_C_DEVFN) {
+	} else if (dev->bus->dev->path.pci.devfn == PCIE_ABC_C_DEVFN) {
 		if (dev->path.pci.devfn == XHCI2_DEVFN
 		    && dev->device == PCI_DID_AMD_FAM17H_MODELA0H_XHCI2) {
 			*gpe = xhci_sci_sources[2].gpe;

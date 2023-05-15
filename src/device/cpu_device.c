@@ -13,6 +13,7 @@ struct device *add_cpu_device(struct bus *cpu_bus, unsigned int apic_id,
 	/* Build the CPU device path */
 	cpu_path.type = DEVICE_PATH_APIC;
 	cpu_path.apic.apic_id = apic_id;
+	cpu_path.apic.initial_lapicid = apic_id;
 
 	/* Update CPU in devicetree. */
 	if (enabled)
@@ -27,14 +28,4 @@ struct device *add_cpu_device(struct bus *cpu_bus, unsigned int apic_id,
 		dev_path(cpu), cpu->enabled?"enabled":"disabled");
 
 	return cpu;
-}
-
-void set_cpu_topology(struct device *cpu, unsigned int node,
-		      unsigned int package, unsigned int core,
-		      unsigned int thread)
-{
-	cpu->path.apic.node_id = node;
-	cpu->path.apic.package_id = package;
-	cpu->path.apic.core_id = core;
-	cpu->path.apic.thread_id = thread;
 }

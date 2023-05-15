@@ -5,6 +5,8 @@
 
 #include <arch/cpu.h>
 #include <commonlib/region.h>
+#include <device/pci_type.h>
+#include <device/resource.h>
 #include <types.h>
 
 #define SMM_DEFAULT_BASE 0x30000
@@ -29,6 +31,8 @@
 #define APM_CNT_ELOG_GSMI	0xef
 #define APM_STS		0xb3
 
+#define SMM_PCI_RESOURCE_STORE_NUM_RESOURCES 6
+
 /* Send cmd to APM_CNT with HAVE_SMI_HANDLER checking. */
 int apm_control(u8 cmd);
 u8 apm_get_apmc(void);
@@ -49,6 +53,7 @@ void mainboard_smi_gpi(u32 gpi_sts);
 int  mainboard_smi_apmc(u8 data);
 void mainboard_smi_sleep(u8 slp_typ);
 void mainboard_smi_finalize(void);
+int mainboard_set_smm_log_level(void);
 
 void smm_soc_early_init(void);
 void smm_soc_exit(void);
@@ -56,6 +61,13 @@ void smm_soc_exit(void);
 /* This is the SMM handler. */
 extern unsigned char _binary_smm_start[];
 extern unsigned char _binary_smm_end[];
+
+struct smm_pci_resource_info {
+	pci_devfn_t pci_addr;
+	uint16_t class_device;
+	uint8_t class_prog;
+	struct resource resources[SMM_PCI_RESOURCE_STORE_NUM_RESOURCES];
+};
 
 struct smm_runtime {
 	u32 smbase;
@@ -65,7 +77,11 @@ struct smm_runtime {
 	u32 gnvs_ptr;
 	u32 cbmemc_size;
 	void *cbmemc;
+#if CONFIG(SMM_PCI_RESOURCE_STORE)
+	struct smm_pci_resource_info pci_resources[CONFIG_SMM_PCI_RESOURCE_STORE_NUM_SLOTS];
+#endif
 	uintptr_t save_state_top[CONFIG_MAX_CPUS];
+	int smm_log_level;
 } __packed;
 
 struct smm_module_params {
@@ -91,8 +107,6 @@ struct smm_stub_params {
 	 * contiguous like the 1:1 mapping it is up to the caller of the stub
 	 * loader to adjust this mapping. */
 	u16 apic_id_to_cpu[CONFIG_MAX_CPUS];
-	/* STM's 32bit entry into SMI handler */
-	u32 start32_offset;
 } __packed;
 
 /* smm_handler_t is called with arg of smm_module_params pointer. */
@@ -142,8 +156,6 @@ struct smm_loader_params {
 	size_t num_concurrent_save_states;
 
 	smm_handler_t handler;
-
-	struct smm_stub_params *stub_params;
 };
 
 /* All of these return 0 on success, < 0 on failure. */
@@ -195,5 +207,17 @@ uint32_t smm_revision(void);
 /* Returns the PM ACPI SMI port. On Intel systems this typically not configurable (APM_CNT, 0xb2).
    On AMD systems it is sometimes configurable. */
 uint16_t pm_acpi_smi_cmd_port(void);
+
+const volatile struct smm_pci_resource_info *smm_get_pci_resource_store(void);
+
+void smm_pci_get_stored_resources(const volatile struct smm_pci_resource_info **out_slots,
+				  size_t *out_size);
+/* Weak handler function to store PCI BARs. */
+void smm_mainboard_pci_resource_store_init(struct smm_pci_resource_info *slots, size_t size);
+/* Helper function to fill BARs from an array of device pointers. */
+bool smm_pci_resource_store_fill_resources(struct smm_pci_resource_info *slots, size_t num_slots,
+					   const struct device **devices, size_t num_devices);
+
+void smm_pci_resource_store_init(struct smm_runtime *smm_runtime);
 
 #endif /* CPU_X86_SMM_H */

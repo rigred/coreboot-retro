@@ -99,12 +99,6 @@ enum core_type get_soc_cpu_type(void)
 		return CPUID_CORE_TYPE_INTEL_CORE;
 }
 
-void soc_get_scaling_factor(u16 *big_core_scal_factor, u16 *small_core_scal_factor)
-{
-	*big_core_scal_factor = 127;
-	*small_core_scal_factor = 100;
-}
-
 bool soc_is_nominal_freq_supported(void)
 {
 	return true;
@@ -128,6 +122,9 @@ void soc_core_init(struct device *cpu)
 
 	/* Enable Direct Cache Access */
 	configure_dca_cap();
+
+	/* Set core type in struct cpu_info */
+	set_dev_core_type();
 
 	/* Set energy policy.  The "normal" EPB (6) is not suitable for Alder
 	 * Lake or Raptor Lake CPUs, as this results in higher uncore power. */
@@ -194,7 +191,7 @@ static const struct mp_ops mp_ops = {
 	.post_mp_init = post_mp_init,
 };
 
-void soc_init_cpus(struct bus *cpu_bus)
+void mp_init_cpus(struct bus *cpu_bus)
 {
 	/* TODO: Handle mp_init_with_smm failure? */
 	mp_init_with_smm(cpu_bus, &mp_ops);

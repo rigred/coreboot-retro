@@ -431,7 +431,7 @@
 #define  PCI_EXP_LNKCAP_PORT	0xff000000 /* Port Number */
 #define PCI_EXP_LNKCTL		16	/* Link Control */
 #define  PCI_EXP_LNKCTL_RL	0x20	/* Retrain Link */
-#define  PCI_EXP_LNKCTL_CCC	0x40	/* Common Clock COnfiguration */
+#define  PCI_EXP_LNKCTL_CCC	0x40	/* Common Clock Configuration */
 #define  PCI_EXP_EN_CLK_PM	0x100	/* Enable Clock Power Management */
 #define PCI_EXP_LNKSTA		18	/* Link Status */
 #define  PCI_EXP_LNKSTA_LT	0x800	/* Link Training */
@@ -468,6 +468,7 @@
 /* Extended Capability lists*/
 #define PCIE_EXT_CAP_OFFSET		0x100
 #define  PCIE_EXT_CAP_AER_ID		 0x0001
+#define  PCIE_EXT_CAP_ID_ATS		 0x000F
 #define  PCIE_EXT_CAP_L1SS_ID		 0x001E
 #define  PCIE_EXT_CAP_LTR_ID		 0x0018
 #define  PCIE_EXT_CAP_RESIZABLE_BAR	 0x0015
@@ -588,5 +589,9 @@
 /* Translation from PCI_DEV() to devicetree bus and path.pci.devfn. */
 #define PCI_DEV2DEVFN(sdev)		(((sdev)>>12) & 0xff)
 #define PCI_DEV2SEGBUS(sdev)	(((sdev)>>20) & 0xfff)
+
+/* Fields from within the device's class value. */
+#define PCI_CLASS_GET_DEVICE(c) (c >> 8)
+#define PCI_CLASS_GET_PROG(c) (c & 0xff)
 
 #endif /* PCI_DEF_H */

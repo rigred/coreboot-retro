@@ -42,7 +42,7 @@ struct ibecc_config {
 /* Types of different SKUs */
 enum soc_intel_alderlake_power_limits {
 	ADL_P_142_242_282_15W_CORE,
-	ADL_P_282_482_28W_CORE,
+	ADL_P_282_442_482_28W_CORE,
 	ADL_P_682_28W_CORE,
 	ADL_P_442_482_45W_CORE,
 	ADL_P_642_682_45W_CORE,
@@ -102,13 +102,14 @@ static const struct {
 	{ PCI_DID_INTEL_ADL_P_ID_10, ADL_P_142_242_282_15W_CORE, TDP_15W },
 	{ PCI_DID_INTEL_ADL_P_ID_7, ADL_P_142_242_282_15W_CORE, TDP_15W },
 	{ PCI_DID_INTEL_ADL_P_ID_6, ADL_P_142_242_282_15W_CORE, TDP_15W },
-	{ PCI_DID_INTEL_ADL_P_ID_7, ADL_P_282_482_28W_CORE, TDP_28W },
-	{ PCI_DID_INTEL_ADL_P_ID_5, ADL_P_282_482_28W_CORE, TDP_28W },
+	{ PCI_DID_INTEL_ADL_P_ID_7, ADL_P_282_442_482_28W_CORE, TDP_28W },
+	{ PCI_DID_INTEL_ADL_P_ID_5, ADL_P_282_442_482_28W_CORE, TDP_28W },
 	{ PCI_DID_INTEL_ADL_P_ID_3, ADL_P_682_28W_CORE, TDP_28W },
 	{ PCI_DID_INTEL_ADL_P_ID_5, ADL_P_442_482_45W_CORE, TDP_45W },
 	{ PCI_DID_INTEL_ADL_P_ID_4, ADL_P_642_682_45W_CORE, TDP_45W },
 	{ PCI_DID_INTEL_ADL_P_ID_3, ADL_P_642_682_45W_CORE, TDP_45W },
 	{ PCI_DID_INTEL_ADL_P_ID_1, ADL_P_442_482_45W_CORE, TDP_45W },
+	{ PCI_DID_INTEL_ADL_P_ID_1, ADL_P_282_442_482_28W_CORE, TDP_28W },
 	{ PCI_DID_INTEL_ADL_M_ID_1, ADL_M_282_12W_CORE, TDP_12W },
 	{ PCI_DID_INTEL_ADL_M_ID_1, ADL_M_282_15W_CORE, TDP_15W },
 	{ PCI_DID_INTEL_ADL_M_ID_2, ADL_M_242_CORE, TDP_9W },
@@ -133,6 +134,7 @@ static const struct {
 	{ PCI_DID_INTEL_ADL_S_ID_12, ADL_S_202_35W_CORE, TDP_35W },
 	{ PCI_DID_INTEL_ADL_S_ID_12, ADL_S_202_46W_CORE, TDP_46W },
 	{ PCI_DID_INTEL_RPL_P_ID_1, RPL_P_682_642_482_45W_CORE, TDP_45W },
+	{ PCI_DID_INTEL_RPL_P_ID_1, RPL_P_682_482_282_28W_CORE, TDP_28W },
 	{ PCI_DID_INTEL_RPL_P_ID_2, RPL_P_682_482_282_28W_CORE, TDP_28W },
 	{ PCI_DID_INTEL_RPL_P_ID_3, RPL_P_282_242_142_15W_CORE, TDP_15W },
 	{ PCI_DID_INTEL_RPL_P_ID_4, RPL_P_282_242_142_15W_CORE, TDP_15W },
@@ -152,8 +154,8 @@ enum ddi_ports {
 };
 
 enum ddi_port_flags {
-	DDI_ENABLE_DDC = 1 << 0,
-	DDI_ENABLE_HPD = 1 << 1,
+	DDI_ENABLE_DDC = 1 << 0, // Display Data Channel
+	DDI_ENABLE_HPD = 1 << 1, // Hot Plug Detect
 };
 
 /*
@@ -273,8 +275,6 @@ struct soc_intel_alderlake_config {
 	int s0ix_enable;
 	/* Support for TCSS xhci, xdci, TBT PCIe root ports and DMA controllers */
 	uint8_t tcss_d3_hot_disable;
-	/* Support for TBT PCIe root ports and DMA controllers with D3Hot->D3Cold */
-	uint8_t tcss_d3_cold_disable;
 	/* Enable DPTF support */
 	int dptf_enable;
 
@@ -347,6 +347,7 @@ struct soc_intel_alderlake_config {
 	uint16_t sata_ports_dito_val[8];
 
 	/* Audio related */
+	uint8_t pch_hda_audio_link_hda_enable;
 	uint8_t pch_hda_dsp_enable;
 
 	/* iDisp-Link T-Mode 0: 2T, 2: 4T, 3: 8T, 4: 16T */
@@ -666,14 +667,20 @@ struct soc_intel_alderlake_config {
 	 */
 	bool disable_package_c_state_demotion;
 
-	/*
-	 * Enable or Disable Skipping MBP HOB.
-	 * Default is set to 0 and set to 1 to skip the MBP HOB.
-	 */
-	bool skip_mbp_hob;
-
 	/* i915 struct for GMA backlight control */
 	struct i915_gpu_controller_info gfx;
+
+	/*
+	 * IGD panel configuration
+	 */
+	struct i915_gpu_panel_config panel_cfg;
+
+	/*
+	 * Enable or Disable Tccold Handshake
+	 * Default is set to 0.
+	 * Set this to 1 in order to disable Tccold Handshake
+	 */
+	bool disable_dynamic_tccold_handshake;
 };
 
 typedef struct soc_intel_alderlake_config config_t;

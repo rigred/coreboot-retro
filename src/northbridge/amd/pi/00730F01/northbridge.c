@@ -15,7 +15,6 @@
 #include <lib.h>
 #include <cpu/x86/mp.h>
 #include <Porting.h>
-#include <AGESA.h>
 #include <Topology.h>
 #include <cpu/amd/msr.h>
 #include <cpu/amd/mtrr.h>
@@ -221,7 +220,7 @@ static void nb_set_resources(struct device *dev)
 
 static void northbridge_init(struct device *dev)
 {
-	setup_ioapic((u8 *)IO_APIC2_ADDR, CONFIG_MAX_CPUS + 1);
+	register_new_ioapic((u8 *)IO_APIC2_ADDR);
 }
 
 static unsigned long acpi_fill_hest(acpi_hest_t *hest)
@@ -253,17 +252,16 @@ unsigned long acpi_fill_ivrs_ioapic(acpi_ivrs_t *ivrs, unsigned long current)
 	ivhd_ioapic->dte_setting = IVHD_DTE_LINT_1_PASS | IVHD_DTE_LINT_0_PASS |
 				   IVHD_DTE_SYS_MGT_NO_TRANS | IVHD_DTE_NMI_PASS |
 				   IVHD_DTE_EXT_INT_PASS | IVHD_DTE_INIT_PASS;
-	ivhd_ioapic->handle = CONFIG_MAX_CPUS; /* FCH IOAPIC ID */
+	ivhd_ioapic->handle = get_ioapic_id(VIO_APIC_VADDR);
 	ivhd_ioapic->source_dev_id = PCI_DEVFN(SMBUS_DEV, SMBUS_FUNC);
 	ivhd_ioapic->variety = IVHD_SPECIAL_DEV_IOAPIC;
 	current += sizeof(ivrs_ivhd_special_t);
 
 	ivhd_ioapic = (ivrs_ivhd_special_t *)current;
-
 	ivhd_ioapic->type = IVHD_DEV_8_BYTE_EXT_SPECIAL_DEV;
 	ivhd_ioapic->reserved = 0x0000;
 	ivhd_ioapic->dte_setting = 0x00;
-	ivhd_ioapic->handle = CONFIG_MAX_CPUS + 1; /* GNB IOAPIC ID */
+	ivhd_ioapic->handle = get_ioapic_id((u8 *)IO_APIC2_ADDR);
 	ivhd_ioapic->source_dev_id = PCI_DEVFN(0, 1);
 	ivhd_ioapic->variety = IVHD_SPECIAL_DEV_IOAPIC;
 	current += sizeof(ivrs_ivhd_special_t);
@@ -539,13 +537,11 @@ static unsigned long acpi_fill_ivrs(acpi_ivrs_t *ivrs, unsigned long current)
 
 static void northbridge_fill_ssdt_generator(const struct device *device)
 {
-	msr_t msr;
 	char pscope[] = "\\_SB.PCI0";
 
 	acpigen_write_scope(pscope);
-	msr = rdmsr(TOP_MEM);
-	acpigen_write_name_dword("TOM1", msr.lo);
-	msr = rdmsr(TOP_MEM2);
+	acpigen_write_name_dword("TOM1", get_top_of_mem_below_4gb());
+
 	/*
 	 * Since XP only implements parts of ACPI 2.0, we can't use a qword
 	 * here.
@@ -554,23 +550,8 @@ static void northbridge_fill_ssdt_generator(const struct device *device)
 	 * Shift value right by 20 bit to make it fit into 32bit,
 	 * giving us 1MB granularity and a limit of almost 4Exabyte of memory.
 	 */
-	acpigen_write_name_dword("TOM2", (msr.hi << 12) | msr.lo >> 20);
+	acpigen_write_name_dword("TOM2", get_top_of_mem_above_4gb() >> 20);
 	acpigen_pop_len();
-}
-
-static void patch_ssdt_processor_scope(acpi_header_t *ssdt)
-{
-	unsigned int len = ssdt->length - sizeof(acpi_header_t);
-	unsigned int i;
-
-	for (i = sizeof(acpi_header_t); i < len; i++) {
-		/* Search for _PR_ scope and replace it with _SB_ */
-		if (*(uint32_t *)((unsigned long)ssdt + i) == 0x5f52505f)
-			*(uint32_t *)((unsigned long)ssdt + i) = 0x5f42535f;
-	}
-	/* Recalculate checksum */
-	ssdt->checksum = 0;
-	ssdt->checksum = acpi_checksum((void *)ssdt, ssdt->length);
 }
 
 static unsigned long agesa_write_acpi_tables(const struct device *device,
@@ -643,7 +624,6 @@ static unsigned long agesa_write_acpi_tables(const struct device *device,
 	printk(BIOS_DEBUG, "ACPI:    * SSDT at %lx\n", current);
 	ssdt = (acpi_header_t *)agesawrapper_getlateinitptr(PICK_PSTATE);
 	if (ssdt != NULL) {
-		patch_ssdt_processor_scope(ssdt);
 		memcpy((void *)current, ssdt, ssdt->length);
 		ssdt = (acpi_header_t *)current;
 		current += ssdt->length;
@@ -782,7 +762,7 @@ static void domain_read_resources(struct device *dev)
 	pci_domain_read_resources(dev);
 
 	/* TOP_MEM MSR is our boundary between DRAM and MMIO under 4G */
-	mmio_basek = amd_topmem() >> 10;
+	mmio_basek = get_top_of_mem_below_4gb() >> 10;
 
 #if CONFIG_HW_MEM_HOLE_SIZEK != 0
 	/* if the hw mem hole is already set in raminit stage, here we will compare
@@ -838,7 +818,7 @@ static void domain_read_resources(struct device *dev)
 				sizek = 0;
 			}
 			else {
-				uint64_t topmem2 = amd_topmem2();
+				uint64_t topmem2 = get_top_of_mem_above_4gb();
 				basek = 4 * 1024 * 1024;
 				sizek = topmem2 / 1024 - basek;
 			}
@@ -889,10 +869,25 @@ void mp_init_cpus(struct bus *cpu_bus)
 			    MTRR_TYPE_WRPROT);
 }
 
+void generate_cpu_entries(const struct device *device)
+{
+	int cpu;
+	const int cores = get_cpu_count();
+
+	printk(BIOS_DEBUG, "ACPI \\_SB report %d core(s)\n", cores);
+
+	/* Generate \_SB.Pxxx */
+	for (cpu = 0; cpu < cores; cpu++) {
+		acpigen_write_processor_device(cpu);
+		acpigen_write_processor_device_end();
+	}
+}
+
 static struct device_operations cpu_bus_ops = {
-	.read_resources	  = noop_read_resources,
-	.set_resources	  = noop_set_resources,
-	.init		  = mp_cpu_bus_init,
+	.read_resources	= noop_read_resources,
+	.set_resources	= noop_set_resources,
+	.init		= mp_cpu_bus_init,
+	.acpi_fill_ssdt	= generate_cpu_entries,
 };
 
 static void root_complex_enable_dev(struct device *dev)

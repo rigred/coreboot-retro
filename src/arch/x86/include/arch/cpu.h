@@ -111,9 +111,31 @@ static inline bool cpu_is_intel(void)
 
 struct device;
 
+#define CPUID_FROM_FMS(family, model, stepping) ( \
+	/* bits 31..28: reserved, set to 0 */ \
+	((family) > 0xf ? ((family) - 0xf) & 0xff : 0) << 20 | \
+	((model) >> 4 & 0xf) << 16 | \
+	/* bits 15..14: reserved, set to 0 */ \
+	/* bits 13..12: processor type, set to 0 */ \
+	((family) > 0xf ? 0xf : (family) & 0xf) << 8 | \
+	((model) & 0xf) << 4 | \
+	((stepping) & 0xf) << 0)
+
+#define CPUID_EXACT_MATCH_MASK				0xffffffff
+#define CPUID_ALL_STEPPINGS_MASK			0xfffffff0
+#define CPUID_ALL_STEPPINGS_AND_BASE_MODELS_MASK	0xffffff00
+
+static inline bool cpuid_match(uint32_t a, uint32_t b, uint32_t mask)
+{
+	return (a & mask) == (b & mask);
+}
+
+#define CPU_TABLE_END	{ X86_VENDOR_INVALID, 0, 0 }
+
 struct cpu_device_id {
 	unsigned int vendor;
-	unsigned int device;
+	uint32_t device;
+	uint32_t device_match_mask;
 };
 
 struct cpu_driver {

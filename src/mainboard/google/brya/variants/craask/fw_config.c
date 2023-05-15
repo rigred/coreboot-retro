@@ -47,42 +47,46 @@ static const struct pad_config stylus_disable_pads[] = {
 	PAD_NC_LOCK(GPP_F15, NONE, LOCK_CONFIG),
 };
 
+static const struct pad_config emmc_disable_pads[] = {
+	/* I7  : EMMC_CMD */
+	PAD_NC(GPP_I7, NONE),
+	/* I8  : EMMC_D0 */
+	PAD_NC(GPP_I8, NONE),
+	/* I9  : EMMC_D1 */
+	PAD_NC(GPP_I9, NONE),
+	/* I10 : EMMC_D2 */
+	PAD_NC(GPP_I10, NONE),
+	/* I11 : EMMC_D3 */
+	PAD_NC(GPP_I11, NONE),
+	/* I12 : EMMC_D4 */
+	PAD_NC(GPP_I12, NONE),
+	/* I13 : EMMC_D5 */
+	PAD_NC(GPP_I13, NONE),
+	/* I14 : EMMC_D6 */
+	PAD_NC(GPP_I14, NONE),
+	/* I15 : EMMC_D7 */
+	PAD_NC(GPP_I15, NONE),
+	/* I16 : EMMC_RCLK */
+	PAD_NC(GPP_I16, NONE),
+	/* I17 : EMMC_CLK */
+	PAD_NC(GPP_I17, NONE),
+	/* I18 : EMMC_RST_L */
+	PAD_NC(GPP_I18, NONE),
+};
+
 static const struct pad_config nvme_disable_pads[] = {
 	/* B4  : SSD_PERST_L */
 	PAD_NC_LOCK(GPP_B4, NONE, LOCK_CONFIG),
+	/* D7  : SSD_CLKREQ_ODL */
+	PAD_NC(GPP_D7, NONE),
 	/* D11 : EN_PP3300_SSD */
 	PAD_NC_LOCK(GPP_D11, NONE, LOCK_CONFIG),
 	/* E17 : SSD_PLN_L */
 	PAD_NC_LOCK(GPP_E17, NONE, LOCK_CONFIG),
-	/*
-	 * Note: don't disable GPP_D6 = SSD_CLKREQ_ODL, since this is used as
-	 * WWAN_EN on LTE variants.
-	 */
-};
-
-/*
- * GPP_D6 is used as WWAN_EN on LTE variants and SSD_CLKREQ_ODL on NVMe
- * variants (there is no craask variant supporting both LTE and NVMe).
- * In craask/gpio.c, it's set to WWAN_EN since this needs to be done in
- * bootblock. So we override it to SSD_CLKREQ_ODL here for NVMe variants.
- */
-static const struct pad_config nvme_enable_pads[] = {
-	/* D6  : SRCCLKREQ1# ==> SSD_CLKREQ_ODL */
-	PAD_CFG_NF(GPP_D6, NONE, DEEP, NF1),
 };
 
 void fw_config_gpio_padbased_override(struct pad_config *padbased_table)
 {
-	/*
-	 * Since GPP_D6 is used as WWAN_EN on LTE variants and SSD_CLKREQ_ODL on
-	 * NVMe variants, we don't support both together. If there's a variant
-	 * using both in the future, this GPIO handling will need to be updated.
-	 */
-	if (fw_config_probe(FW_CONFIG(DB_USB, DB_1C_LTE)) &&
-	    fw_config_probe(FW_CONFIG(STORAGE, STORAGE_NVME))) {
-		printk(BIOS_ERR, "LTE and NVMe together is not supported on craask\n");
-	}
-
 	if (!fw_config_probe(FW_CONFIG(DB_USB, DB_1C_LTE))) {
 		printk(BIOS_INFO, "Disable LTE-related GPIO pins on craask.\n");
 		gpio_padbased_override(padbased_table, lte_disable_pads,
@@ -107,16 +111,13 @@ void fw_config_gpio_padbased_override(struct pad_config *padbased_table)
 						ARRAY_SIZE(stylus_disable_pads));
 	}
 
-	if (!fw_config_is_provisioned() ||
-	    fw_config_probe(FW_CONFIG(STORAGE, STORAGE_NVME))) {
-		/*
-		 * Note: this must be done after lte_disable_pads, otherwise
-		 * GPP_D6 will be disabled again.
-		 */
-		printk(BIOS_INFO, "Enable NVMe SSD GPIO pins.\n");
-		gpio_padbased_override(padbased_table, nvme_enable_pads,
-						ARRAY_SIZE(nvme_enable_pads));
-	} else {
+	if (fw_config_is_provisioned() && !fw_config_probe(FW_CONFIG(STORAGE, STORAGE_EMMC))) {
+		printk(BIOS_INFO, "Disable eMMC GPIO pins.\n");
+		gpio_padbased_override(padbased_table, emmc_disable_pads,
+						ARRAY_SIZE(emmc_disable_pads));
+	}
+
+	if (fw_config_is_provisioned() && !fw_config_probe(FW_CONFIG(STORAGE, STORAGE_NVME))) {
 		printk(BIOS_INFO, "Disable NVMe SSD GPIO pins.\n");
 		gpio_padbased_override(padbased_table, nvme_disable_pads,
 						ARRAY_SIZE(nvme_disable_pads));

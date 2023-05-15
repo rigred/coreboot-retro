@@ -40,11 +40,11 @@ Scope (\_SB.PCI0.I2C3)
 
 	Device (CAM0)
 	{
-		Name (_HID, "SONY319A") /* _HID: Hardware ID */
-		Name (_UID, 0)  /* _UID: Unique ID */
+		Name (_HID, "SONY319A")
+		Name (_UID, 0)
 		Name (_DDN, "Sony IMX319 Camera")  /* _DDN: DOS Device Name */
 
-		Method (_STA, 0, NotSerialized)  /* _STA: Status */
+		Method (_STA, 0, NotSerialized)
 		{
 			Return (0x0F)
 		}
@@ -103,11 +103,11 @@ Scope (\_SB.PCI0.I2C3)
 
 	Device (NVM0)
         {
-		Name (_HID, "INT3499") /* _HID: Hardware ID */
-		Name (_UID, 0)  /* _UID: Unique ID */
+		Name (_HID, "INT3499")
+		Name (_UID, 0)
 		Name (_DDN, "M24C64S")  /* _DDN: DOS Device Name */
 
-		Method (_STA, 0, NotSerialized)  /* _STA: Status */
+		Method (_STA, 0, NotSerialized)
 		{
 			Return (0x0F)
 		}

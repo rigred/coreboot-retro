@@ -2,15 +2,15 @@
 
 #include <assert.h>
 #include <console/console.h>
-#include <device/device.h>
 #include <cpu/intel/cpu_ids.h>
+#include <device/device.h>
 #include <device/pci_ops.h>
 #include <device/pci.h>
 #include <device/pci_ids.h>
 #include <fsp/api.h>
 #include <fsp/ppi/mp_service_ppi.h>
 #include <fsp/util.h>
-#include <option.h>
+#include <gpio.h>
 #include <intelblocks/cse.h>
 #include <intelblocks/irq.h>
 #include <intelblocks/lpss.h>
@@ -18,8 +18,8 @@
 #include <intelblocks/tcss.h>
 #include <intelblocks/xdci.h>
 #include <intelpch/lockdown.h>
+#include <option.h>
 #include <security/vboot/vboot_common.h>
-#include <soc/gpio.h>
 #include <soc/intel/common/vbt.h>
 #include <soc/lpm.h>
 #include <soc/pci_devs.h>
@@ -269,7 +269,7 @@ static const SI_PCH_DEVICE_INTERRUPT_CONFIG *pci_irq_to_fsp(size_t *out_count)
 
 	/* Count PCH devices */
 	while (entry) {
-		if (PCI_SLOT(entry->devfn) >= MIN_PCH_SLOT)
+		if (is_pch_slot(entry->devfn))
 			++pch_total;
 		entry = entry->next;
 	}
@@ -278,7 +278,7 @@ static const SI_PCH_DEVICE_INTERRUPT_CONFIG *pci_irq_to_fsp(size_t *out_count)
 	config = calloc(pch_total, sizeof(*config));
 	entry = get_cached_pci_irqs();
 	while (entry) {
-		if (PCI_SLOT(entry->devfn) < MIN_PCH_SLOT) {
+		if (!is_pch_slot(entry->devfn)) {
 			entry = entry->next;
 			continue;
 		}
@@ -327,7 +327,7 @@ void platform_fsp_silicon_init_params_cb(FSPS_UPD *supd)
 	if (cpu_id == CPUID_TIGERLAKE_A0)
 		params->D3ColdEnable = 0;
 	else
-		params->D3ColdEnable = !config->TcssD3ColdDisable;
+		params->D3ColdEnable = CONFIG(D3COLD_SUPPORT);
 
 	params->UsbTcPortEn = config->UsbTcPortEn;
 	params->TcssAuxOri = config->TcssAuxOri;

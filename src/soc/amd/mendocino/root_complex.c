@@ -10,14 +10,15 @@
 #include <arch/ioapic.h>
 #include <cbmem.h>
 #include <console/console.h>
-#include <cpu/amd/msr.h>
 #include <device/device.h>
 #include <device/pci.h>
+#include <fsp/amd_misc_data.h>
 #include <fsp/util.h>
 #include <soc/iomap.h>
 #include <stdint.h>
 #include "chip.h"
 
+#define TDP_15W	15
 #define DPTC_TOTAL_UPDATE_PARAMS	13
 
 struct dptc_input {
@@ -26,19 +27,15 @@ struct dptc_input {
 } __packed;
 
 
-#define DPTC_INPUTS(_thermctllmit, _sustained, _spptTimeConst, _fast, _slow,	\
-	_vrmCurrentLimit, _vrmMaxCurrentLimit, _vrmSocCurrentLimit,		\
-	_sttMinLimit, _sttM1, _sttM2, _sttCApu, _sttSkinTempLimitApu)		\
+#define DPTC_INPUTS(_thermctllmit, _spptTimeConst, _fast, _slow,	\
+	_vrmCurrentLimit, _vrmMaxCurrentLimit, _vrmSocCurrentLimit,	\
+	_sttMinLimit, _sttM1, _sttM2, _sttCApu, _sttAlphaApu, _sttSkinTempLimitApu)	\
 	{									\
 		.size = sizeof(struct dptc_input),				\
 		.params = {							\
 			{							\
 				.id = ALIB_DPTC_THERMAL_CONTROL_LIMIT_ID,	\
 				.value = _thermctllmit,				\
-			},							\
-			{							\
-				.id = ALIB_DPTC_SUSTAINED_POWER_LIMIT_ID,	\
-				.value = _sustained,				\
 			},							\
 			{							\
 				.id = ALIB_DPTC_SLOW_PPT_TIME_CONSTANT_ID,	\
@@ -79,6 +76,10 @@ struct dptc_input {
 			{							\
 				.id = ALIB_DPTC_STT_C_APU_ID,			\
 				.value = _sttCApu,				\
+			},							\
+			{							\
+				.id = ALIB_DPTC_STT_ALPHA_APU,			\
+				.value = _sttAlphaApu,				\
 			},							\
 			{							\
 				.id = ALIB_DPTC_STT_SKIN_TEMPERATURE_LIMIT_APU_ID,	\
@@ -223,7 +224,6 @@ static void acipgen_dptci(void)
 	/* Normal mode DPTC values. */
 	struct dptc_input default_input = DPTC_INPUTS(
 		config->thermctl_limit_degreeC,
-		config->sustained_power_limit_mW,
 		config->slow_ppt_time_constant_s,
 		config->fast_ppt_limit_mW,
 		config->slow_ppt_limit_mW,
@@ -234,13 +234,13 @@ static void acipgen_dptci(void)
 		config->stt_m1,
 		config->stt_m2,
 		config->stt_c_apu,
+		config->stt_alpha_apu,
 		config->stt_skin_temp_apu);
 	acpigen_write_alib_dptc_default((uint8_t *)&default_input, sizeof(default_input));
 
 	/* Low/No Battery */
 	struct dptc_input no_battery_input = DPTC_INPUTS(
 		config->thermctl_limit_degreeC,
-		config->sustained_power_limit_mW,
 		config->slow_ppt_time_constant_s,
 		config->fast_ppt_limit_mW,
 		config->slow_ppt_limit_mW,
@@ -251,6 +251,7 @@ static void acipgen_dptci(void)
 		config->stt_m1,
 		config->stt_m2,
 		config->stt_c_apu,
+		config->stt_alpha_apu,
 		config->stt_skin_temp_apu);
 	acpigen_write_alib_dptc_no_battery((uint8_t *)&no_battery_input,
 		sizeof(no_battery_input));
@@ -258,7 +259,6 @@ static void acipgen_dptci(void)
 #if (CONFIG(FEATURE_TABLET_MODE_DPTC))
 	struct dptc_input tablet_input = DPTC_INPUTS(
 		config->thermctl_limit_degreeC,
-		config->sustained_power_limit_mW_tablet,
 		config->slow_ppt_time_constant_s,
 		config->fast_ppt_limit_mW,
 		config->slow_ppt_limit_mW,
@@ -266,9 +266,10 @@ static void acipgen_dptci(void)
 		config->vrm_maximum_current_limit_mA,
 		config->vrm_soc_current_limit_mA,
 		config->stt_min_limit,
-		config->stt_m1,
-		config->stt_m2,
-		config->stt_c_apu,
+		config->stt_m1_tablet,
+		config->stt_m2_tablet,
+		config->stt_c_apu_tablet,
+		config->stt_alpha_apu_tablet,
 		config->stt_skin_temp_apu);
 	acpigen_write_alib_dptc_tablet((uint8_t *)&tablet_input, sizeof(tablet_input));
 #endif
@@ -277,7 +278,6 @@ static void acipgen_dptci(void)
 	/* Profile B */
 	struct dptc_input thermal_B_input = DPTC_INPUTS(
 		config->thermctl_limit_degreeC,
-		config->sustained_power_limit_mW_B,
 		config->slow_ppt_time_constant_s_B,
 		config->fast_ppt_limit_mW_B,
 		config->slow_ppt_limit_mW_B,
@@ -288,6 +288,7 @@ static void acipgen_dptci(void)
 		config->stt_m1_B,
 		config->stt_m2_B,
 		config->stt_c_apu_B,
+		config->stt_alpha_apu,
 		config->stt_skin_temp_apu_B);
 	acpigen_write_alib_dptc_thermal_B((uint8_t *)&thermal_B_input,
 		sizeof(thermal_B_input));
@@ -295,7 +296,6 @@ static void acipgen_dptci(void)
 	/* Profile C */
 	struct dptc_input thermal_C_input = DPTC_INPUTS(
 		config->thermctl_limit_degreeC,
-		config->sustained_power_limit_mW_C,
 		config->slow_ppt_time_constant_s_C,
 		config->fast_ppt_limit_mW_C,
 		config->slow_ppt_limit_mW_C,
@@ -306,6 +306,7 @@ static void acipgen_dptci(void)
 		config->stt_m1_C,
 		config->stt_m2_C,
 		config->stt_c_apu_C,
+		config->stt_alpha_apu,
 		config->stt_skin_temp_apu_C);
 	acpigen_write_alib_dptc_thermal_C((uint8_t *)&thermal_C_input,
 		sizeof(thermal_C_input));
@@ -313,7 +314,6 @@ static void acipgen_dptci(void)
 	/* Profile D */
 	struct dptc_input thermal_D_input = DPTC_INPUTS(
 		config->thermctl_limit_degreeC,
-		config->sustained_power_limit_mW_D,
 		config->slow_ppt_time_constant_s_D,
 		config->fast_ppt_limit_mW_D,
 		config->slow_ppt_limit_mW_D,
@@ -324,6 +324,7 @@ static void acipgen_dptci(void)
 		config->stt_m1_D,
 		config->stt_m2_D,
 		config->stt_c_apu_D,
+		config->stt_alpha_apu,
 		config->stt_skin_temp_apu_D);
 	acpigen_write_alib_dptc_thermal_D((uint8_t *)&thermal_D_input,
 		sizeof(thermal_D_input));
@@ -331,7 +332,6 @@ static void acipgen_dptci(void)
 	/* Profile E */
 	struct dptc_input thermal_E_input = DPTC_INPUTS(
 		config->thermctl_limit_degreeC,
-		config->sustained_power_limit_mW_E,
 		config->slow_ppt_time_constant_s_E,
 		config->fast_ppt_limit_mW_E,
 		config->slow_ppt_limit_mW_E,
@@ -342,6 +342,7 @@ static void acipgen_dptci(void)
 		config->stt_m1_E,
 		config->stt_m2_E,
 		config->stt_c_apu_E,
+		config->stt_alpha_apu,
 		config->stt_skin_temp_apu_E);
 	acpigen_write_alib_dptc_thermal_E((uint8_t *)&thermal_E_input,
 		sizeof(thermal_E_input));
@@ -349,7 +350,6 @@ static void acipgen_dptci(void)
 	/* Profile F */
 	struct dptc_input thermal_F_input = DPTC_INPUTS(
 		config->thermctl_limit_degreeC,
-		config->sustained_power_limit_mW_F,
 		config->slow_ppt_time_constant_s_F,
 		config->fast_ppt_limit_mW_F,
 		config->slow_ppt_limit_mW_F,
@@ -360,6 +360,7 @@ static void acipgen_dptci(void)
 		config->stt_m1_F,
 		config->stt_m2_F,
 		config->stt_c_apu_F,
+		config->stt_alpha_apu,
 		config->stt_skin_temp_apu_F);
 	acpigen_write_alib_dptc_thermal_F((uint8_t *)&thermal_F_input,
 		sizeof(thermal_F_input));
@@ -368,7 +369,18 @@ static void acipgen_dptci(void)
 
 static void root_complex_fill_ssdt(const struct device *device)
 {
+	uint32_t tdp = 0;
+
 	acpi_fill_root_complex_tom(device);
+
+	if (get_amd_smu_reported_tdp(&tdp) != CB_SUCCESS) {
+		/* Unknown TDP, so return rather than setting invalid values. */
+		return;
+	}
+	/* TODO(b/249359574): Add support for 6W DPTC values. */
+	if (tdp != TDP_15W)
+		return;
+
 	if (CONFIG(SOC_AMD_COMMON_BLOCK_ACPI_DPTC))
 		acipgen_dptci();
 }

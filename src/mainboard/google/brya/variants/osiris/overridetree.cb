@@ -9,6 +9,10 @@ fw_config
 	end
 end
 chip soc/intel/alderlake
+	register "domain_vr_config[VR_DOMAIN_IA]" = "{
+		.enable_fast_vmode = 1,
+	}"
+
 	register "sagv" = "SaGv_Enabled"
 
 	# As per Intel Advisory doc#723158, the change is required to prevent possible
@@ -239,6 +243,12 @@ chip soc/intel/alderlake
 					probe AUDIO MAX98360_NAU88L25B_I2S
 				end
 			end
+			chip drivers/sof
+				register "spkr_tplg" = "max98360a"
+				register "jack_tplg" = "nau8825"
+				register "mic_tplg" = "_2ch_pdm0"
+				device generic 0 on end
+			end
 		end
 		device ref pcie_rp6 off end	# PCIE6 WWAN
 		device ref pcie_rp7 on
@@ -292,6 +302,7 @@ chip soc/intel/alderlake
 						register "type" = "UPC_TYPE_C_USB2_SS_SWITCH"
 						register "use_custom_pld" = "true"
 						register "custom_pld" = "ACPI_PLD_TYPE_C(LEFT, LEFT, ACPI_PLD_GROUP(1, 1))"
+						register "usb_lpm_incapable" = "true"
 						device ref tcss_usb3_port1 on end
 					end
 					chip drivers/usb/acpi
@@ -299,6 +310,7 @@ chip soc/intel/alderlake
 						register "type" = "UPC_TYPE_C_USB2_SS_SWITCH"
 						register "use_custom_pld" = "true"
 						register "custom_pld" = "ACPI_PLD_TYPE_C(RIGHT, LEFT, ACPI_PLD_GROUP(2, 1))"
+						register "usb_lpm_incapable" = "true"
 						device ref tcss_usb3_port3 on end
 					end
 				end

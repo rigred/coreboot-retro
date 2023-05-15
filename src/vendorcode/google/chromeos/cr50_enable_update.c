@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 
 #include <bootstate.h>
+#include <commonlib/console/post_codes.h>
 #include <console/console.h>
 #include <ec/google/chromeec/ec.h>
 #include <elog.h>
@@ -65,6 +66,19 @@ static int cr50_is_reset_needed(void)
 
 	/* If TPM state is okay, no reset needed. */
 	return 0;
+}
+
+static void clear_ec_ap_idle(void)
+{
+	if (!CONFIG(CR50_RESET_CLEAR_EC_AP_IDLE_FLAG))
+		return;
+
+	/* Send EC command to clear AP_IDLE flag */
+	if (!google_chromeec_reboot(EC_REBOOT_NO_OP, EC_REBOOT_FLAG_CLEAR_AP_IDLE |
+				    EC_REBOOT_FLAG_ON_AP_SHUTDOWN))
+		printk(BIOS_INFO, "Successfully clear AP_IDLE flag");
+	else
+		printk(BIOS_ERR, "Failed to clear EC AP_IDLE flag");
 }
 
 static void enable_update(void *unused)
@@ -133,7 +147,7 @@ static void enable_update(void *unused)
 	mainboard_prepare_cr50_reset();
 
 	/* clear current post code avoid chatty eventlog on subsequent boot*/
-	post_code(0);
+	post_code(POST_CODE_CLEAR);
 
 	/*
 	 * Older Cr50 firmware doesn't support the timeout parameter for the
@@ -155,8 +169,10 @@ static void enable_update(void *unused)
 		}
 	}
 
-	if (CONFIG(POWER_OFF_ON_CR50_UPDATE))
+	if (CONFIG(POWER_OFF_ON_CR50_UPDATE)) {
+		clear_ec_ap_idle();
 		poweroff();
+	}
 	halt();
 }
 BOOT_STATE_INIT_ENTRY(BS_PAYLOAD_LOAD, BS_ON_ENTRY, enable_update, NULL);

@@ -100,8 +100,11 @@
 
 /* Mirror Flag */
 #define MIRROR_DISABLED		0x00
-#define MIRROR_ENABLED		0x01
+#define MIRROR_ENABLED		0xaa
+
+#define MIRROR_ATTEMPTS		1
 
 uint16_t ec_get_version(void);
+void ec_mirror_flag(void);
 
 #endif

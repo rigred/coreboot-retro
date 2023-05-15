@@ -5,7 +5,9 @@
 #include <commonlib/helpers.h>
 #include <commonlib/region.h>
 #include <console/console.h>
+#include <cpu/cpu.h>
 #include <cpu/x86/smm.h>
+#include <device/device.h>
 #include <rmodule.h>
 #include <stdio.h>
 #include <string.h>
@@ -267,18 +269,25 @@ static int smm_module_setup_stub(const uintptr_t smbase, const size_t smm_size,
 	stub_params->fxsave_area = (uintptr_t)fxsave_area;
 	stub_params->fxsave_area_size = FXSAVE_SIZE;
 
-	/* Initialize the APIC id to CPU number table to be 1:1 */
-	for (int i = 0; i < params->num_cpus; i++)
-		stub_params->apic_id_to_cpu[i] = i;
+	/* This runs on the BSP. All the APs are its siblings */
+	struct cpu_info *info = cpu_info();
+	if (!info || !info->cpu) {
+		printk(BIOS_ERR, "%s: Failed to find BSP struct device\n", __func__);
+		return -1;
+	}
+	int i = 0;
+	for (struct device *dev = info->cpu; dev; dev = dev->sibling)
+		if (dev->enabled)
+			stub_params->apic_id_to_cpu[i++] = dev->path.apic.initial_lapicid;
 
-	/* Allow the initiator to manipulate SMM stub parameters. */
-	params->stub_params = stub_params;
+	if (i != params->num_cpus) {
+		printk(BIOS_ERR, "%s: Failed to set up apic map correctly\n", __func__);
+		return -1;
+	}
 
 	printk(BIOS_DEBUG, "%s: stack_top = 0x%x\n", __func__, stub_params->stack_top);
 	printk(BIOS_DEBUG, "%s: per cpu stack_size = 0x%x\n", __func__,
 	       stub_params->stack_size);
-	printk(BIOS_DEBUG, "%s: runtime.start32_offset = 0x%x\n", __func__,
-	       stub_params->start32_offset);
 	printk(BIOS_DEBUG, "%s: runtime.smm_size = 0x%zx\n", __func__, smm_size);
 
 	smm_stub_place_staggered_entry_points(params);
@@ -338,6 +347,14 @@ static void setup_smihandler_params(struct smm_runtime *mod_params,
 
 	for (int i = 0; i < loader_params->num_cpus; i++)
 		mod_params->save_state_top[i] = region_end(&cpus[i].ss);
+
+	if (CONFIG(RUNTIME_CONFIGURABLE_SMM_LOGLEVEL))
+		mod_params->smm_log_level = mainboard_set_smm_log_level();
+	else
+		mod_params->smm_log_level = 0;
+
+	if (CONFIG(SMM_PCI_RESOURCE_STORE))
+		smm_pci_resource_store_init(mod_params);
 }
 
 static void print_region(const char *name, const struct region region)

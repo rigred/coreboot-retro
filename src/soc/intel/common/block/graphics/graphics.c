@@ -57,7 +57,7 @@ static void gma_init(struct device *const dev)
 	 * In case of non-FSP solution, SoC need to select another
 	 * Kconfig to perform GFX initialization.
 	 */
-	if (CONFIG(RUN_FSP_GOP)) {
+	if (CONFIG(RUN_FSP_GOP) && display_init_required()) {
 		const struct soc_intel_common_config *config = chip_get_common_soc_structure();
 		fsp_report_framebuffer_info(graphics_get_framebuffer_address(),
 					    config->panel_orientation);
@@ -173,6 +173,18 @@ static void graphics_dev_read_resources(struct device *dev)
 		if (res_bar0->flags & IORESOURCE_PREFETCH)
 			res_bar0->flags &= ~IORESOURCE_PREFETCH;
 	}
+
+	/*
+	 * If libhwbase static MMIO driver is used, IGD BAR 0 has to be set to
+	 * CONFIG_GFX_GMA_DEFAULT_MMIO for the libgfxinit to operate properly.
+	 */
+	if (CONFIG(MAINBOARD_USE_LIBGFXINIT) && CONFIG(HWBASE_STATIC_MMIO)) {
+		struct resource *res_bar0 = find_resource(dev, PCI_BASE_ADDRESS_0);
+		res_bar0->base = CONFIG_GFX_GMA_DEFAULT_MMIO;
+		res_bar0->flags |= IORESOURCE_ASSIGNED;
+		pci_dev_set_resources(dev);
+		res_bar0->flags |= IORESOURCE_FIXED;
+	}
 }
 
 const struct device_operations graphics_ops = {
@@ -224,22 +236,6 @@ static const unsigned short pci_device_ids[] = {
 	PCI_DID_INTEL_CFL_S_GT2_3,
 	PCI_DID_INTEL_CFL_S_GT2_4,
 	PCI_DID_INTEL_CFL_S_GT2_5,
-	PCI_DID_INTEL_ICL_GT0_ULT,
-	PCI_DID_INTEL_ICL_GT0_5_ULT,
-	PCI_DID_INTEL_ICL_GT1_ULT,
-	PCI_DID_INTEL_ICL_GT2_ULX_0,
-	PCI_DID_INTEL_ICL_GT2_ULX_1,
-	PCI_DID_INTEL_ICL_GT2_ULT_1,
-	PCI_DID_INTEL_ICL_GT2_ULX_2,
-	PCI_DID_INTEL_ICL_GT2_ULT_2,
-	PCI_DID_INTEL_ICL_GT2_ULX_3,
-	PCI_DID_INTEL_ICL_GT2_ULT_3,
-	PCI_DID_INTEL_ICL_GT2_ULX_4,
-	PCI_DID_INTEL_ICL_GT2_ULT_4,
-	PCI_DID_INTEL_ICL_GT2_ULX_5,
-	PCI_DID_INTEL_ICL_GT2_ULT_5,
-	PCI_DID_INTEL_ICL_GT2_ULX_6,
-	PCI_DID_INTEL_ICL_GT3_ULT,
 	PCI_DID_INTEL_CML_GT1_ULT_1,
 	PCI_DID_INTEL_CML_GT1_ULT_2,
 	PCI_DID_INTEL_CML_GT2_ULT_1,
@@ -306,6 +302,10 @@ static const unsigned short pci_device_ids[] = {
 	PCI_DID_INTEL_ADL_P_GT2_8,
 	PCI_DID_INTEL_ADL_P_GT2_9,
 	PCI_DID_INTEL_ADL_S_GT1,
+	PCI_DID_INTEL_ADL_S_GT1_1,
+	PCI_DID_INTEL_ADL_S_GT2,
+	PCI_DID_INTEL_ADL_S_GT2_1,
+	PCI_DID_INTEL_ADL_S_GT2_2,
 	PCI_DID_INTEL_ADL_M_GT1,
 	PCI_DID_INTEL_ADL_M_GT2,
 	PCI_DID_INTEL_ADL_M_GT3,

@@ -17,13 +17,17 @@ config BOARD_GOOGLE_REX_COMMON
 	select EC_GOOGLE_CHROMEEC_SKUID
 	select FW_CONFIG
 	select FW_CONFIG_SOURCE_CHROMEEC_CBI
+	select GOOGLE_SMBIOS_MAINBOARD_VERSION
 	select HAVE_ACPI_RESUME
 	select HAVE_ACPI_TABLES
 	select I2C_TPM
 	select INTEL_LPSS_UART_FOR_CONSOLE
+	select MAINBOARD_DISABLE_STAGE_CACHE
 	select MAINBOARD_HAS_TPM2
 	select PMC_IPC_ACPI_INTERFACE
 	select SOC_INTEL_CSE_LITE_SKU
+	select SOC_INTEL_CSE_PRE_CPU_RESET_TELEMETRY_V2
+	select SOC_INTEL_CSE_SEND_EOP_ASYNC
 
 config BOARD_GOOGLE_BASEBOARD_REX
 	def_bool n
@@ -38,9 +42,6 @@ config BOARD_GOOGLE_BASEBOARD_REX
 	select SOC_INTEL_ENABLE_USB4_PCIE_RESOURCES
 	select SYSTEM_TYPE_LAPTOP
 	select TPM_GOOGLE_TI50
-
-config BOARD_GOOGLE_REX0
-	select BOARD_GOOGLE_BASEBOARD_REX
 
 if BOARD_GOOGLE_REX_COMMON
 
@@ -66,6 +67,11 @@ config CHROMEOS_WIFI_SAR
 config DEVICETREE
 	default "variants/baseboard/\$(CONFIG_BASEBOARD_DIR)/devicetree.cb"
 
+config FMDFILE
+	default "src/mainboard/\$(CONFIG_MAINBOARD_DIR)/chromeos-debug-fsp.fmd" if CHROMEOS && BUILDING_WITH_DEBUG_FSP
+	default "src/mainboard/\$(CONFIG_MAINBOARD_DIR)/chromeos.fmd" if CHROMEOS
+
+
 config MAINBOARD_DIR
 	default "google/rex"
 
@@ -75,10 +81,12 @@ config MAINBOARD_FAMILY
 
 config MAINBOARD_PART_NUMBER
 	default "Rex" if BOARD_GOOGLE_REX0
+	default "Screebo" if BOARD_GOOGLE_SCREEBO
 
 config VARIANT_DIR
 	string
 	default "rex0" if BOARD_GOOGLE_REX0
+	default "screebo" if BOARD_GOOGLE_SCREEBO
 
 config DIMM_SPD_SIZE
 	default 512
@@ -101,7 +109,7 @@ config OVERRIDE_DEVICETREE
 
 config DRIVER_TPM_I2C_BUS
 	hex
-	default 0x4 if BOARD_GOOGLE_REX0
+	default 0x4 if BOARD_GOOGLE_REX0 || BOARD_GOOGLE_SCREEBO
 
 config DRIVER_TPM_I2C_ADDR
 	hex

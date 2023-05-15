@@ -1,6 +1,7 @@
 config BOARD_GOOGLE_BASEBOARD_DEDEDE
 	def_bool n
 	select BOARD_ROMSIZE_KB_16384 if !BOARD_ROMSIZE_KB_32768
+	select DRIVERS_AUDIO_SOF
 	select DRIVERS_GENERIC_GPIO_KEYS
 	select DRIVERS_I2C_CS42L42
 	select DRIVERS_I2C_GENERIC
@@ -88,6 +89,7 @@ config MAINBOARD_FAMILY
 
 config MAINBOARD_PART_NUMBER
 	default "Boten" if BOARD_GOOGLE_BOTEN
+	default "Dibbi" if BOARD_GOOGLE_DIBBI
 	default "Dedede" if BOARD_GOOGLE_DEDEDE
 	default "Drawcia" if BOARD_GOOGLE_DRAWCIA
 	default "Madoo" if BOARD_GOOGLE_MADOO
@@ -113,6 +115,8 @@ config MAINBOARD_PART_NUMBER
 	default "Gooey" if BOARD_GOOGLE_GOOEY
 	default "Beadrix" if BOARD_GOOGLE_BEADRIX
 	default "Shotzo" if BOARD_GOOGLE_SHOTZO
+	default "Taranza" if BOARD_GOOGLE_TARANZA
+	default "Boxy" if BOARD_GOOGLE_BOXY
 
 config MAX_CPUS
 	int
@@ -127,6 +131,7 @@ config UART_FOR_CONSOLE
 
 config VARIANT_DIR
 	default "boten" if BOARD_GOOGLE_BOTEN
+	default "dibbi" if BOARD_GOOGLE_DIBBI
 	default "dedede" if BOARD_GOOGLE_DEDEDE
 	default "drawcia" if BOARD_GOOGLE_DRAWCIA
 	default "madoo" if BOARD_GOOGLE_MADOO
@@ -152,6 +157,8 @@ config VARIANT_DIR
 	default "gooey" if BOARD_GOOGLE_GOOEY
 	default "beadrix" if BOARD_GOOGLE_BEADRIX
 	default "shotzo" if BOARD_GOOGLE_SHOTZO
+	default "taranza" if BOARD_GOOGLE_TARANZA
+	default "boxy" if BOARD_GOOGLE_BOXY
 
 endif #BOARD_GOOGLE_BASEBOARD_DEDEDE
 

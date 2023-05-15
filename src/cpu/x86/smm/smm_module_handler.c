@@ -52,6 +52,13 @@ static void smi_release_lock(void)
 	);
 }
 
+#if CONFIG(RUNTIME_CONFIGURABLE_SMM_LOGLEVEL)
+int get_console_loglevel(void)
+{
+	return smm_runtime.smm_log_level;
+}
+#endif
+
 void smm_get_cbmemc_buffer(void **buffer_out, size_t *size_out)
 {
 	*buffer_out = smm_runtime.cbmemc;
@@ -187,6 +194,13 @@ asmlinkage void smm_handler_start(void *arg)
 	/* De-assert SMI# signal to allow another SMI */
 	southbridge_smi_set_eos();
 }
+
+#if CONFIG(SMM_PCI_RESOURCE_STORE)
+const volatile struct smm_pci_resource_info *smm_get_pci_resource_store(void)
+{
+	return &smm_runtime.pci_resources[0];
+}
+#endif
 
 RMODULE_ENTRY(smm_handler_start);
 

@@ -1,12 +1,12 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 
+#include <arch/hpet.h>
 #include <arch/ioapic.h>
 #include <console/console.h>
 #include <device/device.h>
 #include <device/pci.h>
 #include <device/pnp.h>
 #include <device/pci_ops.h>
-#include <device/pci_def.h>
 #include <pc80/mc146818rtc.h>
 #include <pc80/isa-dma.h>
 #include <pc80/i8254.h>
@@ -17,6 +17,7 @@
 #include <amdblocks/ioapic.h>
 #include <amdblocks/iomap.h>
 #include <amdblocks/lpc.h>
+#include <soc/acpi.h>
 #include <soc/iomap.h>
 #include <soc/lpc.h>
 #include <soc/southbridge.h>
@@ -33,6 +34,13 @@ static void setup_serirq(void)
 		byte |= PM_SERIRQ_MODE;
 
 	pm_write8(PM_SERIRQ_CONF, byte);
+}
+
+void ioapic_get_sci_pin(u8 *gsi, u8 *irq, u8 *flags)
+{
+	*gsi = ACPI_SCI_IRQ;
+	*irq = ACPI_SCI_IRQ;
+	*flags = MP_IRQ_TRIGGER_LEVEL | MP_IRQ_POLARITY_LOW;
 }
 
 static void fch_ioapic_init(void)
@@ -98,6 +106,7 @@ static void lpc_init(struct device *dev)
 static void lpc_read_resources(struct device *dev)
 {
 	struct resource *res;
+	unsigned long idx = 0;
 
 	/* Get the normal pci resources of this device */
 	pci_dev_read_resources(dev);
@@ -110,36 +119,22 @@ static void lpc_read_resources(struct device *dev)
 		     IORESOURCE_ASSIGNED | IORESOURCE_FIXED;
 
 	/* Only up to 16 MByte of the SPI flash can be mapped right below 4 GB */
-	res = new_resource(dev, IOINDEX_SUBTRACTIVE(1, 0));
-	res->base = FLASH_BELOW_4GB_MAPPING_REGION_BASE;
-	res->size = FLASH_BELOW_4GB_MAPPING_REGION_SIZE;
-	res->flags = IORESOURCE_MEM | IORESOURCE_SUBTRACTIVE |
-		     IORESOURCE_ASSIGNED | IORESOURCE_FIXED;
+	mmio_range(dev, idx++, FLASH_BELOW_4GB_MAPPING_REGION_BASE,
+		   FLASH_BELOW_4GB_MAPPING_REGION_SIZE);
 
 	/* Add a memory resource for the SPI BAR. */
-	mmio_range(dev, 2, SPI_BASE_ADDRESS, 1 * KiB);
+	mmio_range(dev, idx++, SPI_BASE_ADDRESS, 4 * KiB);
 
-	res = new_resource(dev, 3); /* IOAPIC */
-	res->base = IO_APIC_ADDR;
-	res->size = 0x00001000;
-	res->flags = IORESOURCE_MEM | IORESOURCE_ASSIGNED | IORESOURCE_FIXED;
+	/* Add a memory resource for the eSPI MMIO */
+	mmio_range(dev, idx++, SPI_BASE_ADDRESS + ESPI_OFFSET_FROM_BAR, 4 * KiB);
+
+	/* FCH IOAPIC */
+	mmio_range(dev, idx++, IO_APIC_ADDR, 4 * KiB);
+
+	/* HPET */
+	mmio_range(dev, idx++, HPET_BASE_ADDRESS, 4 * KiB);
 
 	compact_resources(dev);
-}
-
-static void lpc_set_resources(struct device *dev)
-{
-	struct resource *res;
-	u32 spi_enable_bits;
-
-	/* Special case. The SpiRomEnable and other enables should STAY set. */
-	res = find_resource(dev, 2);
-	spi_enable_bits = pci_read_config32(dev, SPI_BASE_ADDRESS_REGISTER);
-	spi_enable_bits &= SPI_BASE_ALIGNMENT - 1;
-	pci_write_config32(dev, SPI_BASE_ADDRESS_REGISTER,
-			res->base | spi_enable_bits);
-
-	pci_dev_set_resources(dev);
 }
 
 static void configure_child_lpc_windows(struct device *dev, struct device *child)
@@ -320,7 +315,7 @@ static const char *lpc_acpi_name(const struct device *dev)
 
 struct device_operations amd_lpc_ops = {
 	.read_resources = lpc_read_resources,
-	.set_resources = lpc_set_resources,
+	.set_resources = pci_dev_set_resources,
 	.enable_resources = lpc_enable_resources,
 #if CONFIG(HAVE_ACPI_TABLES)
 	.acpi_name = lpc_acpi_name,

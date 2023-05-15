@@ -76,6 +76,15 @@ typedef enum { /* as in DDR3 spd */
 	CHIP_CAP_16G	= 6,
 } chip_capacity_t;
 
+typedef enum { /* as in DDR2 spd */
+	REFRESH_15_625	= 0,
+	REFRESH_3_9	= 1,
+	REFRESH_7_8	= 2,
+	REFRESH_31_25	= 3,
+	REFRESH_62_5	= 4,
+	REFRESH_125	= 5,
+} refresh_rate_t;
+
 typedef struct {
 	unsigned int	CAS;
 	fsb_clock_t	fsb_clock;
@@ -97,6 +106,7 @@ typedef struct {
 				      0xa - 0xf: raw card type A - F */
 	chip_width_t	chip_width;
 	chip_capacity_t	chip_capacity;
+	refresh_rate_t	refresh;
 	unsigned int	page_size; /* of whole DIMM in Bytes (4096 or 8192) */
 	unsigned int	banks;
 	unsigned int	ranks;
@@ -111,7 +121,7 @@ typedef struct {
 	int		txt_enabled;
 	int		cores;
 	gmch_gfx_t	gfx_type;
-	int		max_ddr2_mhz;
+	int		max_ddr2_mt;
 	int		max_ddr3_mt;
 	fsb_clock_t	max_fsb;
 	int		max_fsb_mhz;
@@ -243,6 +253,7 @@ enum {
 #define DCC_CMD_SHIFT		16
 #define DCC_CMD_MASK		(7 << DCC_CMD_SHIFT)
 #define DCC_CMD_NOP		(1 << DCC_CMD_SHIFT)
+#define DCC_CMD_ABP		(2 << DCC_CMD_SHIFT)
 				/* For mode register mr0: */
 #define DCC_SET_MREG		(3 << DCC_CMD_SHIFT)
 				/* For extended mode registers mr1 to mr3: */
@@ -252,6 +263,7 @@ enum {
 #define DCC_SET_EREGx(x)	((DCC_SET_EREG |			     \
 					(((x) - 1) << DCC_SET_EREG_SHIFT)) & \
 				 DCC_SET_EREG_MASK)
+#define DCC_CMD_CBR		(6 << DCC_CMD_SHIFT)
 
 /* Per channel DRAM Row Attribute registers (32-bit) */
 #define CxDRA_MCHBAR(x)		(0x1208 + ((x) * 0x0100))
@@ -409,7 +421,7 @@ u32 raminit_get_rank_addr(unsigned int channel, unsigned int rank);
 
 void raminit_rcomp_calibration(stepping_t stepping);
 void raminit_reset_readwrite_pointers(void);
-void raminit_receive_enable_calibration(const timings_t *, const dimminfo_t *);
+void raminit_receive_enable_calibration(int ddr_type, const timings_t *, const dimminfo_t *);
 void raminit_write_training(const mem_clock_t, const dimminfo_t *, int s3resume);
 void raminit_read_training(const dimminfo_t *, int s3resume);
 
@@ -435,6 +447,9 @@ int get_blc_values(const struct blc_pwm_t **entries);
 u16 get_blc_pwm_freq_value(const char *edid_ascii_string);
 
 #include <device/device.h>
+#include <edid.h>
+
+const char *gm45_get_lvds_edid_str(struct device *dev);
 
 struct acpi_rsdp;
 unsigned long northbridge_write_acpi_tables(const struct device *device, unsigned long start,

@@ -31,6 +31,7 @@ config BOARD_SPECIFIC_OPTIONS
 	select MAINBOARD_HAS_NATIVE_VGA_INIT
 	select HAVE_LINEAR_FRAMEBUFFER
 	select RTC
+	select MIPI_PANEL_BOE_TV110C9M_LL0 if BOARD_GOOGLE_GERALT
 
 config MAINBOARD_DIR
 	string
@@ -59,4 +60,17 @@ config DRIVER_TPM_I2C_ADDR
 config SDCARD_INIT
 	bool
 	default y
+
+choice
+	prompt "Speaker AMP for Geralt"
+	default USE_MAX98390 if BOARD_GOOGLE_GERALT
+
+config USE_MAX98390
+	bool "MAX98390"
+
+config USE_NAU8318
+	bool "NAU8318"
+
+endchoice
+
 endif

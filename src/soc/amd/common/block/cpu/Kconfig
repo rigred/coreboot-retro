@@ -33,7 +33,29 @@ config CBFS_CACHE_SIZE
 	help
 	  The size of the cbfs_cache region.
 
+config ACPI_CPU_STRING
+	string
+	default "C%03d"
+
 endif # SOC_AMD_COMMON_BLOCK_NONCAR
+
+config SOC_AMD_COMMON_BLOCK_CPUFREQ_FAM15H_16H
+	bool
+	help
+	  Select this option to include code to calculate the CPU frequency
+	  from the P state MSR values on AMD CPU families 15h and 16h.
+
+config SOC_AMD_COMMON_BLOCK_CPUFREQ_FAM17H_19H
+	bool
+	help
+	  Select this option to include code to calculate the CPU frequency
+	  from the P state MSR values on AMD CPU families 17h and 19h.
+
+config SOC_AMD_COMMON_BLOCK_CPUFREQ_FAM1AH
+	bool
+	help
+	  Select this option to include code to calculate the CPU frequency
+	  from the P state MSR values on AMD CPU family 1Ah.
 
 config SOC_AMD_COMMON_BLOCK_MCA_COMMON
 	bool
@@ -62,15 +84,27 @@ config SOC_AMD_COMMON_BLOCK_SMM
 	  Add common SMM relocation, finalization and handler functionality to
 	  the build.
 
-config SOC_AMD_COMMON_BLOCK_TSC_FAM17H_19H
+config SOC_AMD_COMMON_BLOCK_SVI2
 	bool
-	select COLLECT_TIMESTAMPS_NO_TSC # selected use SoC-specific timestamp function
+	help
+	  Select this option is the SoC uses the serial VID 2 standard for
+	  encoding the voltage it requests from the VRM.
+
+config SOC_AMD_COMMON_BLOCK_SVI3
+	bool
+	help
+	  Select this option is the SoC uses the serial VID 3 standard for
+	  encoding the voltage it requests from the VRM.
+
+config SOC_AMD_COMMON_BLOCK_TSC
+	bool
 	select TSC_SYNC_LFENCE
 	select UDELAY_TSC
+	select TSC_MONOTONIC_TIMER
 	help
 	  Select this option to add the common functions for getting the TSC
-	  frequency of AMD family 17h and 19h CPUs/APUs and to provide TSC-
-	  based monotonic timer functionality to the build.
+	  frequency of AMD family 17h, 19h and 1Ah CPUs/APUs and to provide
+	  TSC-based monotonic timer functionality to the build.
 
 config SOC_AMD_COMMON_BLOCK_UCODE
 	bool

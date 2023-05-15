@@ -46,7 +46,7 @@ enum {
 	MULTI_NAME_PREFIX	= 0x2F,
 	EXT_OP_PREFIX		= 0x5B,
 	 MUTEX_OP		= 0x01,
-	 EVENT_OP		= 0x01,
+	 EVENT_OP		= 0x02,
 	 SF_RIGHT_OP		= 0x10,
 	 SF_LEFT_OP		= 0x11,
 	 COND_REFOF_OP		= 0x12,
@@ -431,9 +431,11 @@ void acpigen_write_PPC(u8 nr);
 void acpigen_write_PPC_NVS(void);
 void acpigen_write_empty_PCT(void);
 void acpigen_write_empty_PTC(void);
+void acpigen_write_PTC(uint8_t duty_width, uint8_t duty_offset, uint16_t p_cnt);
 void acpigen_write_PRW(u32 wake, u32 level);
 void acpigen_write_STA(uint8_t status);
 void acpigen_write_STA_ext(const char *namestring);
+void acpigen_write_BBN(uint8_t base_bus_number);
 void acpigen_write_TPC(const char *gnvs_tpc_limit);
 void acpigen_write_PSS_package(u32 coreFreq, u32 power, u32 transLat,
 			u32 busmLat, u32 control, u32 status);
@@ -449,8 +451,14 @@ void acpigen_write_pct_package(const acpi_addr_t *perf_ctrl, const acpi_addr_t *
 void acpigen_write_xpss_package(const struct acpi_xpss_sw_pstate *pstate_value);
 void acpigen_write_xpss_object(const struct acpi_xpss_sw_pstate *pstate_values,
 			       size_t nentries);
+void acpigen_write_processor_namestring(unsigned int cpu_index);
 void acpigen_write_processor(u8 cpuindex, u32 pblock_addr, u8 pblock_len);
 __always_inline void acpigen_write_processor_end(void)
+{
+	acpigen_pop_len();
+}
+void acpigen_write_processor_device(unsigned int cpu_index);
+__always_inline void acpigen_write_processor_device_end(void)
 {
 	acpigen_pop_len();
 }
@@ -481,19 +489,32 @@ void acpigen_write_store_int_to_namestr(uint64_t src, const char *dst);
 void acpigen_write_store_int_to_op(uint64_t src, uint8_t dst);
 void acpigen_write_store_ops(uint8_t src, uint8_t dst);
 void acpigen_write_store_op_to_namestr(uint8_t src, const char *dst);
+void acpigen_write_store_namestr_to_op(const char *src, uint8_t dst);
+void acpigen_write_store_namestr_to_namestr(const char *src, const char *dst);
 void acpigen_write_or(uint8_t arg1, uint8_t arg2, uint8_t res);
 void acpigen_write_xor(uint8_t arg1, uint8_t arg2, uint8_t res);
 void acpigen_write_and(uint8_t arg1, uint8_t arg2, uint8_t res);
 void acpigen_write_not(uint8_t arg, uint8_t res);
+void acpigen_concatenate_string_string(const char *str1, const char *str2, uint8_t res);
+void acpigen_concatenate_string_int(const char *str, uint64_t val, uint8_t res);
+void acpigen_concatenate_string_op(const char *str, uint8_t src_res, uint8_t dest_res);
 void acpigen_write_debug_string(const char *str);
 void acpigen_write_debug_namestr(const char *str);
 void acpigen_write_debug_integer(uint64_t val);
 void acpigen_write_debug_op(uint8_t op);
+void acpigen_write_debug_concatenate_string_string(const char *str1, const char *str2,
+						   uint8_t tmp_res);
+void acpigen_write_debug_concatenate_string_int(const char *str1, uint64_t val,
+						uint8_t tmp_res);
+void acpigen_write_debug_concatenate_string_op(const char *str1, uint8_t res, uint8_t tmp_res);
 void acpigen_write_if(void);
 void acpigen_write_if_and(uint8_t arg1, uint8_t arg2);
 void acpigen_write_if_lequal_op_op(uint8_t op, uint8_t val);
+void acpigen_write_if_lgreater_op_op(uint8_t op1, uint8_t op2);
 void acpigen_write_if_lequal_op_int(uint8_t op, uint64_t val);
+void acpigen_write_if_lgreater_op_int(uint8_t op, uint64_t val);
 void acpigen_write_if_lequal_namestr_int(const char *namestr, uint64_t val);
+void acpigen_write_if_lgreater_namestr_int(const char *namestr, uint64_t val);
 __always_inline void acpigen_write_if_end(void)
 {
 	acpigen_pop_len();
@@ -672,7 +693,14 @@ void acpigen_resource_dword(u16 res_type, u16 gen_flags, u16 type_flags,
 void acpigen_resource_qword(u16 res_type, u16 gen_flags, u16 type_flags,
 	u64 gran, u64 range_min, u64 range_max, u64 translation, u64 length);
 
+void acpigen_resource_bus_number(u16 bus_base, u16 bus_limit);
+void acpigen_resource_io(u16 io_base, u16 io_limit);
+
 /* Emits Notify(namestr, value) */
 void acpigen_notify(const char *namestr, int value);
+
+/* Create a namespace \OSFG to override the enabled sleep states */
+void acpigen_ssdt_override_sleep_states(bool enable_s1, bool enable_s2, bool enable_s3,
+					bool enable_s4);
 
 #endif /* __ACPI_ACPIGEN_H__ */

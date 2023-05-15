@@ -54,12 +54,14 @@ config CPU_SPECIFIC_OPTIONS
 	select CPU_INTEL_FIRMWARE_INTERFACE_TABLE
 	select CPU_SUPPORTS_INTEL_TME
 	select CPU_SUPPORTS_PM_TIMER_EMULATION
+	select DEFAULT_SOFTWARE_CONNECTION_MANAGER if MAINBOARD_HAS_CHROMEOS
 	select DISPLAY_FSP_VERSION_INFO
 	select DRIVERS_USB_ACPI
 	select EDK2_CPU_TIMER_LIB if PAYLOAD_EDK2
 	select FSP_COMPRESS_FSP_S_LZ4
 	select FAST_SPI_SUPPORTS_EXT_BIOS_WINDOW
 	select FSP_M_XIP
+	select FSP_MULTIPHASE_SI_INIT_RETURN_BROKEN
 	select FSP_STATUS_GLOBAL_RESET_REQUIRED_3
 	select FSP_USES_CB_DEBUG_EVENT_HANDLER
 	select FSPS_HAS_ARCH_UPD
@@ -73,6 +75,8 @@ config CPU_SPECIFIC_OPTIONS
 	select INTEL_GMA_ACPI
 	select INTEL_GMA_ADD_VBT if RUN_FSP_GOP
 	select INTEL_GMA_OPREGION_2_1
+	select INTEL_TXT_LIB
+	select MP_SERVICES_PPI_V2
 	select MRC_SETTINGS_PROTECT
 	select PARALLEL_MP_AP_WORK
 	select PLATFORM_USES_FSP2_2
@@ -80,6 +84,8 @@ config CPU_SPECIFIC_OPTIONS
 	select SOC_INTEL_COMMON
 	select CPU_INTEL_COMMON_VOLTAGE
 	select SOC_INTEL_COMMON_ACPI_WAKE_SOURCE
+	select SOC_INTEL_COMMON_BASECODE
+	select SOC_INTEL_COMMON_BASECODE_RAMTOP
 	select SOC_INTEL_COMMON_BLOCK
 	select SOC_INTEL_COMMON_BLOCK_ACPI
 	select SOC_INTEL_COMMON_BLOCK_ACPI_CPPC
@@ -103,6 +109,7 @@ config CPU_SPECIFIC_OPTIONS
 	select SOC_INTEL_COMMON_BLOCK_HECI1_DISABLE_USING_PMC_IPC
 	select SOC_INTEL_COMMON_BLOCK_IPU if !SOC_INTEL_ALDERLAKE_PCH_S
 	select SOC_INTEL_COMMON_BLOCK_IRQ
+	select SOC_INTEL_COMMON_BLOCK_ME_SPEC_16
 	select SOC_INTEL_COMMON_BLOCK_MEMINIT
 	select SOC_INTEL_COMMON_BLOCK_PCIE_RTD3
 	select SOC_INTEL_COMMON_BLOCK_PMC_EPOC
@@ -111,13 +118,13 @@ config CPU_SPECIFIC_OPTIONS
 	select SOC_INTEL_COMMON_BLOCK_SMM
 	select SOC_INTEL_COMMON_BLOCK_SMM_IO_TRAP
 	select SOC_INTEL_COMMON_BLOCK_THERMAL_BEHIND_PMC
+	select SOC_INTEL_COMMON_BLOCK_VTD
 	select SOC_INTEL_COMMON_BLOCK_XHCI
 	select SOC_INTEL_COMMON_BLOCK_XHCI_ELOG
-	select SOC_INTEL_COMMON_BASECODE
 	select SOC_INTEL_COMMON_FSP_RESET
 	select SOC_INTEL_COMMON_PCH_CLIENT
 	select SOC_INTEL_COMMON_RESET
-	select SOC_INTEL_CSE_SEND_EOP_LATE
+	select SOC_INTEL_CSE_SEND_EOP_LATE if !BOARD_GOOGLE_BRYA_COMMON
 	select SOC_INTEL_CSE_SET_EOP
 	select SOC_INTEL_MEM_MAPPED_PM_CONFIGURATION
 	select HAVE_INTEL_COMPLIANCE_TEST_MODE
@@ -127,6 +134,7 @@ config CPU_SPECIFIC_OPTIONS
 	select UDELAY_TSC
 	select UDK_202005_BINDING
 	select VBOOT_LIB
+	select X86_CLFLUSH_CAR
 
 config SOC_INTEL_ALDERLAKE_TCSS_USB4_SUPPORT
 	bool
@@ -154,6 +162,7 @@ config ALDERLAKE_CAR_ENHANCED_NEM
 
 config MAX_CPUS
 	int
+	default 32 if SOC_INTEL_RAPTORLAKE
 	default 24
 
 config DCACHE_RAM_BASE
@@ -204,6 +213,9 @@ config IED_REGION_SIZE
 config HEAP_SIZE
 	hex
 	default 0x10000
+
+config GFX_GMA_DEFAULT_MMIO
+	default 0xaf000000 if MAINBOARD_HAS_EARLY_LIBGFXINIT
 
 # Intel recommends reserving the following resources per PCIe TBT root port,
 # from ADL BIOS Spec (doc #627270) Revision 0.6.0 Section 7.2.5.1.5
@@ -290,6 +302,14 @@ config CPU_BCLK_MHZ
 	int
 	default 100
 
+config SOC_INTEL_PERFORMANCE_CORE_SCALE_FACTOR
+	int
+	default 127
+
+config SOC_INTEL_EFFICIENT_CORE_SCALE_FACTOR
+	int
+	default 100
+
 config SOC_INTEL_COMMON_BLOCK_GSPI_CLOCK_MHZ
 	int
 	default 120
@@ -312,12 +332,6 @@ config SOC_INTEL_COMMON_BLOCK_GSPI_MAX
 config SOC_INTEL_I2C_DEV_MAX
 	int
 	default 8
-
-config SOC_INTEL_ALDERLAKE_S3
-	bool
-	default n
-	help
-	  Select if using S3 instead of S0ix to disable D3Cold.
 
 config ENABLE_SATA_TEST_MODE
 	bool "Enable test mode for SATA margining"
@@ -368,7 +382,13 @@ config CBFS_SIZE
 
 config PRERAM_CBMEM_CONSOLE_SIZE
 	hex
-	default 0x2000
+	default 0x16000 if CONSOLE_SERIAL
+	default 0x4000
+
+config CONSOLE_CBMEM_BUFFER_SIZE
+	hex
+	default 0x100000 if CONSOLE_SERIAL
+	default 0x40000
 
 config FSP_TYPE_IOT
 	bool
@@ -434,30 +454,27 @@ config ALDERLAKE_ENABLE_SOC_WORKAROUND
 	help
 	  Selects the workarounds applicable for Alder Lake SoC.
 
-choice
-	prompt "Multiprocessor (MP) Initialization configuration to use"
-	default USE_FSP_MP_INIT
-
-config USE_FSP_MP_INIT
-	bool "Use FSP MP init"
-	select MP_SERVICES_PPI_V2
+config USE_UNIFIED_AP_FIRMWARE_FOR_UFS_AND_NON_UFS
+	bool
 	help
-	  Upon selection, coreboot brings APs from reset and the FSP runs feature programming.
+	  Alder Lake SoC based OEM board design with UFS and non-UFS planned to use an
+	  unified AP firmware which demanded to have a unified descriptor. It means UFS
+	  controller needs to default fuse enabled to let UFS SKU to boot.
 
-config USE_COREBOOT_MP_INIT
-	bool "Use coreboot MP init"
-	# FSP assumes ownership of the APs (Application Processors)
-	# upon passing `NULL` pointer to the CpuMpPpi FSP-S UPD.
-	# Hence, select `MP_SERVICES_PPI_V2_NOOP` config to pass a valid
-	# pointer to the CpuMpPpi UPD with FSP_UNSUPPORTED type APIs.
-	# This will protect APs from getting hijacked by FSP while coreboot
-	# decides to set SkipMpInit UPD.
-	select MP_SERVICES_PPI_V2_NOOP
-	select RELOAD_MICROCODE_PATCH
-	help
-	  Upon selection, coreboot performs MP Init.
+	  On such design with non-UFS SKU is exhibiting S0ix failure due to UFS remain
+	  enabled in the strap although FSP-S is making the UFS controller function
+	  disabled. The potential root cause of this behaviour is although the UFS
+	  controller is function disabled but MPHY clock is still in active state.
 
-endchoice
+	  A possible solution to this problem is to issue a warm reboot (if boot path is
+	  S5->S0 or G3->S0) after disabling the UFS and let PMC to read the function
+	  disable state of the UFS for disabling the MPHY clock.
+
+	  Mainboard users with such board design where OEM would like to use an unified AP
+	  firmware to support both UFS and non-UFS sku booting might need to choose this
+	  config to allow disabling UFS while booting on the non-UFS SKU.
+	  Note: selection of this config would introduce an additional warm reset in
+	  cold-reset scenarios due to function disabling of the UFS controller.
 
 if STITCH_ME_BIN
 
@@ -495,5 +512,19 @@ config INTEL_GMA_BCLM_OFFSET
 
 config INTEL_GMA_BCLM_WIDTH
 	default 32
+
+config FSP_PUBLISH_MBP_HOB
+	bool
+	default n if CHROMEOS && (SOC_INTEL_RAPTORLAKE || SOC_INTEL_ALDERLAKE_PCH_N)
+	default y
+	help
+	  This is to control creation of ME_BIOS_PAYLOAD_HOB (MBP HOB) by FSP.
+	  Disabling it for the platforms, which do not use MBP HOB, can improve the boot time.
+
+	  Note: It cannot be disabled for ADL-P based platforms because ADL-P FSP relies on
+	  MBP HOB for ChipsetInit version for ChipsetInit sync. As ChipsetInit sync doesn't
+	  occur if no MBP HOB, so it results S0ix issue. This limitation is addressed in the
+	  later platforms so creation of MBP HOB can be skipped for ADL-N and RPL based
+	  platforms.
 
 endif

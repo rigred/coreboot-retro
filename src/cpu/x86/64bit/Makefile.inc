@@ -1,10 +1,4 @@
-bootblock-y += mode_switch.S
-ifneq ($(CONFIG_VBOOT_STARTS_BEFORE_BOOTBLOCK),y)
-verstage-y += mode_switch.S
-endif
-romstage-y += mode_switch.S
-postcar-y += mode_switch.S
-ramstage-y += mode_switch.S
+all_x86-y += mode_switch.S
 
 # Add --defsym=_start=0 to suppress a linker warning.
 $(objcbfs)/pt: $(dir)/pt.S $(obj)/config.h

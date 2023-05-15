@@ -6,13 +6,13 @@
 #include <cpu/x86/msr.h>
 #include <hob_iiouds.h>
 
+void lock_pam0123(void);
 void unlock_pam_regions(void);
-uint8_t get_stack_busno(const uint8_t stack);
+
 msr_t read_msr_ppin(void);
 int get_platform_thread_count(void);
 const IIO_UDS *get_iio_uds(void);
 unsigned int soc_get_num_cpus(void);
-void xeonsp_init_cpu_config(void);
 void set_bios_init_completion(void);
 uint8_t soc_get_iio_ioapicid(int socket, int stack);
 
@@ -23,5 +23,6 @@ struct iiostack_resource {
 
 void get_iiostack_info(struct iiostack_resource *info);
 bool is_iio_stack_res(const STACK_RES *res);
+void bios_done_msr(void *unused);
 
 #endif

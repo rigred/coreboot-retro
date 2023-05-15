@@ -34,9 +34,6 @@
 #define APU_DMAC4_BASE			0xfedd0000
 #define APU_UART4_BASE			0xfedd1000
 
-#define APU_EMMC_BASE			0xfedd5000
-#define APU_EMMC_CONFIG_BASE		0xfedd5800
-
 #endif /* ENV_X86 */
 
 #define FLASH_BASE_ADDR			((0xffffffff - CONFIG_ROM_SIZE) + 1)
@@ -48,7 +45,7 @@
 #define   ACPI_PM1_EN			(ACPI_PM_EVT_BLK + 0x02)
 #define  ACPI_PM1_CNT_BLK		(ACPI_IO_BASE + 0x04)
 #define  ACPI_PM_TMR_BLK		(ACPI_IO_BASE + 0x08)
-#define  ACPI_CPU_CONTROL		(ACPI_IO_BASE + 0x10)
+#define  ACPI_CSTATE_CONTROL		(ACPI_IO_BASE + 0x10)
 #define  ACPI_GPE0_BLK			(ACPI_IO_BASE + 0x20)
 #define   ACPI_GPE0_STS			(ACPI_GPE0_BLK + 0x00)
 #define   ACPI_GPE0_EN			(ACPI_GPE0_BLK + 0x04)

@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 
 #include <assert.h>
+#include <amdblocks/acpi.h>
 #include <amdblocks/biosram.h>
 #include <amdblocks/hda.h>
 #include <device/pci_ops.h>
@@ -13,7 +14,6 @@
 #include <cpu/amd/mtrr.h>
 #include <cpu/x86/lapic_def.h>
 #include <cpu/x86/msr.h>
-#include <cpu/amd/msr.h>
 #include <device/device.h>
 #include <device/pci.h>
 #include <device/pci_ids.h>
@@ -50,9 +50,9 @@ static void set_mmio_addr_reg(u32 nodeid, u32 linkn, u32 reg, u32 index,
 
 	/* io range allocation.  Limit */
 	tempreg = (nodeid & 0xf) | (linkn << 4) | (mmio_max & 0xffffff00);
-		pci_write_config32(SOC_ADDR_DEV, reg + 4, tempreg);
+	pci_write_config32(SOC_ADDR_DEV, reg + 4, tempreg);
 	tempreg = 3 | (nodeid & 0x30) | (mmio_min & 0xffffff00);
-		pci_write_config32(SOC_ADDR_DEV, reg, tempreg);
+	pci_write_config32(SOC_ADDR_DEV, reg, tempreg);
 }
 
 static void read_resources(struct device *dev)
@@ -187,61 +187,24 @@ static unsigned long acpi_fill_hest(acpi_hest_t *hest)
 	return (unsigned long)current;
 }
 
-static void northbridge_fill_ssdt_generator(const struct device *device)
-{
-	msr_t msr;
-	char pscope[] = "\\_SB.PCI0";
-
-	acpigen_write_scope(pscope);
-	msr = rdmsr(TOP_MEM);
-	acpigen_write_name_dword("TOM1", msr.lo);
-	msr = rdmsr(TOP_MEM2);
-	/*
-	 * Since XP only implements parts of ACPI 2.0, we can't use a qword
-	 * here.
-	 * See http://www.acpi.info/presentations/S01USMOBS169_OS%2520new.ppt
-	 * slide 22ff.
-	 * Shift value right by 20 bit to make it fit into 32bit,
-	 * giving us 1MB granularity and a limit of almost 4Exabyte of memory.
-	 */
-	acpigen_write_name_dword("TOM2", (msr.hi << 12) | msr.lo >> 20);
-	acpigen_pop_len();
-}
-
-static void patch_ssdt_processor_scope(acpi_header_t *ssdt)
-{
-	unsigned int len = ssdt->length - sizeof(acpi_header_t);
-	unsigned int i;
-
-	for (i = sizeof(acpi_header_t); i < len; i++) {
-		/* Search for _PR_ scope and replace it with _SB_ */
-		if (*(uint32_t *)((unsigned long)ssdt + i) == 0x5f52505f)
-			*(uint32_t *)((unsigned long)ssdt + i) = 0x5f42535f;
-	}
-	/* Recalculate checksum */
-	ssdt->checksum = 0;
-	ssdt->checksum = acpi_checksum((void *)ssdt, ssdt->length);
-}
-
 static unsigned long agesa_write_acpi_tables(const struct device *device,
 					     unsigned long current,
 					     acpi_rsdp_t *rsdp)
 {
 	acpi_srat_t *srat;
 	acpi_slit_t *slit;
-	acpi_header_t *ssdt;
 	acpi_header_t *alib;
 	acpi_header_t *ivrs;
 	acpi_hest_t *hest;
 
 	/* HEST */
-	current = ALIGN_UP(current, 8);
+	current = acpi_align_current(current);
 	hest = (acpi_hest_t *)current;
 	acpi_write_hest(hest, acpi_fill_hest);
 	acpi_add_table(rsdp, (void *)current);
 	current += hest->header.length;
 
-	current = ALIGN_UP(current, 8);
+	current = acpi_align_current(current);
 	printk(BIOS_DEBUG, "ACPI:    * IVRS at %lx\n", current);
 	ivrs = agesawrapper_getlateinitptr(PICK_IVRS);
 	if (ivrs != NULL) {
@@ -254,7 +217,7 @@ static unsigned long agesa_write_acpi_tables(const struct device *device,
 	}
 
 	/* SRAT */
-	current = ALIGN_UP(current, 8);
+	current = acpi_align_current(current);
 	printk(BIOS_DEBUG, "ACPI:    * SRAT at %lx\n", current);
 	srat = (acpi_srat_t *)agesawrapper_getlateinitptr(PICK_SRAT);
 	if (srat != NULL) {
@@ -267,7 +230,7 @@ static unsigned long agesa_write_acpi_tables(const struct device *device,
 	}
 
 	/* SLIT */
-	current = ALIGN_UP(current, 8);
+	current = acpi_align_current(current);
 	printk(BIOS_DEBUG, "ACPI:   * SLIT at %lx\n", current);
 	slit = (acpi_slit_t *)agesawrapper_getlateinitptr(PICK_SLIT);
 	if (slit != NULL) {
@@ -280,7 +243,7 @@ static unsigned long agesa_write_acpi_tables(const struct device *device,
 	}
 
 	/* ALIB */
-	current = ALIGN_UP(current, 16);
+	current = acpi_align_current(current);
 	printk(BIOS_DEBUG, "ACPI:  * AGESA ALIB SSDT at %lx\n", current);
 	alib = (acpi_header_t *)agesawrapper_getlateinitptr(PICK_ALIB);
 	if (alib != NULL) {
@@ -293,19 +256,6 @@ static unsigned long agesa_write_acpi_tables(const struct device *device,
 							" Skipping.\n");
 	}
 
-	current   = ALIGN_UP(current, 16);
-	printk(BIOS_DEBUG, "ACPI:    * SSDT at %lx\n", current);
-	ssdt = (acpi_header_t *)agesawrapper_getlateinitptr(PICK_PSTATE);
-	if (ssdt != NULL) {
-		patch_ssdt_processor_scope(ssdt);
-		memcpy((void *)current, ssdt, ssdt->length);
-		ssdt = (acpi_header_t *)current;
-		current += ssdt->length;
-	} else {
-		printk(BIOS_DEBUG, "  AGESA PState table NULL. Skipping.\n");
-	}
-	acpi_add_table(rsdp, ssdt);
-
 	printk(BIOS_DEBUG, "ACPI:    * SSDT for PState at %lx\n", current);
 	return current;
 }
@@ -315,7 +265,7 @@ struct device_operations stoneyridge_northbridge_operations = {
 	.set_resources	  = set_resources,
 	.enable_resources = pci_dev_enable_resources,
 	.init		  = northbridge_init,
-	.acpi_fill_ssdt   = northbridge_fill_ssdt_generator,
+	.acpi_fill_ssdt   = acpi_fill_root_complex_tom,
 	.write_acpi_tables = agesa_write_acpi_tables,
 };
 
@@ -326,7 +276,7 @@ struct device_operations stoneyridge_northbridge_operations = {
  */
 void amd_initcpuio(void)
 {
-	uintptr_t topmem = amd_topmem();
+	uintptr_t topmem = get_top_of_mem_below_4gb();
 	uintptr_t base, limit;
 
 	/* Enable legacy video routing: D18F1xF4 VGA Enable */
@@ -377,8 +327,8 @@ void domain_read_resources(struct device *dev)
 	uint64_t uma_base = get_uma_base();
 	uint32_t uma_size = get_uma_size();
 	uint32_t mem_useable = (uintptr_t)cbmem_top();
-	msr_t tom = rdmsr(TOP_MEM);
-	msr_t high_tom = rdmsr(TOP_MEM2);
+	uint32_t tom = get_top_of_mem_below_4gb();
+	uint64_t high_tom = get_top_of_mem_above_4gb();
 	uint64_t high_mem_useable;
 	int idx = 0x10;
 
@@ -402,16 +352,15 @@ void domain_read_resources(struct device *dev)
 
 	/* Low top usable RAM -> Low top RAM (bottom pci mmio hole) */
 	reserved_ram_resource_kb(dev, idx++, mem_useable / KiB,
-					(tom.lo - mem_useable) / KiB);
+					(tom - mem_useable) / KiB);
 
 	/* If there is memory above 4GiB */
-	if (high_tom.hi) {
+	if (high_tom >> 32) {
 		/* 4GiB -> high top usable */
 		if (uma_base >= (4ull * GiB))
 			high_mem_useable = uma_base;
 		else
-			high_mem_useable = ((uint64_t)high_tom.lo |
-						((uint64_t)high_tom.hi << 32));
+			high_mem_useable = high_tom;
 
 		ram_resource_kb(dev, idx++, (4ull * GiB) / KiB,
 				((high_mem_useable - (4ull * GiB)) / KiB));
@@ -422,27 +371,6 @@ void domain_read_resources(struct device *dev)
 						uma_size / KiB);
 		}
 	}
-}
-
-/*********************************************************************
- * Change the vendor / device IDs to match the generic VBIOS header. *
- *********************************************************************/
-u32 map_oprom_vendev(u32 vendev)
-{
-	u32 new_vendev;
-
-	if ((vendev >= 0x100298e0) && (vendev <= 0x100298ef))
-		new_vendev = 0x100298e0;
-	else if ((vendev >= 0x10029870) && (vendev <= 0x1002987f))
-		new_vendev = 0x10029870;
-	else
-		new_vendev = vendev;
-
-	if (vendev != new_vendev)
-		printk(BIOS_NOTICE, "Mapping PCI device %8x to %8x\n",
-				vendev, new_vendev);
-
-	return new_vendev;
 }
 
 __weak void set_board_env_params(GNB_ENV_CONFIGURATION *params) { }

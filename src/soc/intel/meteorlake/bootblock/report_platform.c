@@ -19,6 +19,7 @@ static struct {
 } cpu_table[] = {
 	{ CPUID_METEORLAKE_A0_1, "MeteorLake A0" },
 	{ CPUID_METEORLAKE_A0_2, "MeteorLake A0" },
+	{ CPUID_METEORLAKE_B0,   "MeteorLake B0" },
 };
 
 static struct {
@@ -30,6 +31,7 @@ static struct {
 	{ PCI_DID_INTEL_MTL_P_ID_2, "MeteorLake P" },
 	{ PCI_DID_INTEL_MTL_P_ID_3, "MeteorLake P" },
 	{ PCI_DID_INTEL_MTL_P_ID_4, "MeteorLake P" },
+	{ PCI_DID_INTEL_MTL_P_ID_5, "MeteorLake P" },
 };
 
 static struct {

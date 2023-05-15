@@ -8,7 +8,6 @@
 #include <device/mmio.h>
 #include <assert.h>
 #include <device/pci.h>
-#include <device/pci_def.h>
 #include <device/pci_ids.h>
 #include <device/pci_ops.h>
 #include <console/console.h>
@@ -456,6 +455,24 @@ void fast_spi_disable_wp(void)
 	bios_cntl = pci_read_config8(dev, SPI_BIOS_CONTROL);
 	bios_cntl |= SPI_BIOS_CONTROL_WPD;
 	pci_write_config8(dev, SPI_BIOS_CONTROL, bios_cntl);
+}
+
+void fast_spi_set_bde(void)
+{
+	const pci_devfn_t dev = PCH_DEV_SPI;
+
+	pci_or_config32(dev, SPI_BIOS_DECODE_EN, SPI_BIOS_DECODE_LOCK);
+}
+
+/* Set FAST_SPIBAR + SPIBAR_SFDP0_VSCC0 (0xc4) Vendor Control Lock */
+void fast_spi_set_vcl(void)
+{
+	void *spibar = fast_spi_get_bar();
+	uint32_t vcss;
+
+	vcss = read32(spibar + SPIBAR_SFDP0_VSCC0);
+	vcss |= SPIBAR_SFDP0_VSCC0_VCL;
+	write32(spibar + SPIBAR_SFDP0_VSCC0, vcss);
 }
 
 void fast_spi_clear_outstanding_status(void)

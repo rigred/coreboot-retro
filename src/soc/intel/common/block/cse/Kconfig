@@ -45,6 +45,27 @@ config SOC_INTEL_COMMON_BLOCK_HECI1_DISABLE_USING_PCR
 	  Use this config for SoC platform prior to CNL PCH (with postboot_sai implemented)
 	  to make `HECI1` device disable using private configuration register (PCR) write.
 
+config SOC_INTEL_STORE_CSE_FPT_PARTITION_VERSION
+	bool
+	default n
+	depends on DRIVERS_INTEL_ISH
+	help
+	  This configuration option stores CSE FPT partitions' version in CBMEM memory.
+	  This information can be used to identify the currently running firmware partition
+	  version.
+
+	  The cost of sending HECI command to read the CSE FPT is significant (~200ms)
+	  hence, the idea is to read the CSE RW version on every cold reset (to cover
+	  the CSE update scenarios) and store into CBMEM to avoid the cost of resending
+	  the HECI command in all consecutive warm boots.
+
+	  Later boot stages can just read the CBMEM ID to retrieve the ISH version if
+	  required.
+
+	  Additionally, ensure this feature is platform specific hence, only enabled
+	  for the platform that would like to store the ISH version into the CBMEM and
+	  parse to perform some additional work.
+
 config SOC_INTEL_CSE_SEND_EOP_EARLY
 	bool "CSE send EOP early"
 	depends on SOC_INTEL_COMMON_BLOCK_CSE
@@ -66,6 +87,25 @@ config SOC_INTEL_CSE_SEND_EOP_LATE
 	  SoC can use this Kconfig to send EOP later by itself.
 	  Starting with Jasper Lake, coreboot sends EOP before loading payload hence, this
 	  config is applicable for those platforms.
+
+config SOC_INTEL_CSE_SEND_EOP_ASYNC
+	bool
+	depends on SOC_INTEL_COMMON_BLOCK_CSE
+	depends on !SOC_INTEL_CSE_SEND_EOP_LATE
+	depends on !SOC_INTEL_CSE_SEND_EOP_EARLY
+	help
+	  Use this config to handle End Of Post (EOP) completion
+	  asynchronously. The EOP command is sent first and the result
+	  is checked later leaving time to CSE to complete the
+	  operation while coreboot perform other activities.
+	  Performing EOP asynchronously reduces the time spent
+	  actively waiting for command completion which can have a
+	  significant impact on boot time.
+
+	  Using this asynchronous approach comes with the limitation
+	  that no HECI command should be sent between the time the EOP
+	  request is posted (at CSE .final device operation) and the
+	  time coreboot check for its completion (BS_PAYLOAD_LOAD).
 
 config SOC_INTEL_CSE_LITE_SKU
 	bool
@@ -192,9 +232,23 @@ config SOC_INTEL_CSE_PRE_CPU_RESET_TELEMETRY
 	  Mainboard user to select this Kconfig in order to capture pre-cpu
 	  reset boot performance telemetry data.
 
+config SOC_INTEL_CSE_PRE_CPU_RESET_TELEMETRY_V1
+	bool
+	select SOC_INTEL_CSE_PRE_CPU_RESET_TELEMETRY
+	help
+	  This config will make mainboard use version 1 of the CSE timestamp
+	  definitions, it can be used for Alder Lake and Raptor Lake (all SKUs).
+
+config SOC_INTEL_CSE_PRE_CPU_RESET_TELEMETRY_V2
+	bool
+	select SOC_INTEL_CSE_PRE_CPU_RESET_TELEMETRY
+	help
+	  This config will make mainboard use version 2 of the CSE timestamp
+	  definitions, it can be used for Meteor Lake M/P.
+
 config SOC_INTEL_CSE_LITE_SYNC_IN_ROMSTAGE
 	bool
-	default y
+	default !SOC_INTEL_CSE_LITE_SYNC_IN_RAMSTAGE
 	depends on SOC_INTEL_CSE_LITE_SKU && !SOC_INTEL_CSE_LITE_COMPRESS_ME_RW
 	help
 	 Use default flow of CSE FW Update in romstage when uncompressed ME_RW blobs are used.
@@ -202,9 +256,67 @@ config SOC_INTEL_CSE_LITE_SYNC_IN_ROMSTAGE
 config SOC_INTEL_CSE_LITE_SYNC_IN_RAMSTAGE
 	bool
 	default n
-	depends on SOC_INTEL_CSE_LITE_COMPRESS_ME_RW
 	help
-	 Use this option for CSE FW Update when compressed blobs are used.
+	 Use this option if CSE RW update needs to be triggered during RAMSTAGE.
+
+config SOC_INTEL_CSE_HAVE_SPEC_SUPPORT
+	bool
+	depends on SOC_INTEL_COMMON_BLOCK_CSE
+	default n
+	help
+	 This option config will allow SoC platform to use applicable ME specification.
+	 The version based CSE measured ME specification data structures are defined at
+	 common code. Enabling this option will use those CSE defined ME specification
+	 for the SoC. User should select pertinent ME spec version along with this option.
+
+config SOC_INTEL_COMMON_BLOCK_ME_SPEC_12
+	bool
+	select SOC_INTEL_CSE_HAVE_SPEC_SUPPORT
+	help
+	  This config will enable 'ME specification version 12'. It will ensure ME specific
+	  declaration and uses of required data structures for Host firmware status registers.
+
+config SOC_INTEL_COMMON_BLOCK_ME_SPEC_13
+	bool
+	select SOC_INTEL_CSE_HAVE_SPEC_SUPPORT
+	help
+	  This config will enable 'ME specification version 13'. It will ensure ME specific
+	  declaration and uses of required data structures for Host firmware status registers.
+
+config SOC_INTEL_COMMON_BLOCK_ME_SPEC_15
+	bool
+	select SOC_INTEL_CSE_HAVE_SPEC_SUPPORT
+	help
+	  This config will enable 'ME specification version 15'. It will ensure ME specific
+	  declaration and uses of required data structures for Host firmware status registers.
+
+config SOC_INTEL_COMMON_BLOCK_ME_SPEC_16
+	bool
+	select SOC_INTEL_CSE_HAVE_SPEC_SUPPORT
+	help
+	  This config will enable 'ME specification version 16'. It will ensure ME specific
+	  declaration and uses of required data structures for Host firmware status registers.
+
+config SOC_INTEL_COMMON_BLOCK_ME_SPEC_18
+	bool
+	select SOC_INTEL_CSE_HAVE_SPEC_SUPPORT
+	help
+	  This config will enable 'ME specification version 18'. It will ensure ME specific
+	  declaration and uses of required data structures for Host firmware status registers.
+
+if SOC_INTEL_CSE_HAVE_SPEC_SUPPORT
+
+config ME_SPEC
+	int
+	default 12 if SOC_INTEL_COMMON_BLOCK_ME_SPEC_12
+	default 13 if SOC_INTEL_COMMON_BLOCK_ME_SPEC_13
+	default 15 if SOC_INTEL_COMMON_BLOCK_ME_SPEC_15
+	default 16 if SOC_INTEL_COMMON_BLOCK_ME_SPEC_16
+	default 18 if SOC_INTEL_COMMON_BLOCK_ME_SPEC_18
+	help
+	  This config holds the ME spec version if defined.
+
+endif # SOC_INTEL_CSE_HAVE_SPEC_SUPPORT
 
 if STITCH_ME_BIN
 

@@ -6,14 +6,13 @@
 #include <acpi/acpi.h>
 #include <amdblocks/acpi.h>
 
+#define ACPI_SCI_IRQ 9
+
 #if CONFIG(STONEYRIDGE_LEGACY_FREE)
 	#define FADT_BOOT_ARCH ACPI_FADT_LEGACY_FREE
 #else
 	#define FADT_BOOT_ARCH (ACPI_FADT_LEGACY_DEVICES | ACPI_FADT_8042)
 #endif
-
-/* RTC Registers */
-#define RTC_DATE_ALARM		0x0d
 
 const char *soc_acpi_name(const struct device *dev);
 

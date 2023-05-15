@@ -4,20 +4,18 @@
 #define _SOC_CHIP_H_
 
 #include <drivers/i2c/designware/dw_i2c.h>
+#include <gpio.h>
 #include <intelblocks/cfg.h>
-#include <intelblocks/gpio.h>
 #include <intelblocks/gspi.h>
 #include <intelblocks/pcie_rp.h>
 #include <intelblocks/power_limit.h>
 #include <soc/gpe.h>
-#include <soc/gpio.h>
-#include <soc/gpio_defs.h>
 #include <soc/pch.h>
 #include <soc/pci_devs.h>
 #include <soc/pmc.h>
 #include <soc/serialio.h>
 #include <soc/usb.h>
-#include <stdint.h>
+#include <types.h>
 
 #define MAX_HD_AUDIO_SDI_LINKS	2
 #define MAX_HD_AUDIO_DMIC_LINKS	2
@@ -103,6 +101,13 @@ enum fivr_supported_voltage {
 					  FIVR_VOLTAGE_MIN_RETENTION,
 };
 
+/* SATA speed limit */
+enum sata_speed_limit {
+	SATA_DEFAULT = 0,
+	SATA_GEN1,
+	SATA_GEN2
+};
+
 struct soc_intel_elkhartlake_config {
 
 	/* Common struct containing soc config data required by common code */
@@ -181,6 +186,8 @@ struct soc_intel_elkhartlake_config {
 	uint8_t SataSalpSupport;
 	uint8_t SataPortsEnable[CONFIG_MAX_SATA_PORTS];
 	uint8_t SataPortsDevSlp[CONFIG_MAX_SATA_PORTS];
+	uint8_t SataPortsSSD[CONFIG_MAX_SATA_PORTS];
+	enum sata_speed_limit SataSpeed;
 	/*
 	 * Enable(0)/Disable(1) SATA Power Optimizer on PCH side.
 	 * Default 0. Setting this to 1 disables the SATA Power Optimizer.
@@ -232,6 +239,9 @@ struct soc_intel_elkhartlake_config {
 
 	/* PCIe RP L1 substate */
 	enum L1_substates_control PcieRpL1Substates[CONFIG_MAX_ROOT_PORTS];
+
+	/* PCIe root port speed. 0: Auto (Default); 1: Gen1; 2: Gen2; 3: Gen3 */
+	uint8_t PcieRpPcieSpeed[CONFIG_MAX_ROOT_PORTS];
 
 	/* eMMC and SD */
 	uint8_t ScsEmmcHs400Enabled;
@@ -332,6 +342,7 @@ struct soc_intel_elkhartlake_config {
 	 */
 	uint8_t DdiPortAConfig;
 	uint8_t DdiPortBConfig;
+	uint8_t DdiPortCConfig;
 
 	/* Enable(1)/Disable(0) HPD */
 	uint8_t DdiPortAHpd;
@@ -457,6 +468,9 @@ struct soc_intel_elkhartlake_config {
 
 	/* Disable L1 prefetcher */
 	bool L1_prefetcher_disable;
+
+	/* Activate real time tuning according to the Real-Time Tuning Guide (doc #640979) */
+	bool realtime_tuning_enable;
 };
 
 typedef struct soc_intel_elkhartlake_config config_t;

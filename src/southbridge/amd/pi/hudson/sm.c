@@ -19,9 +19,16 @@
 * HUDSON enables SATA by default in SMBUS Control.
 */
 
+void ioapic_get_sci_pin(u8 *gsi, u8 *irq, u8 *flags)
+{
+	*gsi = ACPI_SCI_IRQ;
+	*irq = ACPI_SCI_IRQ;
+	*flags = MP_IRQ_TRIGGER_LEVEL | MP_IRQ_POLARITY_LOW;
+}
+
 static void sm_init(struct device *dev)
 {
-	setup_ioapic(VIO_APIC_VADDR, CONFIG_MAX_CPUS);
+	register_new_ioapic_gsi0(VIO_APIC_VADDR);
 }
 
 static int lsmbus_recv_byte(struct device *dev)

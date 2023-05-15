@@ -280,7 +280,6 @@ chip soc/intel/alderlake
 							"ACPI_GPIO_OUTPUT_ACTIVE_LOW(GPP_C6)"
 				register "generic.stop_off_delay_ms" = "1"
 				register "generic.has_power_resource" = "1"
-				register "generic.disable_gpio_export_in_crs" = "1"
 				register "hid_desc_reg_offset" = "0x01"
 				device i2c 10 on end
 			end
@@ -317,6 +316,12 @@ chip soc/intel/alderlake
 				register "sdmode_delay" = "5"
 				device generic 0 on end
 			end
+			chip drivers/sof
+				register "spkr_tplg" = "max98360a"
+				register "jack_tplg" = "rt5682"
+				register "mic_tplg" = "_2ch_pdm1"
+				device generic 0 on end
+			end
 		end
 		device ref pch_espi on
 			chip ec/google/chromeec
@@ -349,6 +354,7 @@ chip soc/intel/alderlake
 						register "type" = "UPC_TYPE_C_USB2_SS_SWITCH"
 						register "use_custom_pld" = "true"
 						register "custom_pld" = "ACPI_PLD_TYPE_C(RIGHT, RIGHT, ACPI_PLD_GROUP(1, 1))"
+						register "usb_lpm_incapable" = "true"
 						device ref tcss_usb3_port2 on end
 					end
 					chip drivers/usb/acpi

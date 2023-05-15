@@ -5,8 +5,10 @@
 #include <amdblocks/acpimmio.h>
 #include <amdblocks/amd_pci_util.h>
 #include <amdblocks/psp.h>
+#include <amdblocks/xhci.h>
 #include <baseboard/variants.h>
 #include <console/console.h>
+#include <cpu/x86/smm.h>
 #include <device/device.h>
 #include <drivers/i2c/tpm/chip.h>
 #include <gpio.h>
@@ -177,13 +179,16 @@ static void mainboard_fill_ssdt(const struct device *dev)
 
 static void mainboard_enable(struct device *dev)
 {
-	printk(BIOS_INFO, "Mainboard " CONFIG_MAINBOARD_PART_NUMBER " Enable.\n");
-
 	dev->ops->acpi_fill_ssdt = mainboard_fill_ssdt;
 
 	/* TODO: b/184678786 - Move into espi_config */
 	/* Unmask eSPI IRQ 1 (Keyboard) */
 	pm_write32(PM_ESPI_INTR_CTRL, PM_ESPI_DEV_INTR_MASK & ~(BIT(1)));
+}
+
+void smm_mainboard_pci_resource_store_init(struct smm_pci_resource_info *slots, size_t size)
+{
+	soc_xhci_store_resources(slots, size);
 }
 
 struct chip_operations mainboard_ops = {

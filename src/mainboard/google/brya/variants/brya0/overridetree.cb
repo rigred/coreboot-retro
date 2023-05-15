@@ -50,6 +50,10 @@ chip soc/intel/alderlake
 
 	register "sagv" = "SaGv_Enabled"
 
+	# As per Intel Advisory doc#723158, the change is required to prevent possible
+	# display flickering issue.
+	register "disable_dynamic_tccold_handshake" = "true"
+
 	register "platform_pmax" = "145"
 
 	register "usb2_ports[7]" = "USB2_PORT_MID(OC_SKIP)"	# Type-A MLB Port
@@ -124,22 +128,51 @@ chip soc/intel/alderlake
 				## Active Policy
 				register "policies.active" = "{
 					[0] = {
-						.target = DPTF_CPU,
+						.target = DPTF_TEMP_SENSOR_0,
 						.thresholds = {
-								TEMP_PCT(85, 90),
-								TEMP_PCT(80, 80),
-								TEMP_PCT(75, 70),
-								TEMP_PCT(70, 50),
-								TEMP_PCT(65, 30),
+								TEMP_PCT(75, 95),
+								TEMP_PCT(70, 90),
+								TEMP_PCT(65, 80),
+								TEMP_PCT(60, 70),
+								TEMP_PCT(55, 60),
+								TEMP_PCT(50, 50),
+								TEMP_PCT(45, 40),
+								TEMP_PCT(40, 30),
 						}
 					},
 					[1] = {
 						.target = DPTF_TEMP_SENSOR_1,
 						.thresholds = {
-								TEMP_PCT(50, 90),
-								TEMP_PCT(48, 70),
-								TEMP_PCT(46, 60),
-								TEMP_PCT(43, 40),
+								TEMP_PCT(75, 95),
+								TEMP_PCT(70, 90),
+								TEMP_PCT(65, 80),
+								TEMP_PCT(60, 70),
+								TEMP_PCT(55, 60),
+								TEMP_PCT(50, 50),
+								TEMP_PCT(45, 40),
+								TEMP_PCT(40, 30),
+						}
+					},
+					[2] = {
+						.target = DPTF_TEMP_SENSOR_2,
+						.thresholds = {
+								TEMP_PCT(82, 97),
+								TEMP_PCT(78, 93),
+								TEMP_PCT(72, 86),
+								TEMP_PCT(66, 60),
+								TEMP_PCT(60, 40),
+						}
+					},
+					[3] = {
+						.target = DPTF_TEMP_SENSOR_3,
+						.thresholds = {
+								TEMP_PCT(75, 95),
+								TEMP_PCT(70, 90),
+								TEMP_PCT(65, 80),
+								TEMP_PCT(60, 70),
+								TEMP_PCT(55, 60),
+								TEMP_PCT(50, 50),
+								TEMP_PCT(45, 40),
 								TEMP_PCT(40, 30),
 						}
 					}
@@ -147,11 +180,133 @@ chip soc/intel/alderlake
 
 				## Passive Policy
 				register "policies.passive" = "{
+					[0] = DPTF_PASSIVE(CPU,         CPU,           97, 5000),
+					[1] = DPTF_PASSIVE(CPU,         TEMP_SENSOR_0, 85, 5000),
+					[2] = DPTF_PASSIVE(CPU,		TEMP_SENSOR_1, 85, 5000),
+					[3] = DPTF_PASSIVE(CHARGER,	TEMP_SENSOR_2, 80, 5000),
+					[4] = DPTF_PASSIVE(CPU,         TEMP_SENSOR_3, 85, 5000),
+				}"
+
+				## Critical Policy
+				register "policies.critical" = "{
+					[0] = DPTF_CRITICAL(CPU,               115, SHUTDOWN),
+					[1] = DPTF_CRITICAL(TEMP_SENSOR_0,      90, SHUTDOWN),
+					[2] = DPTF_CRITICAL(TEMP_SENSOR_1,      90, SHUTDOWN),
+					[3] = DPTF_CRITICAL(TEMP_SENSOR_2,      90, SHUTDOWN),
+					[4] = DPTF_CRITICAL(TEMP_SENSOR_3,      90, SHUTDOWN),
+				}"
+
+				register "controls.power_limits" = "{
+					.pl1 = {
+							.min_power = 28000,
+							.max_power = 28000,
+							.time_window_min = 28 * MSECS_PER_SEC,
+							.time_window_max = 32 * MSECS_PER_SEC,
+							.granularity = 200,
+						},
+					.pl2 = {
+							.min_power = 64000,
+							.max_power = 64000,
+							.time_window_min = 28 * MSECS_PER_SEC,
+							.time_window_max = 32 * MSECS_PER_SEC,
+							.granularity = 1000,
+						}
+				}"
+
+				## Charger Performance Control (Control, mA)
+				register "controls.charger_perf" = "{
+					[0] = { 255, 1700 },
+					[1] = {  24, 1500 },
+					[2] = {  16, 1000 },
+					[3] = {   8,  500 }
+				}"
+
+				## Fan Performance Control (Percent, Speed, Noise, Power)
+				register "controls.fan_perf" = "{
+					[0] = {  90, 6700, 220, 2200, },
+					[1] = {  80, 5800, 180, 1800, },
+					[2] = {  70, 5000, 145, 1450, },
+					[3] = {  60, 4900, 115, 1150, },
+					[4] = {  50, 3838,  90,  900, },
+					[5] = {  40, 2904,  55,  550, },
+					[6] = {  30, 2337,  30,  300, },
+					[7] = {  20, 1608,  15,  150, },
+					[8] = {  10,  800,  10,  100, },
+					[9] = {   0,    0,   0,   50, }
+				}"
+
+				## Fan options
+				register "options.fan.fine_grained_control" = "1"
+				register "options.fan.step_size" = "2"
+
+				device generic 0 on
+					probe THERMAL THERMAL_28W
+				end
+			end
+			chip drivers/intel/dptf
+				## sensor information
+				register "options.tsr[0].desc" = ""DRAM_SOC""
+				register "options.tsr[1].desc" = ""Ambient""
+				register "options.tsr[2].desc" = ""Charger""
+				register "options.tsr[3].desc" = ""WWAN""
+
+				# TODO: below values are initial reference values only
+				## Active Policy
+				register "policies.active" = "{
+					[0] = {
+						.target = DPTF_TEMP_SENSOR_0,
+						.thresholds = {
+								TEMP_PCT(75, 97),
+								TEMP_PCT(70, 93),
+								TEMP_PCT(60, 86),
+								TEMP_PCT(52, 80),
+								TEMP_PCT(47, 64),
+								TEMP_PCT(43, 52),
+								TEMP_PCT(40, 40),
+						}
+					},
+					[1] = {
+						.target = DPTF_TEMP_SENSOR_1,
+						.thresholds = {
+								TEMP_PCT(75, 97),
+								TEMP_PCT(70, 93),
+								TEMP_PCT(60, 86),
+								TEMP_PCT(52, 80),
+								TEMP_PCT(47, 64),
+								TEMP_PCT(43, 52),
+								TEMP_PCT(40, 40),
+						}
+					},
+					[2] = {
+						.target = DPTF_TEMP_SENSOR_2,
+						.thresholds = {
+								TEMP_PCT(82, 97),
+								TEMP_PCT(78, 93),
+								TEMP_PCT(72, 86),
+								TEMP_PCT(60, 80),
+						}
+					},
+					[3] = {
+						.target = DPTF_TEMP_SENSOR_3,
+						.thresholds = {
+								TEMP_PCT(75, 97),
+								TEMP_PCT(70, 93),
+								TEMP_PCT(60, 86),
+								TEMP_PCT(52, 80),
+								TEMP_PCT(47, 64),
+								TEMP_PCT(43, 52),
+								TEMP_PCT(40, 40),
+						}
+					}
+				}"
+
+				## Passive Policy
+				register "policies.passive" = "{
 					[0] = DPTF_PASSIVE(CPU,         CPU,           95, 5000),
-					[1] = DPTF_PASSIVE(CPU,         TEMP_SENSOR_0, 75, 5000),
-					[2] = DPTF_PASSIVE(CPU,		TEMP_SENSOR_1, 75, 5000),
+					[1] = DPTF_PASSIVE(CPU,         TEMP_SENSOR_0, 80, 5000),
+					[2] = DPTF_PASSIVE(CPU,		TEMP_SENSOR_1, 80, 5000),
 					[3] = DPTF_PASSIVE(CHARGER,	TEMP_SENSOR_2, 75, 5000),
-					[4] = DPTF_PASSIVE(CPU,         TEMP_SENSOR_3, 75, 5000),
+					[4] = DPTF_PASSIVE(CPU,         TEMP_SENSOR_3, 80, 5000),
 				}"
 
 				## Critical Policy
@@ -165,7 +320,7 @@ chip soc/intel/alderlake
 
 				register "controls.power_limits" = "{
 					.pl1 = {
-							.min_power = 3000,
+							.min_power = 15000,
 							.max_power = 15000,
 							.time_window_min = 28 * MSECS_PER_SEC,
 							.time_window_max = 32 * MSECS_PER_SEC,
@@ -206,7 +361,9 @@ chip soc/intel/alderlake
 				register "options.fan.fine_grained_control" = "1"
 				register "options.fan.step_size" = "2"
 
-				device generic 0 alias dptf_policy on end
+				device generic 1 on
+					probe THERMAL THERMAL_15W
+				end
 			end
 		end
 		device ref ipu on
@@ -262,6 +419,7 @@ chip soc/intel/alderlake
 				register "srcclk_pin" = "5"
 				register "ext_pm_support" = "ACPI_PCIE_RP_EMIT_ALL"
 				register "skip_on_off_support" = "true"
+				register "use_rp_mutex" = "true"
 				device generic 0 alias rp6_rtd3 on
 					probe DB_LTE LTE_PCIE
 				end
@@ -804,24 +962,7 @@ chip soc/intel/alderlake
 				use conn0 as mux_conn[0]
 				use conn1 as mux_conn[1]
 				use conn2 as mux_conn[2]
-				use ecmux0 as retimer_conn[0]
-				use ecmux1 as retimer_conn[1]
-				use ecmux2 as retimer_conn[2]
-				device pnp 0c09.0 on
-					chip ec/google/chromeec/mux
-						device generic 0 on
-							chip ec/google/chromeec/mux/conn
-								device generic 0 alias ecmux0 on end
-							end
-							chip ec/google/chromeec/mux/conn
-								device generic 1 alias ecmux1 on end
-							end
-							chip ec/google/chromeec/mux/conn
-								device generic 2 alias ecmux2 on end
-							end
-						end
-					end
-				end
+				device pnp 0c09.0 on end
 			end
 		end
 		device ref pmc hidden
@@ -860,6 +1001,7 @@ chip soc/intel/alderlake
 						register "type" = "UPC_TYPE_C_USB2_SS_SWITCH"
 						register "use_custom_pld" = "true"
 						register "custom_pld" = "ACPI_PLD_TYPE_C(RIGHT, LEFT, ACPI_PLD_GROUP(2, 1))"
+						register "usb_lpm_incapable" = "true"
 						device ref tcss_usb3_port2 on end
 					end
 					chip drivers/usb/acpi

@@ -23,11 +23,14 @@ This section contains documentation about coreboot on specific mainboards.
 
 - [A88XM-E](asus/a88xm-e.md)
 - [F2A85-M](asus/f2a85-m.md)
+- [P2B-LS](asus/p2b-ls.md)
+- [P3B-F](asus/p3b-f.md)
 - [P5Q](asus/p5q.md)
 - [P8C WS](asus/p8c_ws.md)
 - [P8H61-M LX](asus/p8h61-m_lx.md)
 - [P8H61-M Pro](asus/p8h61-m_pro.md)
 - [P8H77-V](asus/p8h77-v.md)
+- [P8Z77-M](asus/p8z77-m.md)
 - [P8Z77-M Pro](asus/p8z77-m_pro.md)
 - [P8Z77-V](asus/p8z77-v.md)
 - [wifigo_v1](asus/wifigo_v1.md)
@@ -78,6 +81,7 @@ The boards in this section are not real mainboards, but emulators.
 
 - [HP Laptops with KBC1126 EC](hp/hp_kbc1126_laptops.md)
 - [HP Sure Start](hp/hp_sure_start.md)
+- [EliteBook 2170p](hp/2170p.md)
 - [EliteBook 2560p](hp/2560p.md)
 - [EliteBook 8760w](hp/8760w.md)
 - [EliteBook Folio 9480m](hp/folio_9480m.md)
@@ -85,7 +89,7 @@ The boards in this section are not real mainboards, but emulators.
 ## Intel
 
 - [DG43GT](intel/dg43gt.md)
-- [IceLake RVP](intel/icelake_rvp.md)
+- [DQ67SW](intel/dq67sw.md)
 - [KBLRVP11](intel/kblrvp11.md)
 
 ## Kontron
@@ -169,6 +173,8 @@ The boards in this section are not real mainboards, but emulators.
 
 - [FW2B / FW4B](protectli/fw2b_fw4b.md)
 - [FW6A / FW6B / FW6C](protectli/fw6.md)
+- [VP2420](protectli/vp2420.md)
+- [VP4630 / VP4650 / VP4670](protectli/vp46xx.md)
 
 ## Roda
 
@@ -210,10 +216,13 @@ The boards in this section are not real mainboards, but emulators.
 - [Gazelle 16](system76/gaze16.md)
 - [Lemur Pro 9](system76/lemp9.md)
 - [Lemur Pro 10](system76/lemp10.md)
+- [Lemur Pro 11](system76/lemp11.md)
 - [Oryx Pro 5](system76/oryp5.md)
 - [Oryx Pro 6](system76/oryp6.md)
 - [Oryx Pro 7](system76/oryp7.md)
 - [Oryx Pro 8](system76/oryp8.md)
+- [Oryx Pro 9](system76/oryp9.md)
+- [Oryx Pro 10](system76/oryp10.md)
 
 ## Texas Instruments
 

@@ -1,6 +1,5 @@
 config SOC_INTEL_COMMON_BLOCK_PCIE
 	bool
-	select PCIEXP_ASPM
 	select PCIEXP_COMMON_CLOCK
 	help
 	  Intel Processor common PCIE support
@@ -9,11 +8,26 @@ if SOC_INTEL_COMMON_BLOCK_PCIE
 
 source "src/soc/intel/common/block/pcie/*/Kconfig"
 
+config PCIEXP_ASPM
+	default y
+
 config PCIEXP_CLK_PM
 	default y
 
 config PCIEXP_L1_SUB_STATE
 	default y
+
+config PCIE_LTR_MAX_SNOOP_LATENCY
+	hex
+	default 0x1003
+	help
+	  Latency tolerance reporting, max snoop latency value defaults to 3.14 ms.
+
+config PCIE_LTR_MAX_NO_SNOOP_LATENCY
+	hex
+	default 0x1003
+	help
+	  Latency tolerance reporting, max non-snoop latency value defaults to 3.14 ms.
 
 endif # SOC_INTEL_COMMON_BLOCK_PCIE
 

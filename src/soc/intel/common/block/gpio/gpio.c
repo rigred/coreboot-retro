@@ -187,8 +187,8 @@ static void gpi_enable_gpe(const struct pad_config *cfg,
 	pcr_or32(comm->port, en_reg, en_value);
 
 	if (CONFIG(DEBUG_GPIO)) {
-		printk(BIOS_DEBUG, "GPE_EN[0x%02x, %02zd]: Reg: 0x%x, Value = 0x%x \n",\
-			comm->port, relative_pad_in_comm(comm, cfg->pad), en_reg,\
+		printk(BIOS_DEBUG, "GPE_EN[0x%02x, %02zd]: Reg: 0x%x, Value = 0x%x\n",
+			comm->port, relative_pad_in_comm(comm, cfg->pad), en_reg,
 			pcr_read32(comm->port, en_reg));
 	}
 }
@@ -521,6 +521,18 @@ int gpio_get(gpio_t gpio_num)
 	reg = pcr_read32(comm->port, config_offset);
 
 	return !!(reg & PAD_CFG0_RX_STATE);
+}
+
+int gpio_tx_get(gpio_t gpio_num)
+{
+	const struct pad_community *comm = gpio_get_community(gpio_num);
+	uint16_t config_offset;
+	uint32_t reg;
+
+	config_offset = pad_config_offset(comm, gpio_num);
+	reg = pcr_read32(comm->port, config_offset);
+
+	return !!(reg & PAD_CFG0_TX_STATE);
 }
 
 static void
@@ -1016,7 +1028,7 @@ static void snapshot_cleanup(void *unused)
 	free(snapshot);
 }
 
-BOOT_STATE_INIT_ENTRY(BS_OS_RESUME,    BS_ON_EXIT, snapshot_cleanup, NULL);
+BOOT_STATE_INIT_ENTRY(BS_OS_RESUME, BS_ON_ENTRY, snapshot_cleanup, NULL);
 BOOT_STATE_INIT_ENTRY(BS_PAYLOAD_LOAD, BS_ON_EXIT, snapshot_cleanup, NULL);
 
 bool gpio_get_vw_info(gpio_t pad, unsigned int *vw_index, unsigned int *vw_bit)

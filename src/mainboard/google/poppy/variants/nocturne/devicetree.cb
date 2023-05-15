@@ -244,9 +244,7 @@ chip soc/intel/skylake
 		[PchSerialIoIndexUart2] = PchSerialIoSkipInit,
 	}"
 
-	device cpu_cluster 0 on
-		device lapic 0 on end
-	end
+	device cpu_cluster 0 on end
 	device domain 0 on
 		device pci 00.0 on  end # Host Bridge
 		device pci 02.0 on  end # Integrated Graphics Device
@@ -296,7 +294,6 @@ chip soc/intel/skylake
 				register "generic.enable_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_HIGH(GPP_C22)"
 				register "generic.enable_delay_ms" = "1"
 				register "generic.has_power_resource" = "1"
-				register "generic.disable_gpio_export_in_crs" = "1"
 				register "hid_desc_reg_offset" = "0x1"
 				device i2c 0a on end
 			end

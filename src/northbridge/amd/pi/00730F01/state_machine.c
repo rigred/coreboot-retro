@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 
 #include <amdblocks/biosram.h>
+#include <amdblocks/ioapic.h>
 
 #include "Porting.h"
 #include "AGESA.h"
@@ -64,9 +65,12 @@ void platform_BeforeInitLate(struct sysinfo *cb, AMD_LATE_PARAMS *Late)
 		 * when IOMMU build config is enabled otherwise AGESA will skip
 		 * it during IOMMU init and IVRS generation.
 		 */
-		Late->GnbLateConfiguration.GnbIoapicId = CONFIG_MAX_CPUS + 1;
-		Late->GnbLateConfiguration.FchIoapicId = CONFIG_MAX_CPUS;
+		Late->GnbLateConfiguration.GnbIoapicId = GNB_IOAPIC_ID;
+		Late->GnbLateConfiguration.FchIoapicId = FCH_IOAPIC_ID;
 	}
+
+	/* Make binaryPI use \_SB_ as processor object scope in PSTATE SSDT */
+	Late->PlatformConfig.ProcessorScopeInSb = true;
 
 	/* Code for creating CDIT requires hop count table. If it is not
 	 * present AGESA_ERROR is returned, which confuses users. CDIT is not

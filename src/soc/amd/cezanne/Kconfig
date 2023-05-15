@@ -2,13 +2,6 @@
 
 config SOC_AMD_CEZANNE
 	bool
-	help
-	  AMD Cezanne support
-
-if SOC_AMD_CEZANNE
-
-config SOC_SPECIFIC_OPTIONS
-	def_bool y
 	select ACPI_SOC_NVS
 	select ARCH_X86
 	select BOOT_DEVICE_SUPPORTS_WRITES if BOOT_DEVICE_SPI_FLASH
@@ -39,12 +32,14 @@ config SOC_SPECIFIC_OPTIONS
 	select SOC_AMD_COMMON_BLOCK_ACPIMMIO
 	select SOC_AMD_COMMON_BLOCK_ACPI_ALIB
 	select SOC_AMD_COMMON_BLOCK_ACPI_CPPC
+	select SOC_AMD_COMMON_BLOCK_ACPI_CPU_POWER_STATE
 	select SOC_AMD_COMMON_BLOCK_ACPI_GPIO
 	select SOC_AMD_COMMON_BLOCK_ACPI_IVRS
 	select SOC_AMD_COMMON_BLOCK_AOAC
 	select SOC_AMD_COMMON_BLOCK_APOB
 	select SOC_AMD_COMMON_BLOCK_APOB_HASH
 	select SOC_AMD_COMMON_BLOCK_BANKED_GPIOS
+	select SOC_AMD_COMMON_BLOCK_CPUFREQ_FAM17H_19H
 	select SOC_AMD_COMMON_BLOCK_DATA_FABRIC
 	select SOC_AMD_COMMON_BLOCK_EMMC
 	select SOC_AMD_COMMON_BLOCK_GRAPHICS
@@ -62,17 +57,22 @@ config SOC_SPECIFIC_OPTIONS
 	select SOC_AMD_COMMON_BLOCK_PM
 	select SOC_AMD_COMMON_BLOCK_PM_CHIPSET_STATE_SAVE
 	select SOC_AMD_COMMON_BLOCK_PSP_GEN2
+	select SOC_AMD_COMMON_BLOCK_RESET
 	select SOC_AMD_COMMON_BLOCK_SMBUS
 	select SOC_AMD_COMMON_BLOCK_SMI
 	select SOC_AMD_COMMON_BLOCK_SMM
 	select SOC_AMD_COMMON_BLOCK_SMU
+	select SOC_AMD_COMMON_BLOCK_SMU_SX_ENTRY
 	select SOC_AMD_COMMON_BLOCK_SPI
-	select SOC_AMD_COMMON_BLOCK_TSC_FAM17H_19H
+	select SOC_AMD_COMMON_BLOCK_SVI2
+	select SOC_AMD_COMMON_BLOCK_TSC
 	select SOC_AMD_COMMON_BLOCK_UART
 	select SOC_AMD_COMMON_BLOCK_UCODE
 	select SOC_AMD_COMMON_FSP_CCX_CPPC_HOB
 	select SOC_AMD_COMMON_FSP_DMI_TABLES
 	select SOC_AMD_COMMON_FSP_PCI
+	select SOC_AMD_COMMON_FSP_PRELOAD_FSPS
+	select SOC_AMD_COMMON_BLOCK_XHCI
 	select SSE2
 	select UDK_2017_BINDING
 	select USE_DDR4
@@ -83,6 +83,10 @@ config SOC_SPECIFIC_OPTIONS
 	select VBOOT_DEFINE_WIDEVINE_COUNTERS if VBOOT_STARTS_BEFORE_BOOTBLOCK
 	select X86_AMD_FIXED_MTRRS
 	select X86_INIT_NEED_1_SIPI
+	help
+	  AMD Cezanne support
+
+if SOC_AMD_CEZANNE
 
 config CHIPSET_DEVICETREE
 	string
@@ -251,6 +255,17 @@ config MAX_CPUS
 	help
 	  Maximum number of threads the platform can have.
 
+config VGA_BIOS_ID
+	string
+	default "1002,1638"
+	help
+	  The default VGA BIOS PCI vendor/device ID should be set to the
+	  result of the map_oprom_vendev() function in grapthics.c.
+
+config VGA_BIOS_FILE
+	string
+	default "3rdparty/amd_blobs/cezanne/CezanneGenericVbios.bin"
+
 config CONSOLE_UART_BASE_ADDRESS
 	depends on CONSOLE_SERIAL && AMD_SOC_CONSOLE_UART
 	hex
@@ -305,14 +320,6 @@ config DISABLE_KEYBOARD_RESET_PIN
 	  signal. When this pin is used as GPIO and the keyboard reset
 	  functionality isn't disabled, configuring it as an output and driving
 	  it as 0 will cause a reset.
-
-config ACPI_SSDT_PSD_INDEPENDENT
-	bool "Allow core p-state independent transitions"
-	default y
-	help
-	  AMD recommends the ACPI _PSD object to be configured to cause
-	  cores to transition between p-states independently. A vendor may
-	  choose to generate _PSD object to allow cores to transition together.
 
 menu "PSP Configuration Options"
 

@@ -10,6 +10,7 @@
 #include <fsp/util.h>
 #include <intelblocks/cpulib.h>
 #include <intelblocks/pcie_rp.h>
+#include <option.h>
 #include <soc/gpio_soc_defs.h>
 #include <soc/iomap.h>
 #include <soc/msr.h>
@@ -122,8 +123,10 @@ static void fill_fspm_igd_params(FSP_M_CONFIG *m_cfg,
 static void fill_fspm_mrc_params(FSP_M_CONFIG *m_cfg,
 		const struct soc_intel_meteorlake_config *config)
 {
-	m_cfg->SaGv = config->SaGv;
-	m_cfg->RMT = config->RMT;
+	m_cfg->SaGv = config->sagv;
+	m_cfg->RMT = config->rmt;
+	/* Enable MRC Fast Boot */
+	m_cfg->MrcFastBoot = 1;
 }
 
 static void fill_fspm_cpu_params(FSP_M_CONFIG *m_cfg,
@@ -138,8 +141,7 @@ static void fill_fspm_cpu_params(FSP_M_CONFIG *m_cfg,
 		m_cfg->CpuRatio = (rdmsr(MSR_FLEX_RATIO).lo >> 8) & 0xff;
 
 	m_cfg->PrmrrSize = get_valid_prmrr_size();
-	/* Enable Hyper Threading */
-	m_cfg->HyperThreading = 1;
+	m_cfg->HyperThreading = get_uint_option("hyper_threading", CONFIG(FSP_HYPERTHREADING));
 }
 
 static void fill_fspm_security_params(FSP_M_CONFIG *m_cfg,
@@ -187,7 +189,9 @@ static void fill_fspm_misc_params(FSP_M_CONFIG *m_cfg,
 	m_cfg->GpioOverride = 0x1;
 
 	/* Skip MBP HOB */
-	m_cfg->SkipMbpHob = config->skip_mbp_hob;
+	m_cfg->SkipMbpHob = !CONFIG(FSP_PUBLISH_MBP_HOB);
+
+	m_cfg->SkipExtGfxScan = config->skip_ext_gfx_scan;
 }
 
 static void fill_fspm_audio_params(FSP_M_CONFIG *m_cfg,

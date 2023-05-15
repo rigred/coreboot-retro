@@ -1,7 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 
-/* TODO: Check if this is still correct */
-
 /* PCI IRQ mapping registers, C00h-C01h. */
 OperationRegion(PRQM, SystemIO, 0x00000c00, 0x00000002)
 	Field(PRQM, ByteAcc, NoLock, Preserve) {
@@ -21,9 +19,6 @@ IndexField(PRQI, PRQD, ByteAcc, NoLock, Preserve) {
 	PIRF, 0x00000008,	/* Index 5: INTF */
 	PIRG, 0x00000008,	/* Index 6: INTG */
 	PIRH, 0x00000008,	/* Index 7: INTH */
-
-	Offset (0x43),
-	PMMC, 0x00000008,	/* Index 0x43: eMMC */
 
 	Offset (0x62),
 	PGPI, 0x00000008,	/* Index 0x62: GPIO */
@@ -50,9 +45,6 @@ IndexField(PRQI, PRQD, ByteAcc, NoLock, Preserve) {
 	IORF, 0x00000008,	/* Index 0x85: INTF */
 	IORG, 0x00000008,	/* Index 0x86: INTG */
 	IORH, 0x00000008,	/* Index 0x87: INTH */
-
-	Offset (0xC3),
-	IMMC, 0x00000008,	/* Index 0xC3: eMMC */
 
 	Offset (0xE2),
 	IGPI, 0x00000008,	/* Index 0xE2: GPIO */

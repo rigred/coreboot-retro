@@ -1,8 +1,6 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-source "src/soc/intel/xeon_sp/skx/Kconfig"
-source "src/soc/intel/xeon_sp/cpx/Kconfig"
-source "src/soc/intel/xeon_sp/ras/Kconfig"
+source "src/soc/intel/xeon_sp/*/Kconfig"
 
 config XEON_SP_COMMON_BASE
 	bool
@@ -11,6 +9,7 @@ config SOC_INTEL_SKYLAKE_SP
 	bool
 	select XEON_SP_COMMON_BASE
 	select PLATFORM_USES_FSP2_0
+	select NO_FSP_TEMP_RAM_EXIT
 	help
 	  Intel Skylake-SP support
 
@@ -19,8 +18,19 @@ config SOC_INTEL_COOPERLAKE_SP
 	select XEON_SP_COMMON_BASE
 	select PLATFORM_USES_FSP2_2
 	select CACHE_MRC_SETTINGS
+	select NO_FSP_TEMP_RAM_EXIT
 	help
 	  Intel Cooper Lake-SP support
+
+config SOC_INTEL_SAPPHIRERAPIDS_SP
+	bool
+	select CACHE_MRC_SETTINGS
+	select CPU_INTEL_TURBO_NOT_PACKAGE_SCOPED
+	select PLATFORM_USES_FSP2_3
+	select SOC_INTEL_CSE_SERVER_SKU
+	select XEON_SP_COMMON_BASE
+	help
+	  Intel Sapphire Rapids-SP support
 
 if XEON_SP_COMMON_BASE
 
@@ -38,7 +48,6 @@ config	CPU_SPECIFIC_OPTIONS
 	select HAVE_SMI_HANDLER
 	select INTEL_CAR_NEM # For postcar only now
 	select INTEL_DESCRIPTOR_MODE_CAPABLE
-	select NO_FSP_TEMP_RAM_EXIT
 	select PARALLEL_MP_AP_WORK
 	select PMC_GLOBAL_RESET_ENABLE_LOCK
 	select POSTCAR_STAGE
@@ -47,12 +56,13 @@ config	CPU_SPECIFIC_OPTIONS
 	select SOC_INTEL_COMMON
 	select SOC_INTEL_COMMON_RESET
 	select SOC_INTEL_COMMON_BLOCK
+	select SOC_INTEL_COMMON_BLOCK_ACPI
 	select SOC_INTEL_COMMON_BLOCK_CPU
 	select SOC_INTEL_COMMON_BLOCK_GPIO_DUAL_ROUTE_SUPPORT
 	select SOC_INTEL_COMMON_BLOCK_GPIO_PADCFG_PADTOL
 	select SOC_INTEL_COMMON_BLOCK_PMC_DISCOVERABLE
 	select SOC_INTEL_COMMON_BLOCK_SMM
-	select SOC_INTEL_COMMON_BLOCK_ACPI
+	select SOC_INTEL_COMMON_BLOCK_TCO
 	select SOC_INTEL_COMMON_PCH_SERVER
 	select SUPPORT_CPU_UCODE_IN_CBFS
 	select TSC_MONOTONIC_TIMER
@@ -118,6 +128,10 @@ config ECAM_MMCONF_BUS_NUMBER
 config HEAP_SIZE
 	hex
 	default 0x80000
+
+config HPET_MIN_TICKS
+	hex
+	default 0x80
 
 config SOC_INTEL_XEON_RAS
 	bool

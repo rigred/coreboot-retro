@@ -1,30 +1,11 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
-# TODO: Check if this is still correct
-
 config SOC_AMD_REMBRANDT_BASE
 	bool
-
-config SOC_AMD_MENDOCINO
-	bool
-	select SOC_AMD_REMBRANDT_BASE
-	help
-	  AMD Mendocino support
-
-config SOC_AMD_REMBRANDT
-	bool
-	select SOC_AMD_REMBRANDT_BASE
-	help
-	  AMD Rembrandt support
-
-
-if SOC_AMD_REMBRANDT_BASE
-
-config SOC_SPECIFIC_OPTIONS
-	def_bool y
 	select ACPI_SOC_NVS
 	select ARCH_X86
 	select BOOT_DEVICE_SUPPORTS_WRITES if BOOT_DEVICE_SPI_FLASH
+	select CACHE_MRC_SETTINGS
 	select DRIVERS_USB_ACPI
 	select DRIVERS_USB_PCI_XHCI
 	select FSP_COMPRESS_FSP_M_LZMA if !ASYNC_FILE_LOADING
@@ -44,54 +25,61 @@ config SOC_SPECIFIC_OPTIONS
 	select PARALLEL_MP_AP_WORK
 	select PLATFORM_USES_FSP2_0
 	select PROVIDES_ROM_SHARING
+	select PSP_INCLUDES_HSP
 	select PSP_SUPPORTS_EFS2_RELATIVE_ADDR if VBOOT_STARTS_BEFORE_BOOTBLOCK
 	select PSP_VERSTAGE_CCP_DMA if VBOOT_STARTS_BEFORE_BOOTBLOCK
 	select RESET_VECTOR_IN_RAM
 	select RTC
 	select SOC_AMD_COMMON
 	select SOC_AMD_COMMON_BLOCK_ACP_GEN2
-	select SOC_AMD_COMMON_BLOCK_ACPI	# TODO: Check if this is still correct
+	select SOC_AMD_COMMON_BLOCK_ACPI
 	select SOC_AMD_COMMON_BLOCK_ACPIMMIO
 	select SOC_AMD_COMMON_BLOCK_ACPI_ALIB
 	select SOC_AMD_COMMON_BLOCK_ACPI_CPPC
+	select SOC_AMD_COMMON_BLOCK_ACPI_CPU_POWER_STATE
 	select SOC_AMD_COMMON_BLOCK_ACPI_GPIO
-	select SOC_AMD_COMMON_BLOCK_ACPI_IVRS	# TODO: Check if this is still correct
+	select SOC_AMD_COMMON_BLOCK_ACPI_IVRS
 	select SOC_AMD_COMMON_BLOCK_AOAC
 	select SOC_AMD_COMMON_BLOCK_APOB
 	select SOC_AMD_COMMON_BLOCK_APOB_HASH
-	select SOC_AMD_COMMON_BLOCK_BANKED_GPIOS	# TODO: Check if this is still correct
+	select SOC_AMD_COMMON_BLOCK_BANKED_GPIOS
+	select SOC_AMD_COMMON_BLOCK_CPUFREQ_FAM17H_19H
 	select SOC_AMD_COMMON_BLOCK_DATA_FABRIC
-	select SOC_AMD_COMMON_BLOCK_EMMC
 	select SOC_AMD_COMMON_BLOCK_ESPI_EXTENDED_DECODE_RANGES
-	select SOC_AMD_COMMON_BLOCK_GRAPHICS	# TODO: Check if this is still correct
+	select SOC_AMD_COMMON_BLOCK_GRAPHICS
 	select SOC_AMD_COMMON_BLOCK_HAS_ESPI
 	select SOC_AMD_COMMON_BLOCK_HAS_ESPI_ALERT_ENABLE
 	select SOC_AMD_COMMON_BLOCK_I2C
 	select SOC_AMD_COMMON_BLOCK_I23C_PAD_CTRL
 	select SOC_AMD_COMMON_BLOCK_IOMMU
-	select SOC_AMD_COMMON_BLOCK_LPC		# TODO: Check if this is still correct
+	select SOC_AMD_COMMON_BLOCK_LPC
 	select SOC_AMD_COMMON_BLOCK_LPC_SPI_DMA
 	select SOC_AMD_COMMON_BLOCK_MCAX
-	select SOC_AMD_COMMON_BLOCK_NONCAR	# TODO: Check if this is still correct
-	select SOC_AMD_COMMON_BLOCK_PCI		# TODO: Check if this is still correct
+	select SOC_AMD_COMMON_BLOCK_NONCAR
+	select SOC_AMD_COMMON_BLOCK_PCI
 	select SOC_AMD_COMMON_BLOCK_PCI_MMCONF
-	select SOC_AMD_COMMON_BLOCK_PCIE_GPP_DRIVER	# TODO: Check if this is still correct
+	select SOC_AMD_COMMON_BLOCK_PCIE_GPP_DRIVER
 	select SOC_AMD_COMMON_BLOCK_PCIE_CLK_REQ
-	select SOC_AMD_COMMON_BLOCK_PM		# TODO: Check if this is still correct
-	select SOC_AMD_COMMON_BLOCK_PM_CHIPSET_STATE_SAVE	# TODO: Check if this is still correct
-	select SOC_AMD_COMMON_BLOCK_PSP_GEN2	# TODO: Check if this is still correct
-	select SOC_AMD_COMMON_BLOCK_SMBUS	# TODO: Check if this is still correct
-	select SOC_AMD_COMMON_BLOCK_SMI		# TODO: Check if this is still correct
-	select SOC_AMD_COMMON_BLOCK_SMM		# TODO: Check if this is still correct
+	select SOC_AMD_COMMON_BLOCK_PM
+	select SOC_AMD_COMMON_BLOCK_PM_CHIPSET_STATE_SAVE
+	select SOC_AMD_COMMON_BLOCK_PSP_GEN2
+	select SOC_AMD_COMMON_BLOCK_RESET
+	select SOC_AMD_COMMON_BLOCK_SMBUS
+	select SOC_AMD_COMMON_BLOCK_SMI
+	select SOC_AMD_COMMON_BLOCK_SMM
 	select SOC_AMD_COMMON_BLOCK_SMU
-	select SOC_AMD_COMMON_BLOCK_SPI		# TODO: Check if this is still correct
+	select SOC_AMD_COMMON_BLOCK_SMU_SX_ENTRY
+	select SOC_AMD_COMMON_BLOCK_SPI
 	select SOC_AMD_COMMON_BLOCK_STB
-	select SOC_AMD_COMMON_BLOCK_TSC_FAM17H_19H	# TODO: Check if this is still correct
+	select SOC_AMD_COMMON_BLOCK_SVI3
+	select SOC_AMD_COMMON_BLOCK_TSC
 	select SOC_AMD_COMMON_BLOCK_UART
 	select SOC_AMD_COMMON_BLOCK_UCODE
+	select SOC_AMD_COMMON_BLOCK_XHCI
 	select SOC_AMD_COMMON_FSP_CCX_CPPC_HOB
-	select SOC_AMD_COMMON_FSP_DMI_TABLES	# TODO: Check if this is still correct
-	select SOC_AMD_COMMON_FSP_PCI		# TODO: Check if this is still correct
+	select SOC_AMD_COMMON_FSP_DMI_TABLES
+	select SOC_AMD_COMMON_FSP_PCI
+	select SOC_AMD_COMMON_FSP_PRELOAD_FSPS
 	select SSE2
 	select UDK_2017_BINDING
 	select USE_DDR5
@@ -99,9 +87,25 @@ config SOC_SPECIFIC_OPTIONS
 	select USE_FSP_NOTIFY_PHASE_READY_TO_BOOT
 	select USE_FSP_NOTIFY_PHASE_END_OF_FIRMWARE
 	select VBOOT_DEFINE_WIDEVINE_COUNTERS if VBOOT_STARTS_BEFORE_BOOTBLOCK
+	select VBOOT_MUST_REQUEST_DISPLAY if VBOOT
 	select VBOOT_X86_SHA256_ACCELERATION if VBOOT
 	select X86_AMD_FIXED_MTRRS
 	select X86_INIT_NEED_1_SIPI
+
+config SOC_AMD_MENDOCINO
+	bool
+	select SOC_AMD_REMBRANDT_BASE
+	help
+	  AMD Mendocino support
+
+config SOC_AMD_REMBRANDT
+	bool
+	select SOC_AMD_REMBRANDT_BASE
+	help
+	  AMD Rembrandt support
+
+
+if SOC_AMD_REMBRANDT_BASE
 
 config CHIPSET_DEVICETREE
 	string
@@ -238,7 +242,7 @@ config ASYNC_FILE_LOADING
 
 config CBFS_CACHE_SIZE
 	hex
-	default 0x40000 if CBFS_PRELOAD
+	default 0x40000 if CBFS_PRELOAD || SOC_AMD_COMMON_BLOCK_LPC_SPI_DMA
 
 config RO_REGION_ONLY
 	string
@@ -257,6 +261,16 @@ config MAX_CPUS
 	default 16
 	help
 	  Maximum number of threads the platform can have.
+
+config VGA_BIOS_ID
+	string
+	default "1002,1506" if SOC_AMD_MENDOCINO
+	help
+	  The default VGA BIOS PCI vendor/device ID of the GPU and VBIOS.
+
+config VGA_BIOS_FILE
+	string
+	default "3rdparty/amd_blobs/mendocino/MdnGenericVbios.bin" if SOC_AMD_MENDOCINO
 
 config CONSOLE_UART_BASE_ADDRESS
 	depends on CONSOLE_SERIAL && AMD_SOC_CONSOLE_UART
@@ -311,18 +325,7 @@ config DISABLE_SPI_FLASH_ROM_SHARING
 config DISABLE_KEYBOARD_RESET_PIN
 	bool
 	help
-	  Instruct the SoC to not use the state of GPIO_129 as keyboard reset
-	  signal. When this pin is used as GPIO and the keyboard reset
-	  functionality isn't disabled, configuring it as an output and driving
-	  it as 0 will cause a reset.
-
-config ACPI_SSDT_PSD_INDEPENDENT
-	bool "Allow core p-state independent transitions"
-	default y
-	help
-	  AMD recommends the ACPI _PSD object to be configured to cause
-	  cores to transition between p-states independently. A vendor may
-	  choose to generate _PSD object to allow cores to transition together.
+	  Instruct the SoC to not to reset based on the state of GPIO_21, KBDRST_L.
 
 config FEATURE_DYNAMIC_DPTC
 	bool

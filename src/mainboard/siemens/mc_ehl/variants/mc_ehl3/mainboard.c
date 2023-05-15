@@ -2,9 +2,8 @@
 
 #include <baseboard/variants.h>
 #include <bootstate.h>
-#include <device/pci_ops.h>
+#include <device/mmio.h>
 #include <gpio.h>
-#include <soc/gpio.h>
 #include <soc/pci_devs.h>
 
 #define HOSTCTRL2		0x3E

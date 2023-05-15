@@ -11,6 +11,7 @@
 #include <device/pci_ids.h>
 #include <device/pci_ops.h>
 #include <intelblocks/cse.h>
+#include <intelblocks/me.h>
 #include <intelblocks/pmclib.h>
 #include <intelblocks/post_codes.h>
 #include <option.h>
@@ -19,7 +20,6 @@
 #include <soc/intel/common/reset.h>
 #include <soc/iomap.h>
 #include <soc/pci_devs.h>
-#include <soc/me.h>
 #include <string.h>
 #include <timer.h>
 #include <types.h>
@@ -247,6 +247,15 @@ static bool cse_check_hfs1_com(int mode)
 	return hfs1.fields.operation_mode == mode;
 }
 
+static bool cse_is_hfs1_fw_init_complete(void)
+{
+	union me_hfsts1 hfs1;
+	hfs1.data = me_read_config32(PCI_ME_HFSTS1);
+	if (hfs1.fields.fw_init_complete)
+		return true;
+	return false;
+}
+
 bool cse_is_hfs1_cws_normal(void)
 {
 	union me_hfsts1 hfs1;
@@ -413,12 +422,7 @@ send_one_message(uint32_t hdr, const void *buff)
 	return pend_len;
 }
 
-/*
- * Send message msg of size len to host from host_addr to cse_addr.
- * Returns CSE_TX_RX_SUCCESS on success and other enum values on failure scenarios.
- * Also, in case of errors, heci_reset() is triggered.
- */
-static enum cse_tx_rx_status
+enum cse_tx_rx_status
 heci_send(const void *msg, size_t len, uint8_t host_addr, uint8_t client_addr)
 {
 	uint8_t retry;
@@ -523,15 +527,7 @@ recv_one_message(uint32_t *hdr, void *buff, size_t maxlen, size_t *recv_len)
 	return CSE_TX_RX_SUCCESS;
 }
 
-/*
- * Receive message into buff not exceeding maxlen. Message is considered
- * successfully received if a 'complete' indication is read from ME side
- * and there was enough space in the buffer to fit that message. maxlen
- * is updated with size of message that was received.
- * Returns CSE_TX_RX_SUCCESS on success and other enum values on failure scenarios.
- * Also, in case of errors, heci_reset() is triggered.
- */
-static enum cse_tx_rx_status heci_receive(void *buff, size_t *maxlen)
+enum cse_tx_rx_status heci_receive(void *buff, size_t *maxlen)
 {
 	uint8_t retry;
 	size_t left, received;
@@ -758,7 +754,7 @@ static bool cse_is_hmrfpo_enable_allowed(void)
 }
 
 /* Sends HMRFPO Enable command to CSE */
-int cse_hmrfpo_enable(void)
+enum cb_err cse_hmrfpo_enable(void)
 {
 	struct hmrfpo_enable_msg {
 		struct mkhi_hdr hdr;
@@ -791,31 +787,31 @@ int cse_hmrfpo_enable(void)
 	if (cse_is_hfs1_com_secover_mei_msg()) {
 		printk(BIOS_DEBUG, "HECI: CSE is already in security override mode, "
 			       "skip sending HMRFPO_ENABLE command to CSE\n");
-		return 1;
+		return CB_SUCCESS;
 	}
 
 	printk(BIOS_DEBUG, "HECI: Send HMRFPO Enable Command\n");
 
 	if (!cse_is_hmrfpo_enable_allowed()) {
 		printk(BIOS_ERR, "HECI: CSE does not meet required prerequisites\n");
-		return 0;
+		return CB_ERR;
 	}
 
 	if (heci_send_receive(&msg, sizeof(struct hmrfpo_enable_msg),
 				&resp, &resp_size, HECI_MKHI_ADDR))
-		return 0;
+		return CB_ERR;
 
 	if (resp.hdr.result) {
 		printk(BIOS_ERR, "HECI: Resp Failed:%d\n", resp.hdr.result);
-		return 0;
+		return CB_ERR;
 	}
 
 	if (resp.status) {
 		printk(BIOS_ERR, "HECI: HMRFPO_Enable Failed (resp status: %d)\n", resp.status);
-		return 0;
+		return CB_ERR;
 	}
 
-	return 1;
+	return CB_SUCCESS;
 }
 
 /*
@@ -1069,6 +1065,154 @@ void cse_control_global_reset_lock(void)
 		pmc_global_reset_enable(false);
 }
 
+enum cb_err cse_get_fw_feature_state(uint32_t *feature_state)
+{
+	struct fw_feature_state_msg {
+		struct mkhi_hdr hdr;
+		uint32_t rule_id;
+	} __packed;
+
+	/* Get Firmware Feature State message */
+	struct fw_feature_state_msg msg = {
+		.hdr = {
+			.group_id = MKHI_GROUP_ID_FWCAPS,
+			.command = MKHI_FWCAPS_GET_FW_FEATURE_STATE,
+		},
+		.rule_id = ME_FEATURE_STATE_RULE_ID
+	};
+
+	/* Get Firmware Feature State response */
+	struct fw_feature_state_resp {
+		struct mkhi_hdr hdr;
+		uint32_t rule_id;
+		uint8_t rule_len;
+		uint32_t fw_runtime_status;
+	} __packed;
+
+	struct fw_feature_state_resp resp;
+	size_t resp_size = sizeof(struct fw_feature_state_resp);
+
+	/* Ignore if CSE is disabled or input buffer is invalid */
+	if (!is_cse_enabled() || !feature_state)
+		return CB_ERR;
+
+	/*
+	 * Prerequisites:
+	 * 1) HFSTS1 Current Working State is Normal
+	 * 2) HFSTS1 Current Operation Mode is Normal
+	 * 3) It's after DRAM INIT DONE message (taken care of by calling it
+	 *    during ramstage)
+	 */
+	if (!cse_is_hfs1_cws_normal() || !cse_is_hfs1_com_normal() || !ENV_RAMSTAGE)
+		return CB_ERR;
+
+	printk(BIOS_DEBUG, "HECI: Send GET FW FEATURE STATE Command\n");
+
+	if (heci_send_receive(&msg, sizeof(struct fw_feature_state_msg),
+				&resp, &resp_size, HECI_MKHI_ADDR))
+		return CB_ERR;
+
+	if (resp.hdr.result) {
+		printk(BIOS_ERR, "HECI: Resp Failed:%d\n", resp.hdr.result);
+		return CB_ERR;
+	}
+
+	if (resp.rule_len != sizeof(resp.fw_runtime_status)) {
+		printk(BIOS_ERR, "HECI: GET FW FEATURE STATE has invalid rule data length\n");
+		return CB_ERR;
+	}
+
+	*feature_state = resp.fw_runtime_status;
+
+	return CB_SUCCESS;
+}
+
+void cse_enable_ptt(bool state)
+{
+	struct fw_feature_shipment_override_msg {
+		struct mkhi_hdr hdr;
+		uint32_t enable_mask;
+		uint32_t disable_mask;
+	} __packed;
+
+	/* FW Feature Shipment Time State Override message */
+	struct fw_feature_shipment_override_msg msg = {
+		.hdr = {
+			.group_id = MKHI_GROUP_ID_GEN,
+			.command = MKHI_GEN_FW_FEATURE_SHIPMENT_OVER,
+		},
+		.enable_mask = 0,
+		.disable_mask = 0
+	};
+
+	/* FW Feature Shipment Time State Override response */
+	struct fw_feature_shipment_override_resp {
+		struct mkhi_hdr hdr;
+		uint32_t data;
+	} __packed;
+
+	struct fw_feature_shipment_override_resp resp;
+	size_t resp_size = sizeof(struct fw_feature_shipment_override_resp);
+	uint32_t feature_status;
+
+	/* Ignore if CSE is disabled */
+	if (!is_cse_enabled())
+		return;
+
+	printk(BIOS_DEBUG, "Requested to change PTT state to %sabled\n", state ? "en" : "dis");
+
+	/*
+	 * Prerequisites:
+	 * 1) HFSTS1 Current Working State is Normal
+	 * 2) HFSTS1 Current Operation Mode is Normal
+	 * 3) It's after DRAM INIT DONE message (taken care of by calling it
+	 *    during ramstage
+	 * 4) HFSTS1 FW Init Complete is set
+	 * 5) Before EOP issued to CSE
+	 */
+	if (!cse_is_hfs1_cws_normal() || !cse_is_hfs1_com_normal() ||
+	    !cse_is_hfs1_fw_init_complete() || !ENV_RAMSTAGE) {
+		printk(BIOS_ERR, "HECI: Unmet prerequisites for"
+				 "FW FEATURE SHIPMENT TIME STATE OVERRIDE\n");
+		return;
+	}
+
+	if (cse_get_fw_feature_state(&feature_status) != CB_SUCCESS) {
+		printk(BIOS_ERR, "HECI: Cannot determine current feature status\n");
+		return;
+	}
+
+	if (!!(feature_status & ME_FW_FEATURE_PTT) == state) {
+		printk(BIOS_DEBUG, "HECI: PTT is already in the requested state\n");
+		return;
+	}
+
+	printk(BIOS_DEBUG, "HECI: Send FW FEATURE SHIPMENT TIME STATE OVERRIDE Command\n");
+
+	if (state)
+		msg.enable_mask |= ME_FW_FEATURE_PTT;
+	else
+		msg.disable_mask |= ME_FW_FEATURE_PTT;
+
+	if (heci_send_receive(&msg, sizeof(struct fw_feature_shipment_override_msg),
+				&resp, &resp_size, HECI_MKHI_ADDR))
+		return;
+
+	if (resp.hdr.result) {
+		printk(BIOS_ERR, "HECI: Resp Failed:%d\n", resp.hdr.result);
+		return;
+	}
+
+	/* Global reset is required after acceptance of the command */
+	if (resp.data == 0) {
+		printk(BIOS_DEBUG, "HECI: FW FEATURE SHIPMENT TIME STATE OVERRIDE success\n");
+		do_global_reset();
+	} else {
+		printk(BIOS_ERR, "HECI: FW FEATURE SHIPMENT TIME STATE OVERRIDE error (%x)\n",
+			resp.data);
+	}
+}
+
 #if ENV_RAMSTAGE
 
 /*
@@ -1263,7 +1407,8 @@ static void cse_final_end_of_firmware(void)
  */
 void cse_late_finalize(void)
 {
-	if (!CONFIG(SOC_INTEL_CSE_SEND_EOP_LATE))
+	if (!CONFIG(SOC_INTEL_CSE_SEND_EOP_LATE) &&
+	    !CONFIG(SOC_INTEL_CSE_SEND_EOP_ASYNC))
 		return;
 
 	if (!CONFIG(USE_FSP_NOTIFY_PHASE_READY_TO_BOOT))
@@ -1279,8 +1424,17 @@ void cse_late_finalize(void)
  */
 static void cse_final(struct device *dev)
 {
-	/* SoC user decided to send EOP late */
-	if (CONFIG(SOC_INTEL_CSE_SEND_EOP_LATE))
+	/*
+	 * SoC user can have two options for sending EOP:
+	 * 1. Choose to send EOP late
+	 * 2. Choose to send EOP cmd asynchronously
+	 *
+	 * In case of sending EOP in asynchronous mode, the EOP command
+	 * has most likely not been completed yet. The finalization steps
+	 * will be run once the EOP command has successfully been completed.
+	 */
+	if (CONFIG(SOC_INTEL_CSE_SEND_EOP_LATE) ||
+	    CONFIG(SOC_INTEL_CSE_SEND_EOP_ASYNC))
 		return;
 
 	/* 1. Send EOP to CSE if not done.*/
@@ -1312,7 +1466,6 @@ static const unsigned short pci_device_ids[] = {
 	PCI_DID_INTEL_LWB_CSE0,
 	PCI_DID_INTEL_LWB_CSE0_SUPER,
 	PCI_DID_INTEL_CNP_H_CSE0,
-	PCI_DID_INTEL_ICL_CSE0,
 	PCI_DID_INTEL_CMP_CSE0,
 	PCI_DID_INTEL_CMP_H_CSE0,
 	PCI_DID_INTEL_TGL_CSE0,

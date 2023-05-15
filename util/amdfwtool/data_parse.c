@@ -29,22 +29,7 @@ static const char entries_line_regex[] =
 	"[[:space:]]+"
 	/* followed by a chunk of nonwhitespace for filename field */
 	"([^[:space:]]+)"
-	/* followed by optional whitespace */
-	"[[:space:]]*$";
-static regex_t entries_line_expr;
-
-static const char entries_lvl_line_regex[] =
-	/* optional whitespace */
-	"^[[:space:]]*"
-	/* followed by a chunk of nonwhitespace for macro field */
-	"([^[:space:]]+)"
-	/* followed by one or more whitespace characters */
-	"[[:space:]]+"
-	/* followed by a chunk of nonwhitespace for filename field */
-	"([^[:space:]]+)"
-	/* followed by one or more whitespace characters */
-	"[[:space:]]+"
-	/* followed by a chunk of nonwhitespace for level field
+	/* followed by an optional whitespace + chunk of nonwhitespace for level field
 	   1st char L: Indicator of field "level"
 	   2nd char:
 	      Directory level to be dropped in.
@@ -60,10 +45,18 @@ static const char entries_lvl_line_regex[] =
 	      L12: Level 1 for normal mode, level 2 for A/B mode
 	      Lx1: Use default value for normal mode, level 1 for A/B mode
 	 */
-	"([Ll][12bxBX]{1,2})"
+	"([[:space:]]+([Ll][12bxBX]{1,2}))?"
 	/* followed by optional whitespace */
 	"[[:space:]]*$";
-static regex_t entries_lvl_line_expr;
+static regex_t entries_line_expr;
+
+enum match_id {
+	FW_TYPE = 1,
+	FW_FILE,
+	OPT_SPACE1,
+	OPT_LEVEL,
+	N_MATCHES,
+};
 
 void compile_reg_expr(int cflags, const char *expr, regex_t *reg)
 {
@@ -76,6 +69,32 @@ void compile_reg_expr(int cflags, const char *expr, regex_t *reg)
 		regerror(result, reg, error_msg, ERROR_BUF_SIZE);
 		fprintf(stderr, "%s\n", error_msg);
 	}
+}
+
+static enum platform identify_platform(char *soc_name)
+{
+	if (!strcasecmp(soc_name, "Stoneyridge"))
+		return PLATFORM_STONEYRIDGE;
+	else if (!strcasecmp(soc_name, "Carrizo"))
+		return PLATFORM_CARRIZO;
+	else if (!strcasecmp(soc_name, "Raven"))
+		return PLATFORM_RAVEN;
+	else if (!strcasecmp(soc_name, "Picasso"))
+		return PLATFORM_PICASSO;
+	else if (!strcasecmp(soc_name, "Cezanne"))
+		return PLATFORM_CEZANNE;
+	else if (!strcasecmp(soc_name, "Mendocino"))
+		return PLATFORM_MENDOCINO;
+	else if (!strcasecmp(soc_name, "Renoir"))
+		return PLATFORM_RENOIR;
+	else if (!strcasecmp(soc_name, "Lucienne"))
+		return PLATFORM_LUCIENNE;
+	else if (!strcasecmp(soc_name, "Phoenix"))
+		return PLATFORM_PHOENIX;
+	else if (!strcasecmp(soc_name, "Glinda"))
+		return PLATFORM_GLINDA;
+	else
+		return PLATFORM_UNKNOWN;
 }
 
 #define SET_LEVEL(tableptr, l, TABLE, ab)     \
@@ -153,9 +172,12 @@ static uint8_t find_register_fw_filename_psp_dir(char *fw_name, char *filename,
 	} else if (strcmp(fw_name, "PSP_SMUFW1_SUB0_FILE") == 0) {
 		fw_type = AMD_FW_PSP_SMU_FIRMWARE;
 		subprog = 0;
-	} else if (strcmp(fw_name, "PSP_HW_IPCFG_FILE") == 0) {
+	} else if (strcmp(fw_name, "PSP_HW_IPCFG_FILE_SUB0") == 0) {
 		fw_type = AMD_HW_IPCFG;
 		subprog = 0;
+	} else if (strcmp(fw_name, "PSP_HW_IPCFG_FILE_SUB1") == 0) {
+		fw_type = AMD_HW_IPCFG;
+		subprog = 1;
 	} else if (strcmp(fw_name, "PSP_SMUFW1_SUB1_FILE") == 0) {
 		fw_type = AMD_FW_PSP_SMU_FIRMWARE;
 		subprog = 1;
@@ -171,6 +193,18 @@ static uint8_t find_register_fw_filename_psp_dir(char *fw_name, char *filename,
 	} else if (strcmp(fw_name, "PSP_SMUFW2_SUB2_FILE") == 0) {
 		fw_type = AMD_FW_PSP_SMU_FIRMWARE2;
 		subprog = 2;
+	} else if (strcmp(fw_name, "PSP_BOOT_DRIVER_FILE") == 0) {
+		fw_type = AMD_BOOT_DRIVER;
+		subprog = 0;
+	} else if (strcmp(fw_name, "PSP_SOC_DRIVER_FILE") == 0) {
+		fw_type = AMD_SOC_DRIVER;
+		subprog = 0;
+	} else if (strcmp(fw_name, "PSP_DEBUG_DRIVER_FILE") == 0) {
+		fw_type = AMD_DEBUG_DRIVER;
+		subprog = 0;
+	} else if (strcmp(fw_name, "PSP_INTERFACE_DRIVER_FILE") == 0) {
+		fw_type = AMD_INTERFACE_DRIVER;
+		subprog = 0;
 	} else if (strcmp(fw_name, "PSP_SEC_DBG_KEY_FILE") == 0) {
 		if (cb_config->unlock_secure) {
 			fw_type = AMD_FW_PSP_SECURED_DEBUG;
@@ -263,6 +297,48 @@ static uint8_t find_register_fw_filename_psp_dir(char *fw_name, char *filename,
 		} else {
 			fw_type = AMD_FW_SKIP;
 		}
+	} else if (strcmp(fw_name, "PSP_C20MP_FILE") == 0) {
+		fw_type = AMD_FW_C20_MP;
+		subprog = 0;
+	} else if (strcmp(fw_name, "AMF_SRAM_FILE") == 0) {
+		fw_type = AMD_FW_AMF_SRAM;
+		subprog = 0;
+	} else if (strcmp(fw_name, "AMF_DRAM_FILE_INS0") == 0) {
+		fw_type = AMD_FW_AMF_DRAM;
+		subprog = 0;
+		instance = 0;
+	} else if (strcmp(fw_name, "AMF_DRAM_FILE_INS1") == 0) {
+		fw_type = AMD_FW_AMF_DRAM;
+		subprog = 0;
+		instance = 1;
+	} else if (strcmp(fw_name, "AMF_WLAN_FILE_INS0") == 0) {
+		fw_type = AMD_FW_AMF_WLAN;
+		subprog = 0;
+		instance = 0;
+	} else if (strcmp(fw_name, "AMF_WLAN_FILE_INS1") == 0) {
+		fw_type = AMD_FW_AMF_WLAN;
+		subprog = 0;
+		instance = 1;
+	} else if (strcmp(fw_name, "AMF_MFD_FILE") == 0) {
+		fw_type = AMD_FW_AMF_MFD;
+		subprog = 0;
+	} else if (strcmp(fw_name, "MPCCX_FILE") == 0) {
+		fw_type = AMD_FW_MPCCX;
+		subprog = 0;
+	} else if (strcmp(fw_name, "LSDMA_FILE") == 0) {
+		fw_type = AMD_FW_LSDMA;
+		subprog = 0;
+	} else if (strcmp(fw_name, "MINIMSMU_FILE") == 0) {
+		fw_type = AMD_FW_MINIMSMU;
+		instance = 0;
+		subprog = 0;
+	} else if (strcmp(fw_name, "MINIMSMU_FILE_INS1") == 0) {
+		fw_type = AMD_FW_MINIMSMU;
+		instance = 1;
+		subprog = 0;
+	} else if (strcmp(fw_name, "SRAM_FW_EXT_FILE") == 0) {
+		fw_type = AMD_FW_SRAM_FW_EXT;
+		subprog = 0;
 	} else if (strcmp(fw_name, "PSP_DRIVERS_FILE") == 0) {
 		fw_type = AMD_DRIVER_ENTRIES;
 		subprog = 0;
@@ -316,6 +392,12 @@ static uint8_t find_register_fw_filename_psp_dir(char *fw_name, char *filename,
 	} else if (strcmp(fw_name, "SPIROM_CONFIG_FILE") == 0) {
 		fw_type = AMD_FW_SPIROM_CFG;
 		subprog = 0;
+	} else if (strcmp(fw_name, "MPIO_FILE") == 0) {
+		fw_type = AMD_FW_MPIO;
+		subprog = 0;
+	} else if (strcmp(fw_name, "TPMLITE_FILE") == 0) {
+		fw_type = AMD_FW_TPMLITE;
+		subprog = 0;
 	} else if (strcmp(fw_name, "PSP_KVM_ENGINE_DUMMY_FILE") == 0) {
 		fw_type = AMD_FW_KVM_IMAGE;
 		subprog = 0;
@@ -331,6 +413,9 @@ static uint8_t find_register_fw_filename_psp_dir(char *fw_name, char *filename,
 		}
 	} else if (strcmp(fw_name, "TA_IKEK_FILE") == 0) {
 		fw_type = AMD_TA_IKEK;
+		subprog = 0;
+	} else if (strcmp(fw_name, "UMSMU_FILE") == 0) {
+		fw_type = AMD_FW_UMSMU;
 		subprog = 0;
 	} else if (strcmp(fw_name, "PSP_OEM_ABL_KEY_FILE") == 0) {
 		fw_type = AMD_FW_ABL_PUBKEY;
@@ -350,8 +435,14 @@ static uint8_t find_register_fw_filename_psp_dir(char *fw_name, char *filename,
 	} else if (strcmp(fw_name, "PSP_MPIOFW_FILE") == 0) {
 		fw_type = AMD_FW_MPIO;
 		subprog = 0;
-	} else if (strcmp(fw_name, "PSP_RIB_FILE") == 0) {
+	} else if (strcmp(fw_name, "PSP_RIB_FILE_SUB0") == 0) {
 		fw_type = AMD_RIB;
+		subprog = 0;
+	} else if (strcmp(fw_name, "PSP_RIB_FILE_SUB1") == 0) {
+		fw_type = AMD_RIB;
+		subprog = 1;
+	} else if (strcmp(fw_name, "FEATURE_TABLE_FILE") == 0) {
+		fw_type = AMD_FW_FCFG_TABLE;
 		subprog = 0;
 	} else if (strcmp(fw_name, "PSP_MPDMATFFW_FILE") == 0) {
 		fw_type = AMD_FW_MPDMA_TF;
@@ -481,7 +572,6 @@ int get_input_file_line(FILE *f, char line[], int line_buf_size)
 	return OK;
 }
 
-#define N_MATCHES 4
 static int is_valid_entry(char *oneline, regmatch_t match[N_MATCHES])
 {
 	int retval, index;
@@ -490,18 +580,14 @@ static int is_valid_entry(char *oneline, regmatch_t match[N_MATCHES])
 		match[index].rm_so = -1;
 		match[index].rm_eo = -1;
 	}
-	if (regexec(&entries_line_expr, oneline, 3, match, 0) == 0) {
-		oneline[match[1].rm_eo] = '\0';
-		oneline[match[2].rm_eo] = '\0';
-		retval = 1;
-	} else if (regexec(&entries_lvl_line_expr, oneline, 4, match, 0) == 0) {
+	if (regexec(&entries_line_expr, oneline, N_MATCHES, match, 0) == 0) {
 		/* match[1]: FW type
 		   match[2]: FW filename
-		   match[3]: Directory level to be dropped
+		   match[4]: Optional directory level to be dropped
 		 */
-		oneline[match[1].rm_eo] = '\0';
-		oneline[match[2].rm_eo] = '\0';
-		oneline[match[3].rm_eo] = '\0';
+		oneline[match[FW_TYPE].rm_eo] = '\0';
+		oneline[match[FW_FILE].rm_eo] = '\0';
+		oneline[match[OPT_LEVEL].rm_eo] = '\0';
 		retval = 1;
 	} else {
 		retval = 0;
@@ -544,14 +630,78 @@ char get_level_from_config(char *line, regoff_t level_index, amd_cb_config *cb_c
 	return lvl;
 }
 
+static uint8_t process_one_line(char *oneline, regmatch_t *match, char *dir,
+	amd_cb_config *cb_config)
+{
+	char *path_filename, *fn = &(oneline[match[FW_FILE].rm_so]);
+	char *fw_type_str = &(oneline[match[FW_TYPE].rm_so]);
+	char ch_lvl = 'x';
+	regoff_t ch_lvl_index = match[OPT_LEVEL].rm_so == match[OPT_LEVEL].rm_eo ?
+								-1 : match[OPT_LEVEL].rm_so;
+
+	/* If the optional level field is present,
+	   extract the level char. */
+	ch_lvl = get_level_from_config(oneline, ch_lvl_index, cb_config);
+
+	path_filename = malloc(MAX_LINE_SIZE * 2 + 2);
+	if (strchr(fn, '/'))
+		snprintf(path_filename, MAX_LINE_SIZE * 2 + 2, "%.*s",
+				MAX_LINE_SIZE, fn);
+	else
+		snprintf(path_filename, MAX_LINE_SIZE * 2 + 2, "%.*s/%.*s",
+				MAX_LINE_SIZE, dir, MAX_LINE_SIZE, fn);
+
+	if (find_register_fw_filename_psp_dir(
+			fw_type_str, path_filename, ch_lvl, cb_config) == 0) {
+		if (find_register_fw_filename_bios_dir(
+				fw_type_str, path_filename, ch_lvl, cb_config) == 0) {
+			fprintf(stderr, "Module's name \"%s\" is not valid\n", fw_type_str);
+			return 0; /* Stop parsing. */
+		}
+	}
+	return 1;
+}
+
+static bool needs_ish(enum platform platform_type)
+{
+	if (platform_type == PLATFORM_MENDOCINO || platform_type == PLATFORM_PHOENIX || platform_type == PLATFORM_GLINDA)
+		return true;
+	else
+		return false;
+}
+
+static bool is_second_gen(enum platform platform_type)
+{
+	switch (platform_type) {
+	case PLATFORM_CARRIZO:
+	case PLATFORM_STONEYRIDGE:
+	case PLATFORM_RAVEN:
+	case PLATFORM_PICASSO:
+		return false;
+	case PLATFORM_RENOIR:
+	case PLATFORM_LUCIENNE:
+	case PLATFORM_CEZANNE:
+	case PLATFORM_MENDOCINO:
+	case PLATFORM_PHOENIX:
+	case PLATFORM_GLINDA:
+		return true;
+	case PLATFORM_UNKNOWN:
+	default:
+		fprintf(stderr, "Error: Invalid SOC name.\n\n");
+		return false;
+	}
+}
+
+#define FW_LOCATION "FIRMWARE_LOCATION"
+#define SOC_NAME "SOC_NAME"
 /*
   return value:
 	0: The config file can not be parsed correctly.
 	1: The config file can be parsed correctly.
  */
-uint8_t process_config(FILE *config, amd_cb_config *cb_config, uint8_t print_deps)
+uint8_t process_config(FILE *config, amd_cb_config *cb_config)
 {
-	char oneline[MAX_LINE_SIZE], *path_filename;
+	char oneline[MAX_LINE_SIZE];
 	regmatch_t match[N_MATCHES];
 	char dir[MAX_LINE_SIZE] = {'\0'};
 	uint32_t dir_len;
@@ -566,8 +716,6 @@ uint8_t process_config(FILE *config, amd_cb_config *cb_config, uint8_t print_dep
 		blank_or_comment_regex, &blank_or_comment_expr);
 	compile_reg_expr(REG_EXTENDED | REG_NEWLINE,
 		entries_line_regex, &entries_line_expr);
-	compile_reg_expr(REG_EXTENDED | REG_NEWLINE,
-		entries_lvl_line_regex, &entries_lvl_line_expr);
 
 	/* Get a line */
 	/* Get FIRMWARE_LOCATION in the first loop */
@@ -576,15 +724,28 @@ uint8_t process_config(FILE *config, amd_cb_config *cb_config, uint8_t print_dep
 		if (skip_comment_blank_line(oneline))
 			continue;
 		if (is_valid_entry(oneline, match)) {
-			if (strcmp(&(oneline[match[1].rm_so]), "FIRMWARE_LOCATION") == 0) {
-				dir_len = match[2].rm_eo - match[2].rm_so;
+			if (strcmp(&(oneline[match[FW_TYPE].rm_so]), FW_LOCATION) == 0) {
+				dir_len = match[FW_FILE].rm_eo - match[FW_FILE].rm_so;
 				assert(dir_len < MAX_LINE_SIZE);
 				snprintf(dir, MAX_LINE_SIZE, "%.*s", dir_len,
-					&(oneline[match[2].rm_so]));
-				break;
+					&(oneline[match[FW_FILE].rm_so]));
+			} else if (strcmp(&(oneline[match[FW_TYPE].rm_so]), SOC_NAME) == 0) {
+				cb_config->soc_id = identify_platform(
+							&(oneline[match[FW_FILE].rm_so]));
 			}
 		}
 	}
+
+	cb_config->second_gen = is_second_gen(cb_config->soc_id);
+
+	if (needs_ish(cb_config->soc_id))
+		cb_config->need_ish = true;
+
+	if (cb_config->need_ish)
+		cb_config->recovery_ab = true;
+
+	if (cb_config->recovery_ab)
+		cb_config->multi_level = true;
 
 	if (dir[0] == '\0') {
 		fprintf(stderr, "No line with FIRMWARE_LOCATION\n");
@@ -598,37 +759,13 @@ uint8_t process_config(FILE *config, amd_cb_config *cb_config, uint8_t print_dep
 		if (skip_comment_blank_line(oneline))
 			continue;
 		if (is_valid_entry(oneline, match)) {
-			if (strcmp(&(oneline[match[1].rm_so]), "FIRMWARE_LOCATION") == 0) {
+			if (strcmp(&(oneline[match[FW_TYPE].rm_so]), FW_LOCATION) == 0 ||
+				strcmp(&(oneline[match[FW_TYPE].rm_so]), SOC_NAME) == 0) {
 				continue;
 			} else {
-				char ch_lvl = 'x';
-				path_filename = malloc(MAX_LINE_SIZE * 2 + 2);
-				snprintf(path_filename, MAX_LINE_SIZE * 2 + 2, "%.*s/%.*s",
-					MAX_LINE_SIZE, dir, MAX_LINE_SIZE,
-					&(oneline[match[2].rm_so]));
-
-				/* If the optional level field is present,
-				   extract the level char. */
-				ch_lvl = get_level_from_config(oneline,
-						match[3].rm_so, cb_config);
-
-				if (find_register_fw_filename_psp_dir(
-						&(oneline[match[1].rm_so]),
-						path_filename, ch_lvl, cb_config) == 0) {
-					if (find_register_fw_filename_bios_dir(
-							&(oneline[match[1].rm_so]),
-							path_filename, ch_lvl, cb_config)
-							== 0) {
-						fprintf(stderr, "Module's name \"%s\" is not valid\n", oneline);
-						return 0; /* Stop parsing. */
-					} else {
-						if (print_deps)
-							printf(" %s ", path_filename);
-					}
-				} else {
-					if (print_deps)
-						printf(" %s ", path_filename);
-				}
+				if (process_one_line(oneline, match, dir,
+						cb_config) == 0)
+					return 0;
 			}
 		} else {
 			fprintf(stderr, "AMDFWTOOL config file line can't be parsed \"%s\"\n", oneline);

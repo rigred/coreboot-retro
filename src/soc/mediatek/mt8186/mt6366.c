@@ -37,7 +37,7 @@ static struct pmic_setting init_setting[] = {
 	{0xA08, 0x1, 0x1, 0},
 	{0xA24, 0x1E00, 0x1F00, 0},
 	{0xA38, 0x0, 0x100, 0},
-	{0xA3C, 0x81E0, 0x81E0, 0},
+	{0xA3C, 0x81F2, 0x81F2, 0},
 	{0xA44, 0xFFFF, 0xFFFF, 0},
 	{0xA46, 0xFC00, 0xFC00, 0},
 	{0xC8A, 0x4, 0xC, 0},
@@ -725,14 +725,17 @@ static void pmic_set_vmc_vol(u32 vmc_uv)
 	pwrap_write_field(PMIC_LDO_VMC_CON0, 1, 0xFF, 0);
 }
 
+#define VRF12_VOLTAGE_UV 1200000
+
 static u32 pmic_get_vrf12_vol(void)
 {
 	return (pwrap_read_field(PMIC_LDO_VRF12_CON0, 0x3, 0) &
-		pwrap_read_field(PMIC_LDO_VRF12_OP_EN, 0x3, 0)) ? 1200000 : 0;
+		pwrap_read_field(PMIC_LDO_VRF12_OP_EN, 0x3, 0)) ? VRF12_VOLTAGE_UV : 0;
 }
 
-static void pmic_enable_vrf12(void)
+static void pmic_set_vrf12_vol(u32 vrf12_uv)
 {
+	assert(vrf12_uv == VRF12_VOLTAGE_UV);
 	pwrap_write_field(PMIC_LDO_VRF12_CON0, 1, 0x3, 0);
 	pwrap_write_field(PMIC_LDO_VRF12_OP_EN, 1, 0x3, 0);
 }
@@ -785,6 +788,19 @@ static void pmic_set_vcn33_vol(u32 vcn33_uv)
 
 	/* Force SW to turn on */
 	pwrap_write_field(PMIC_LDO_VCN33_CON0_0, 1, 0x1, 0);
+}
+
+#define VIO18_VOLTAGE_UV 1800000
+
+static u32 pmic_get_vio18_vol(void)
+{
+	return pwrap_read_field(PMIC_LDO_VIO18_CON0, 0x1, 0) ? VIO18_VOLTAGE_UV : 0;
+}
+
+static void pmic_set_vio18_vol(u32 vio18_uv)
+{
+	assert(vio18_uv == VIO18_VOLTAGE_UV);
+	pwrap_write_field(PMIC_LDO_VIO18_CON0, 1, 0x1, 0);
 }
 
 static void pmic_wdt_set(void)
@@ -908,11 +924,13 @@ void mt6366_set_voltage(enum mt6366_regulator_id id, u32 voltage_uv)
 		pmic_set_vsram_proc12_vol(voltage_uv);
 		break;
 	case MT6366_VRF12:
-		/* VRF12 only provides 1.2V, so we just need to enable it */
-		pmic_enable_vrf12();
+		pmic_set_vrf12_vol(voltage_uv);
 		break;
 	case MT6366_VCN33:
 		pmic_set_vcn33_vol(voltage_uv);
+		break;
+	case MT6366_VIO18:
+		pmic_set_vio18_vol(voltage_uv);
 		break;
 	default:
 		printk(BIOS_ERR, "%s: PMIC %d is not supported\n", __func__, id);
@@ -941,6 +959,8 @@ u32 mt6366_get_voltage(enum mt6366_regulator_id id)
 		return pmic_get_vrf12_vol();
 	case MT6366_VCN33:
 		return pmic_get_vcn33_vol();
+	case MT6366_VIO18:
+		return pmic_get_vio18_vol();
 	default:
 		printk(BIOS_ERR, "%s: PMIC %d is not supported\n", __func__, id);
 		break;

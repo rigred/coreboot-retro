@@ -1824,7 +1824,6 @@ static void dramc_set_tx_best_dly_factor(u8 chn, u8 rank_start, u8 type,
 {
 	u32 dq_large = 0, dq_large_oen = 0, dq_small = 0, dq_small_oen = 0, adjust_center = 1;
 	u32 dqm_large = 0, dqm_large_oen = 0, dqm_small = 0, dqm_small_oen = 0;
-	u16 dq_oen[DQS_NUMBER] = {0}, dqm_oen[DQS_NUMBER] = {0};
 	struct tx_dly_tune dqdly_tune[DQS_NUMBER] = {0};
 	struct tx_dly_tune dqmdly_tune[DQS_NUMBER] = {0};
 
@@ -1843,12 +1842,6 @@ static void dramc_set_tx_best_dly_factor(u8 chn, u8 rank_start, u8 type,
 		dqm_large_oen += dqmdly_tune[i].coarse_tune_large_oen << (i * 4);
 		dqm_small += dqmdly_tune[i].coarse_tune_small << (i * 4);
 		dqm_small_oen += dqmdly_tune[i].coarse_tune_small_oen << (i * 4);
-
-		dq_oen[i] = (dqdly_tune[i].coarse_tune_large_oen << 3) +
-			(dqdly_tune[i].coarse_tune_small_oen << 5) + dqdly_tune[i].fine_tune;
-		dqm_oen[i] = (dqmdly_tune[i].coarse_tune_large_oen << 3) +
-			(dqmdly_tune[i].coarse_tune_small_oen << 5) +
-			dqmdly_tune[i].fine_tune;
 	}
 
 	for (size_t rank = rank_start; rank < RANK_MAX; rank++) {
@@ -2170,7 +2163,7 @@ static u8 dramc_window_perbit_cal(u8 chn, u8 rank, u8 freq_group,
 	u8 vref = 0, vref_begin = 0, vref_end = 1, vref_step = 1, vref_use = 0;
 	u8 vref_scan_enable = 0, small_reg_value = 0xff;
 	s16 dly_begin = 0, dly_end = 0, dly_step = 1;
-	u32 dummy_rd_bak_engine2 = 0, finish_bit, win_min_max = 0;
+	u32 dummy_rd_bak_engine2 = 0, win_min_max = 0;
 	static u16 dq_precal_result[DQS_NUMBER];
 	struct vref_perbit_dly vref_dly;
 	struct win_perbit_dly win_perbit[DQ_DATA_WIDTH];
@@ -2240,7 +2233,6 @@ static u8 dramc_window_perbit_cal(u8 chn, u8 rank, u8 freq_group,
 	vref_dly.max_win_sum = 0;
 	for (vref = vref_begin; vref < vref_end; vref += vref_step) {
 		small_reg_value = 0xff;
-		finish_bit = 0;
 		if (type == TX_WIN_DQ_ONLY)
 			vref_use = vref | (vref_range << 6);
 		else

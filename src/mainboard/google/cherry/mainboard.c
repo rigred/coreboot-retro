@@ -14,7 +14,6 @@
 #include <soc/ddp.h>
 #include <soc/dpm.h>
 #include <soc/dptx.h>
-#include <soc/gpio.h>
 #include <soc/i2c.h>
 #include <soc/msdc.h>
 #include <soc/mtcmos.h>
@@ -160,6 +159,5 @@ static void mainboard_enable(struct device *dev)
 }
 
 struct chip_operations mainboard_ops = {
-	.name = CONFIG_MAINBOARD_PART_NUMBER,
 	.enable_dev = mainboard_enable,
 };

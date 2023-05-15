@@ -2,12 +2,20 @@
 
 #include <acpi/acpi_device.h>
 #include <acpi/acpigen.h>
+#include <amdblocks/vbios_cache.h>
 #include <boot/coreboot_tables.h>
-#include <device/pci.h>
+#include <bootmode.h>
+#include <bootstate.h>
 #include <console/console.h>
+#include <device/pci.h>
+#include <fmap.h>
 #include <fsp/graphics.h>
+#include <security/vboot/vbios_cache_hash_tpm.h>
 #include <soc/intel/common/vbt.h>
 #include <timestamp.h>
+
+static bool vbios_loaded_from_cache = false;
+static uint8_t vbios_data[VBIOS_CACHE_FMAP_SIZE];
 
 #define ATIF_FUNCTION_VERIFY_INTERFACE 0x0
 struct atif_verify_interface_output {
@@ -17,12 +25,12 @@ struct atif_verify_interface_output {
 	uint32_t supported_functions; /* Bit n set if function n+1 supported. */
 };
 
-#define ATIF_FUNCTION_QUERY_BRIGHTNESS_TRANSFER_CHARACTERISTICS    0x10
-# define ATIF_QBTC_REQUEST_LCD1                              0
+#define ATIF_FUNCTION_QUERY_BRIGHTNESS_TRANSFER_CHARACTERISTICS		0x10
+# define ATIF_QBTC_REQUEST_LCD1					0
 /* error codes */
-# define ATIF_QBTC_ERROR_CODE_SUCCESS                        0
-# define ATIF_QBTC_ERROR_CODE_FAILURE                        1
-# define ATIF_QBTC_ERROR_CODE_DEVICE_NOT_SUPPORTED           2
+# define ATIF_QBTC_ERROR_CODE_SUCCESS				0
+# define ATIF_QBTC_ERROR_CODE_FAILURE				1
+# define ATIF_QBTC_ERROR_CODE_DEVICE_NOT_SUPPORTED		2
 struct atif_brightness_input {
 	uint16_t size;
 	/* ATIF doc indicates this field is a word, but the kernel drivers uses a byte. */
@@ -142,6 +150,12 @@ static void graphics_set_resources(struct device *const dev)
 		return;
 
 	timestamp_add_now(TS_OPROM_INITIALIZE);
+	if (CONFIG(USE_SELECTIVE_GOP_INIT) && vbios_cache_is_valid() &&
+			!display_init_required()) {
+		vbios_load_from_cache();
+		timestamp_add_now(TS_OPROM_COPY_END);
+		return;
+	}
 	rom = pci_rom_probe(dev);
 	if (rom == NULL)
 		return;
@@ -167,12 +181,100 @@ static void graphics_dev_init(struct device *const dev)
 	pci_dev_init(dev);
 }
 
+static void read_vbios_cache_from_fmap(void *unused)
+{
+	struct region_device rw_vbios_cache;
+	int32_t region_size;
+
+	if (!CONFIG(SOC_AMD_GFX_CACHE_VBIOS_IN_FMAP))
+		return;
+
+	if (fmap_locate_area_as_rdev(VBIOS_CACHE_FMAP_NAME, &rw_vbios_cache)) {
+		printk(BIOS_ERR, "%s: No %s FMAP section.\n", __func__, VBIOS_CACHE_FMAP_NAME);
+		return;
+	}
+
+	region_size = region_device_sz(&rw_vbios_cache);
+
+	if (region_size != VBIOS_CACHE_FMAP_SIZE) {
+		printk(BIOS_ERR, "%s: %s FMAP size mismatch for VBIOS cache (%d vs %d).\n",
+		       __func__, VBIOS_CACHE_FMAP_NAME, VBIOS_CACHE_FMAP_SIZE, region_size);
+		return;
+	}
+
+	/* Read cached VBIOS data into buffer */
+	if (rdev_readat(&rw_vbios_cache, &vbios_data, 0, VBIOS_CACHE_FMAP_SIZE) != VBIOS_CACHE_FMAP_SIZE) {
+		printk(BIOS_ERR, "Failed to read vbios data from flash; rdev_readat() failed.\n");
+		return;
+	}
+
+	printk(BIOS_SPEW, "VBIOS cache successfully read from FMAP.\n");
+}
+
+static void write_vbios_cache_to_fmap(void *unused)
+{
+	if (!CONFIG(SOC_AMD_GFX_CACHE_VBIOS_IN_FMAP))
+		return;
+
+	/* Don't save if VBIOS loaded from cache / data unchanged */
+	if (vbios_loaded_from_cache == true) {
+		printk(BIOS_SPEW, "VBIOS data loaded from cache; not saving\n");
+		return;
+	}
+
+	struct region_device rw_vbios_cache;
+
+	if (fmap_locate_area_as_rdev_rw(VBIOS_CACHE_FMAP_NAME, &rw_vbios_cache)) {
+		printk(BIOS_ERR, "%s: No %s FMAP section.\n", __func__, VBIOS_CACHE_FMAP_NAME);
+		return;
+	}
+
+	/* copy from PCI_VGA_RAM_IMAGE_START to rdev */
+	if (rdev_writeat(&rw_vbios_cache, (void *)PCI_VGA_RAM_IMAGE_START, 0,
+						VBIOS_CACHE_FMAP_SIZE) != VBIOS_CACHE_FMAP_SIZE)
+		printk(BIOS_ERR, "Failed to save vbios data to flash; rdev_writeat() failed.\n");
+
+	/* save data hash to TPM NVRAM for validation on subsequent boots */
+	vbios_cache_update_hash(vbios_data, VBIOS_CACHE_FMAP_SIZE);
+
+	printk(BIOS_SPEW, "VBIOS cache successfully written to FMAP.\n");
+}
+
+/*
+ * Loads cached VBIOS data into legacy oprom location.
+ *
+ * Assumes user has called vbios_cache_is_valid() and checked for success
+ */
+void vbios_load_from_cache(void)
+{
+	/* copy cached vbios data from buffer to PCI_VGA_RAM_IMAGE_START */
+	memcpy((void *)PCI_VGA_RAM_IMAGE_START, vbios_data, VBIOS_CACHE_FMAP_SIZE);
+
+	/* mark cache as used so we know not to write it later */
+	vbios_loaded_from_cache = true;
+}
+
+/*
+ * Return true if VBIOS cache data is valid
+ *
+ * Compare first 2 bytes of data with known signature
+ * and hash of data with hash stored in TPM NVRAM
+ */
+bool vbios_cache_is_valid(void)
+{
+	bool sig_valid = vbios_data[0] == 0x55 && vbios_data[1] == 0xaa;
+	return sig_valid && vbios_cache_verify_hash(vbios_data, VBIOS_CACHE_FMAP_SIZE) == CB_SUCCESS;
+}
+
+BOOT_STATE_INIT_ENTRY(BS_PRE_DEVICE, BS_ON_EXIT, read_vbios_cache_from_fmap, NULL);
+BOOT_STATE_INIT_ENTRY(BS_OS_RESUME_CHECK, BS_ON_ENTRY, write_vbios_cache_to_fmap, NULL);
+
 const struct device_operations amd_graphics_ops = {
 	.read_resources		= pci_dev_read_resources,
 	.set_resources		= graphics_set_resources,
 	.enable_resources	= pci_dev_enable_resources,
 	.init			= graphics_dev_init,
-	.scan_bus               = scan_static_bus,
+	.scan_bus		= scan_static_bus,
 	.ops_pci		= &pci_dev_ops_pci,
 	.write_acpi_tables	= pci_rom_write_acpi_tables,
 	.acpi_fill_ssdt		= graphics_fill_ssdt,

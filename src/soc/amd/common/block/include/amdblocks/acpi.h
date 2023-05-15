@@ -15,7 +15,6 @@
 	  /* sleep types defined in include/acpi/acpi.h */
 #define   ACPI_PM1_CNT_SCIEN		BIT(0)
 #define MMIO_ACPI_PM_TMR_BLK		0x08
-#define MMIO_ACPI_CPU_CONTROL		0x0c
 #define MMIO_ACPI_GPE0_BLK		0x14
 #define  MMIO_ACPI_GPE0_STS		0x14
 #define  MMIO_ACPI_GPE0_EN		0x18
@@ -55,7 +54,6 @@ struct chipset_power_state {
 unsigned long southbridge_write_acpi_tables(const struct device *device, unsigned long current,
 					    struct acpi_rsdp *rsdp);
 
-unsigned long acpi_fill_madt_irqoverride(unsigned long current);
 void acpi_fill_root_complex_tom(const struct device *device);
 
 uintptr_t add_agesa_fsp_acpi_table(guid_t guid, const char *name, acpi_rsdp_t *rsdp,

@@ -6,9 +6,7 @@ fw_config
 end
 chip soc/intel/alderlake
 
-	device cpu_cluster 0 on
-		device lapic 0 on end
-	end
+	device cpu_cluster 0 on end
 
 	# GPE configuration
 	# Note that GPE events called out in ASL code rely on this
@@ -269,7 +267,6 @@ chip soc/intel/alderlake
 				register "generic.enable_delay_ms" = "1"
 				register "generic.reset_delay_ms" = "300"
 				register "generic.has_power_resource" = "1"
-				register "generic.disable_gpio_export_in_crs" = "1"
 				register "hid_desc_reg_offset" = "0x01"
 				device i2c 0a on end
 			end

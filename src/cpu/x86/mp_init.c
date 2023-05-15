@@ -13,6 +13,7 @@
 #include <cpu/x86/msr.h>
 #include <cpu/x86/mtrr.h>
 #include <cpu/x86/smm.h>
+#include <cpu/x86/topology.h>
 #include <cpu/x86/mp.h>
 #include <delay.h>
 #include <device/device.h>
@@ -23,6 +24,9 @@
 #include <timer.h>
 #include <thread.h>
 #include <types.h>
+
+/* Generated header */
+#include <ramstage/cpu/x86/smm_start32_offset.h>
 
 #include <security/intel/stm/SmmStm.h>
 
@@ -195,18 +199,19 @@ static asmlinkage void ap_init(unsigned int index)
 
 	set_cpu_info(index, dev);
 
-	struct cpu_info *info = cpu_info();
-	cpu_add_map_entry(info->index);
-
 	/* Fix up APIC id with reality. */
-	info->cpu->path.apic.apic_id = lapicid();
+	dev->path.apic.apic_id = lapicid();
+	dev->path.apic.initial_lapicid = initial_lapicid();
+	dev->enabled = 1;
+
+	set_cpu_topology_from_leaf_b(dev);
 
 	if (cpu_is_intel())
-		printk(BIOS_INFO, "AP: slot %zu apic_id %x, MCU rev: 0x%08x\n", info->index,
-		       info->cpu->path.apic.apic_id, get_current_microcode_rev());
+		printk(BIOS_INFO, "AP: slot %u apic_id %x, MCU rev: 0x%08x\n", index,
+		       dev->path.apic.apic_id, get_current_microcode_rev());
 	else
-		printk(BIOS_INFO, "AP: slot %zu apic_id %x\n", info->index,
-		       info->cpu->path.apic.apic_id);
+		printk(BIOS_INFO, "AP: slot %u apic_id %x\n", index,
+		       dev->path.apic.apic_id);
 
 	/* Walk the flight plan */
 	ap_do_flight_plan();
@@ -386,6 +391,7 @@ static int allocate_cpu_devices(struct bus *cpu_bus, struct mp_params *p)
 			continue;
 		}
 		new->name = processor_name;
+		new->enabled = 0; /* Runtime will enable it */
 	}
 
 	return max_cpus;
@@ -432,7 +438,7 @@ static enum cb_err send_sipi_to_aps(int ap_count, atomic_t *num_aps, int sipi_ve
 
 static enum cb_err start_aps(struct bus *cpu_bus, int ap_count, atomic_t *num_aps)
 {
-	int sipi_vector;
+	int sipi_vector, total_delay;
 	/* Max location is 4KiB below 1MiB */
 	const int max_vector_loc = ((1 << 20) - (1 << 12)) >> 12;
 
@@ -479,7 +485,8 @@ static enum cb_err start_aps(struct bus *cpu_bus, int ap_count, atomic_t *num_ap
 		return CB_ERR;
 
 	/* Wait for CPUs to check in. */
-	if (wait_for_aps(num_aps, ap_count, 400000 /* 400 ms */, 50 /* us */) != CB_SUCCESS) {
+	total_delay = 50000 * ap_count; /* 50 ms per AP */
+	if (wait_for_aps(num_aps, ap_count, total_delay, 50 /* us */) != CB_SUCCESS) {
 		printk(BIOS_ERR, "Not all APs checked in: %d/%d.\n",
 		       atomic_read(num_aps), ap_count);
 		return CB_ERR;
@@ -546,6 +553,8 @@ static enum cb_err init_bsp(struct bus *cpu_bus)
 		printk(BIOS_CRIT, "Failed to find or allocate BSP struct device\n");
 		return CB_ERR;
 	}
+	bsp->path.apic.initial_lapicid = initial_lapicid();
+	set_cpu_topology_from_leaf_b(bsp);
 
 	/* Find the device structure for the boot CPU. */
 	set_cpu_info(0, bsp);
@@ -557,9 +566,6 @@ static enum cb_err init_bsp(struct bus *cpu_bus)
 		printk(BIOS_CRIT, "BSP index(%zd) != 0!\n", info->index);
 		return CB_ERR;
 	}
-
-	/* Track BSP in cpu_map structures. */
-	cpu_add_map_entry(info->index);
 	return CB_SUCCESS;
 }
 
@@ -675,7 +681,6 @@ struct mp_state {
 	uintptr_t perm_smbase;
 	size_t perm_smsize;
 	size_t smm_save_state_size;
-	uintptr_t reloc_start32_offset;
 	bool do_smm;
 } mp_state;
 
@@ -700,7 +705,7 @@ static void smm_enable(void)
  * means that ENV_SMM is 0, but we are actually executing in the environment
  * setup by the smm_stub.
  */
-static void asmlinkage smm_do_relocation(void *arg)
+static asmlinkage void smm_do_relocation(void *arg)
 {
 	const struct smm_module_params *p;
 	int cpu;
@@ -741,17 +746,8 @@ static void asmlinkage smm_do_relocation(void *arg)
 		stm_setup(mseg, p->cpu,
 				perm_smbase,
 				mp_state.perm_smbase,
-				mp_state.reloc_start32_offset);
+				SMM_START32_OFFSET);
 	}
-}
-
-static void adjust_smm_apic_id_map(struct smm_loader_params *smm_params)
-{
-	int i;
-	struct smm_stub_params *stub_params = smm_params->stub_params;
-
-	for (i = 0; i < CONFIG_MAX_CPUS; i++)
-		stub_params->apic_id_to_cpu[i] = cpu_get_apic_id(i);
 }
 
 static enum cb_err install_relocation_handler(int num_cpus, size_t save_state_size)
@@ -770,9 +766,6 @@ static enum cb_err install_relocation_handler(int num_cpus, size_t save_state_si
 		printk(BIOS_ERR, "%s: smm setup failed\n", __func__);
 		return CB_ERR;
 	}
-	adjust_smm_apic_id_map(&smm_params);
-
-	mp_state.reloc_start32_offset = smm_params.stub_params->start32_offset;
 
 	return CB_SUCCESS;
 }
@@ -797,8 +790,6 @@ static enum cb_err install_permanent_handler(int num_cpus, uintptr_t smbase,
 
 	if (smm_load_module(smbase, smsize, &smm_params))
 		return CB_ERR;
-
-	adjust_smm_apic_id_map(&smm_params);
 
 	return CB_SUCCESS;
 }

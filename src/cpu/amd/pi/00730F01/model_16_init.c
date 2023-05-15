@@ -25,20 +25,18 @@ static void model_16_init(struct device *dev)
 	/* zero the machine check error status registers */
 	mca_clear_status();
 
-	if (CONFIG(LOGICAL_CPUS)) {
-		siblings = get_cpu_count() - 1; // minus BSP
+	siblings = get_cpu_count() - 1; // minus BSP
 
-		if (siblings > 0) {
-			msr = rdmsr_amd(CPU_ID_FEATURES_MSR);
-			msr.lo |= 1 << 28;
-			wrmsr_amd(CPU_ID_FEATURES_MSR, msr);
+	if (siblings > 0) {
+		msr = rdmsr_amd(CPU_ID_FEATURES_MSR);
+		msr.lo |= 1 << 28;
+		wrmsr_amd(CPU_ID_FEATURES_MSR, msr);
 
-			msr = rdmsr_amd(CPU_ID_EXT_FEATURES_MSR);
-			msr.hi |= 1 << (33 - 32);
-			wrmsr_amd(CPU_ID_EXT_FEATURES_MSR, msr);
-		}
-		printk(BIOS_DEBUG, "siblings = %02d, ", siblings);
+		msr = rdmsr_amd(CPU_ID_EXT_FEATURES_MSR);
+		msr.hi |= 1 << (33 - 32);
+		wrmsr_amd(CPU_ID_EXT_FEATURES_MSR, msr);
 	}
+	printk(BIOS_DEBUG, "siblings = %02d, ", siblings);
 
 	/* DisableCf8ExtCfg */
 	msr = rdmsr(NB_CFG_MSR);
@@ -58,9 +56,8 @@ static struct device_operations cpu_dev_ops = {
 };
 
 static const struct cpu_device_id cpu_table[] = {
-	{ X86_VENDOR_AMD, 0x730F00 },
-	{ X86_VENDOR_AMD, 0x730F01 },
-	{ 0, 0 },
+	{ X86_VENDOR_AMD, CPUID_FROM_FMS(0x16, 0x30, 0), CPUID_ALL_STEPPINGS_MASK },
+	CPU_TABLE_END
 };
 
 static const struct cpu_driver model_16 __cpu_driver = {

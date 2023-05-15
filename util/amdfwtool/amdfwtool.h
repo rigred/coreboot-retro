@@ -9,6 +9,26 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#define ERASE_ALIGNMENT 0x1000U
+#define TABLE_ALIGNMENT 0x1000U
+#define BLOB_ALIGNMENT 0x100U
+#define TABLE_ERASE_ALIGNMENT _MAX(TABLE_ALIGNMENT, ERASE_ALIGNMENT)
+#define BLOB_ERASE_ALIGNMENT _MAX(BLOB_ALIGNMENT, ERASE_ALIGNMENT)
+
+enum platform {
+	PLATFORM_UNKNOWN,
+	PLATFORM_CARRIZO,
+	PLATFORM_STONEYRIDGE,
+	PLATFORM_RAVEN,
+	PLATFORM_PICASSO,
+	PLATFORM_RENOIR,
+	PLATFORM_CEZANNE,
+	PLATFORM_MENDOCINO,
+	PLATFORM_LUCIENNE,
+	PLATFORM_PHOENIX,
+	PLATFORM_GLINDA
+};
+
 typedef enum _amd_fw_type {
 	AMD_FW_PSP_PUBKEY = 0x00,
 	AMD_FW_PSP_BOOTLOADER = 0x01,
@@ -24,6 +44,10 @@ typedef enum _amd_fw_type {
 	AMD_FW_PSP_TRUSTLETKEY = 0x0d,
 	AMD_FW_PSP_SMU_FIRMWARE2 = 0x12,
 	AMD_DEBUG_UNLOCK = 0x13,
+	AMD_BOOT_DRIVER = 0x1b,
+	AMD_SOC_DRIVER = 0x1c,
+	AMD_DEBUG_DRIVER = 0x1d,
+	AMD_INTERFACE_DRIVER = 0x1f,
 	AMD_HW_IPCFG = 0x20,
 	AMD_WRAPPED_IKEK = 0x21,
 	AMD_TOKEN_UNLOCK = 0x22,
@@ -64,14 +88,26 @@ typedef enum _amd_fw_type {
 	AMD_FW_MSMU = 0x5a,
 	AMD_FW_SPIROM_CFG = 0x5c,
 	AMD_FW_MPIO = 0x5d,
-	AMD_FW_PSP_SMUSCS = 0x5f,
+	AMD_FW_TPMLITE = 0x5f, /* family 17h & 19h */
+	AMD_FW_PSP_SMUSCS = 0x5f, /* family 15h & 16h */
 	AMD_FW_DMCUB = 0x71,
 	AMD_FW_PSP_BOOTLOADER_AB = 0x73,
 	AMD_RIB = 0x76,
+	AMD_FW_AMF_SRAM = 0x85,
+	AMD_FW_AMF_DRAM = 0x86,
+	AMD_FW_AMF_WLAN = 0x88,
+	AMD_FW_AMF_MFD = 0x89,
 	AMD_FW_MPDMA_TF = 0x8c,
 	AMD_TA_IKEK = 0x8d,
+	AMD_FW_MPCCX = 0x90,
 	AMD_FW_GMI3_PHY = 0x91,
 	AMD_FW_MPDMA_PM = 0x92,
+	AMD_FW_LSDMA = 0x94,
+	AMD_FW_C20_MP = 0x95,
+	AMD_FW_FCFG_TABLE = 0x98,
+	AMD_FW_MINIMSMU = 0x9a,
+	AMD_FW_SRAM_FW_EXT = 0x9d,
+	AMD_FW_UMSMU = 0xa2,
 	AMD_FW_IMC = 0x200,	/* Large enough to be larger than the top BHD entry type. */
 	AMD_FW_GEC,
 	AMD_FW_XHCI,
@@ -118,10 +154,7 @@ typedef struct _embedded_firmware {
 	uint32_t gec_entry;
 	uint32_t xhci_entry;
 	uint32_t psp_directory;
-	union {
-		uint32_t new_psp_directory;
-		uint32_t combo_psp_directory;
-	};
+	uint32_t new_psp_directory; /* also used as combo_psp_directory */
 	uint32_t bios0_entry; /* todo: add way to select correct entry */
 	uint32_t bios1_entry;
 	uint32_t bios2_entry;
@@ -186,7 +219,7 @@ typedef struct _psp_directory_table {
 	psp_directory_entry entries[];
 } __attribute__((packed, aligned(16))) psp_directory_table;
 
-#define MAX_PSP_ENTRIES 0x2f
+#define MAX_PSP_ENTRIES 0xff
 
 typedef struct _psp_combo_header {
 	uint32_t cookie;
@@ -207,7 +240,7 @@ typedef struct _psp_combo_directory {
 	psp_combo_entry entries[];
 } __attribute__((packed, aligned(16))) psp_combo_directory;
 
-#define MAX_COMBO_ENTRIES 1
+#define MAX_COMBO_ENTRIES 2
 
 typedef struct _bios_directory_hdr {
 	uint32_t cookie;
@@ -287,6 +320,7 @@ typedef struct _ish_directory_table {
 #define PSP2_COOKIE 0x50535032		/* 'PSP2' */
 #define BHD_COOKIE 0x44484224		/* 'DHB$ */
 #define BHDL2_COOKIE 0x324c4224		/* '2LB$ */
+#define BHD2_COOKIE 0x44484232		/* 'DHB2' */
 
 #define PSP_LVL1 (1 << 0)
 #define PSP_LVL2 (1 << 1)
@@ -374,11 +408,19 @@ typedef struct _amd_cb_config {
 	bool recovery_ab_single_copy;
 	bool need_ish;
 	bool use_combo;
+	bool have_apcb_bk;
+	enum platform soc_id;
 } amd_cb_config;
 
 void register_fw_fuse(char *str);
-uint8_t process_config(FILE *config, amd_cb_config *cb_config, uint8_t print_deps);
-
+uint8_t process_config(FILE *config, amd_cb_config *cb_config);
+void process_signed_psp_firmwares(const char *signed_rom,
+		amd_fw_entry *fw_table,
+		uint64_t signed_start_addr,
+		enum platform soc_id);
+void write_or_fail(int fd, void *ptr, size_t size);
+ssize_t read_from_file_to_buf(int fd, void *buf, size_t buf_size);
+ssize_t write_from_buf_to_file(int fd, const void *buf, size_t buf_size);
 #define OK 0
 
 #define LINE_EOF (1)

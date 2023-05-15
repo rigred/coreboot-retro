@@ -2,7 +2,6 @@
 
 #include <device/mmio.h>
 #include <bootstate.h>
-#include <cpu/amd/msr.h>
 #include <cpu/x86/smm.h>
 #include <device/device.h>
 #include <device/pci.h>
@@ -32,7 +31,7 @@
  * amd_pci_int_defs.h, just add the pair at the end of this table.
  * Order is not important.
  */
-const static struct irq_idx_name irq_association[] = {
+static const struct irq_idx_name irq_association[] = {
 	{ PIRQ_A,	"INTA#" },
 	{ PIRQ_B,	"INTB#" },
 	{ PIRQ_C,	"INTC#" },

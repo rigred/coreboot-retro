@@ -29,7 +29,6 @@ ifneq ($(wildcard $(src)/mainboard/$(MAINBOARDDIR)/variants/$(VARIANT_DIR)/memor
 LIB_SPD_DEPS = $(SPD_SOURCES)
 
 APCB_SOURCES = $(obj)/$(APCB_NAME).gen
-APCB_SOURCES_RECOVERY = $(obj)/$(APCB_NAME).gen
 
 $(obj)/$(APCB_NAME).gen: $(SPD_SOURCES) \
 			$(APCB_V3_EDIT_TOOL) \
@@ -40,7 +39,9 @@ $(obj)/$(APCB_NAME).gen: $(SPD_SOURCES) \
 			     --mem_type 'lp5'
 else
 $(info SPD sources not found.  Skipping APCB.)
+files_added:: die_no_apcb
 endif
 else
 $(info APCB sources not found.  Skipping APCB.)
+files_added:: die_no_apcb
 endif

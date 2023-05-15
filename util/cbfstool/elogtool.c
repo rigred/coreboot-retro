@@ -18,6 +18,10 @@
 /* Only refers to the data max size. The "-1" is the checksum byte */
 #define ELOG_MAX_EVENT_DATA_SIZE  (ELOG_MAX_EVENT_SIZE - sizeof(struct event_header) - 1)
 
+enum elogtool_flag {
+	ELOGTOOL_FLAG_UTC = (1 << 0),
+};
+
 enum elogtool_return {
 	ELOGTOOL_EXIT_SUCCESS = 0,
 	ELOGTOOL_EXIT_BAD_ARGS,
@@ -28,13 +32,13 @@ enum elogtool_return {
 	ELOGTOOL_EXIT_NOT_ENOUGH_BUFFER_SPACE,
 };
 
-static int cmd_list(const struct buffer *);
-static int cmd_clear(const struct buffer *);
-static int cmd_add(const struct buffer *);
+static int cmd_list(const struct buffer *, enum elogtool_flag);
+static int cmd_clear(const struct buffer *, enum elogtool_flag);
+static int cmd_add(const struct buffer *, enum elogtool_flag);
 
 static const struct {
 	const char *name;
-	int (*func)(const struct buffer *buf);
+	int (*func)(const struct buffer *buf, enum elogtool_flag flags);
 	/* Whether it requires to write the buffer back */
 	bool write_back;
 } cmds[] = {
@@ -49,6 +53,7 @@ static char *argv0;		/* Used as invoked_as */
 static struct option long_options[] = {
 	{"file", required_argument, 0, 'f'},
 	{"help", no_argument, 0, 'h'},
+	{"utc", no_argument, 0, 'U'},
 	{NULL, 0, 0, 0},
 };
 
@@ -66,6 +71,7 @@ static void usage(char *invoked_as)
 			"-f, --file <filename>   File that holds event log partition.\n"
 			"                        If empty it will try to read/write from/to\n"
 			"                        the " ELOG_RW_REGION_NAME " using flashrom.\n"
+			"-U, --utc               Print timestamps in UTC time zone\n"
 			"-h, --help              Print this help\n",
 			invoked_as);
 }
@@ -187,19 +193,27 @@ static int shrink_buffer(const struct buffer *buf, size_t bytes_to_shrink)
 	return ELOGTOOL_EXIT_SUCCESS;
 }
 
-static int cmd_list(const struct buffer *buf)
+static int cmd_list(const struct buffer *buf, enum elogtool_flag flags)
 {
+	enum eventlog_timezone tz = EVENTLOG_TIMEZONE_LOCALTIME;
 	const struct event_header *event;
 	unsigned int count = 0;
+
+	if (flags & ELOGTOOL_FLAG_UTC)
+		tz = EVENTLOG_TIMEZONE_UTC;
 
 	/* Point to the first event */
 	event = buffer_get(buf) + sizeof(struct elog_header);
 
 	while ((const void *)(event) < buffer_end(buf)) {
-		if (event->type == ELOG_TYPE_EOL || event->length == 0)
+		if (((const void *)event + sizeof(*event)) >= buffer_end(buf)
+			|| event->length <= sizeof(*event)
+			|| event->length > ELOG_MAX_EVENT_SIZE
+			|| ((const void *)event + event->length) >= buffer_end(buf)
+			|| event->type == ELOG_TYPE_EOL)
 			break;
 
-		eventlog_print_event(event, count);
+		eventlog_print_event(event, count, tz);
 		event = elog_get_next_event(event);
 		count++;
 	}
@@ -211,7 +225,8 @@ static int cmd_list(const struct buffer *buf)
  * Clears the elog events from the given buffer, which is a valid RW_ELOG region.
  * A LOG_CLEAR event is appended.
  */
-static int cmd_clear(const struct buffer *buf)
+static int cmd_clear(const struct buffer *buf,
+		     enum elogtool_flag flags __maybe_unused)
 {
 	uint32_t used_data_size;
 	struct buffer copy;
@@ -314,7 +329,8 @@ static int cmd_add_parse_args(uint8_t *type, uint8_t *data, size_t *data_size)
 }
 
 /* Appends an elog entry to EventLog buffer. */
-static int cmd_add(const struct buffer *buf)
+static int cmd_add(const struct buffer *buf,
+		   enum elogtool_flag flags __maybe_unused)
 {
 	uint8_t data[ELOG_MAX_EVENT_DATA_SIZE];
 	size_t data_size = 0;
@@ -354,6 +370,7 @@ static int cmd_add(const struct buffer *buf)
 int main(int argc, char **argv)
 {
 	char *filename = NULL;
+	enum elogtool_flag flags = 0;
 	struct buffer buf;
 	unsigned int i;
 	int argflag;
@@ -366,7 +383,7 @@ int main(int argc, char **argv)
 
 	while (1) {
 		int option_index;
-		argflag = getopt_long(argc, argv, "hf:", long_options, &option_index);
+		argflag = getopt_long(argc, argv, "Uhf:", long_options, &option_index);
 		if (argflag == -1)
 			break;
 
@@ -383,6 +400,9 @@ int main(int argc, char **argv)
 			}
 
 			filename = optarg;
+			break;
+		case 'U':
+			flags |= ELOGTOOL_FLAG_UTC;
 			break;
 
 		default:
@@ -406,7 +426,7 @@ int main(int argc, char **argv)
 			/* For commands that parse their own arguments. */
 			cmd_argv = &argv[optind+1];
 			argv0 = argv[0];
-			ret = cmds[i].func(&buf);
+			ret = cmds[i].func(&buf, flags);
 			break;
 		}
 	}

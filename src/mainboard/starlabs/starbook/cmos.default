@@ -12,10 +12,11 @@ wireless=Enable
 webcam=Enable
 microphone=Enable
 legacy_8254_timer=Disable
+pci_hot_plug=Disable
 # EC
 kbl_timeout=30 seconds
 fn_ctrl_swap=Disable
-mirror_flag=Enable
+mirror_flag=Disable
 # southbridge
 power_on_after_fail=Disable
 # Functions

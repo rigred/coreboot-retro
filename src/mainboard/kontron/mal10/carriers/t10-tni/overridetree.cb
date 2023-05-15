@@ -2,10 +2,6 @@
 
 chip soc/intel/apollolake
 
-	device cpu_cluster 0 on
-		device lapic 0 on end
-	end
-
 	# Override USB port configuration
 	register "usb_config_override" = "1"
 	# USB 2.0

@@ -89,8 +89,8 @@ Method (_PSC) {
 #ifdef SUPERIO_SHOW_FDC
 Device (FDC0)
 {
-	Name (_HID, EisaId ("PNP0700")) // _HID: Hardware ID
-	Method (_STA, 0, NotSerialized) // _STA: Status
+	Name (_HID, EisaId ("PNP0700"))
+	Method (_STA, 0, NotSerialized)
 	{
 		PNP_GENERIC_STA(W83977TF_FDC)
 	}

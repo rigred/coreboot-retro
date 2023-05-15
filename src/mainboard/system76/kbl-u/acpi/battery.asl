@@ -2,14 +2,14 @@
 
 Device (BAT0)
 {
-	Name (_HID, EisaId ("PNP0C0A") /* Control Method Battery */)  // _HID: Hardware ID
-	Name (_UID, 0)  // _UID: Unique ID
+	Name (_HID, EisaId ("PNP0C0A") /* Control Method Battery */)
+	Name (_UID, 0)
 	Name (_PCL, Package (0x01)  // _PCL: Power Consumer List
 	{
 		_SB
 	})
 	Name (BFCC, 0)
-	Method (_STA, 0, NotSerialized)  // _STA: Status
+	Method (_STA, 0, NotSerialized)
 	{
 		If (^^PCI0.LPCB.EC0.ECOK)
 		{
