@@ -1,0 +1,3 @@
+config CPU_INTEL_MODEL_5XX
+	bool
+	select ARCH_X86

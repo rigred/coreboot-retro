@@ -1,0 +1,7 @@
+Category: desktop
+Board URL: https://theretroweb.com/motherboards/s/msi-ms-5128-tr4
+ROM package: DIP32
+ROM protocol: Parallel
+ROM socketed: y
+Flashrom support: y
+Release year: 1996

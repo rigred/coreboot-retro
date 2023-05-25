@@ -1,4 +1,5 @@
 # CPU models
+source "src/cpu/intel/model_5xx/Kconfig"
 source "src/cpu/intel/model_6xx/Kconfig"
 source "src/cpu/intel/model_65x/Kconfig"
 source "src/cpu/intel/model_67x/Kconfig"
