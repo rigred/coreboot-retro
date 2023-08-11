@@ -1,4 +1,4 @@
-chip northbridge/intel/i440bx		# Northbridge
+chip northbridge/intel/i430hx		# Northbridge
   device domain 0 on		# PCI domain
     chip southbridge/intel/i82371eb	# Southbridge
       register "gpo" = "0x7fffbbff"
