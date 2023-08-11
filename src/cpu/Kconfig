@@ -27,12 +27,6 @@ config SMP
 	  This option is used to enable certain functions to make coreboot
 	  work correctly on symmetric multi processor (SMP) systems.
 
-config	MMX
-	bool
-	help
-	  Select MMX in your socket or model Kconfig if your CPU has MMX
-	  streaming SIMD instructions.
-
 config SSE
 	bool
 	help
@@ -90,7 +84,7 @@ choice
 	default CPU_MICROCODE_CBFS_NONE if MICROCODE_BLOB_NOT_IN_BLOB_REPO || \
 					   MICROCODE_BLOB_NOT_HOOKED_UP || \
 					   MICROCODE_BLOB_UNDISCLOSED
-	depends on SUPPORT_CPU_UCODE_IN_CBFS
+	depends on SUPPORT_CPU_UCODE_IN_CBFS && !CPU_INTEL_MICROCODE_CBFS_SPLIT_BINS
 
 config CPU_MICROCODE_CBFS_DEFAULT_BINS
 	bool "Generate from tree"

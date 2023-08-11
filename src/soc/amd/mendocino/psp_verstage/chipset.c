@@ -6,12 +6,14 @@
 #include <arch/hlt.h>
 #include <bl_uapp/bl_errorcodes_public.h>
 #include <bl_uapp/bl_syscall_public.h>
+#include <boot_device.h>
 #include <cbfs.h>
 #include <console/console.h>
 #include <psp_verstage.h>
 #include <security/vboot/misc.h>
 #include <security/vboot/vbnv.h>
 
+#define PSP_FW_HASH_FILE_NAME(slot) "apu/amdfw_" slot "_hash"
 /*
  * We can't pass pointer to hash table in the SPI.
  * The AMD PSP team specifically required that whole hash table
@@ -23,9 +25,10 @@ static struct psp_fw_hash_table hash_table;
 static struct psp_fw_entry_hash_256 hash_256[MAX_NUM_HASH_ENTRIES];
 static struct psp_fw_entry_hash_384 hash_384[MAX_NUM_HASH_ENTRIES];
 
-void update_psp_fw_hash_table(const char *fname)
+static void update_one_psp_fw_hash_table(const char *fname)
 {
-	uint8_t *spi_ptr = (uint8_t *)cbfs_map(fname, NULL);
+	void *hash_file = cbfs_map(fname, NULL);
+	uint8_t *spi_ptr = (uint8_t *)hash_file;
 	uint32_t len;
 
 	if (!spi_ptr) {
@@ -44,6 +47,8 @@ void update_psp_fw_hash_table(const char *fname)
 		printk(BIOS_ERR, "Too many entries in AMD Firmware hash table"
 				 " (SHA256:%d, SHA384:%d)\n",
 				 hash_table.no_of_entries_256, hash_table.no_of_entries_384);
+		cbfs_unmap(hash_file);
+		rdev_munmap(boot_device_ro(), hash_file);
 		return;
 	}
 
@@ -52,6 +57,8 @@ void update_psp_fw_hash_table(const char *fname)
 		printk(BIOS_ERR, "No entries in AMD Firmware hash table"
 				 " (SHA256:%d, SHA384:%d)\n",
 				 hash_table.no_of_entries_256, hash_table.no_of_entries_384);
+		cbfs_unmap(hash_file);
+		rdev_munmap(boot_device_ro(), hash_file);
 		return;
 	}
 
@@ -67,6 +74,18 @@ void update_psp_fw_hash_table(const char *fname)
 	memcpy(hash_384, spi_ptr, len);
 
 	svc_set_fw_hash_table(&hash_table);
+	cbfs_unmap(hash_file);
+	rdev_munmap(boot_device_ro(), hash_file);
+}
+
+void update_psp_fw_hash_tables(void)
+{
+	struct vb2_context *ctx = vboot_get_context();
+
+	if (vboot_is_firmware_slot_a(ctx))
+		update_one_psp_fw_hash_table(PSP_FW_HASH_FILE_NAME("a"));
+	else
+		update_one_psp_fw_hash_table(PSP_FW_HASH_FILE_NAME("b"));
 }
 
 uint32_t update_psp_bios_dir(uint32_t *psp_dir_offset, uint32_t *bios_dir_offset)

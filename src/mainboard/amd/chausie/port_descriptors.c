@@ -17,7 +17,7 @@ static const fsp_dxio_descriptor chausie_dxio_descriptors[] = {
 		.link_speed_capability = GEN3,
 		.turn_off_unused_lanes = true,
 		.link_aspm = 2,
-		.link_hotplug = 3,
+		.link_hotplug = HOTPLUG_ENHANCED,
 		.clk_req = CLK_REQ3,
 	},
 	{ /* WIFI */
@@ -30,7 +30,7 @@ static const fsp_dxio_descriptor chausie_dxio_descriptors[] = {
 		.link_speed_capability = GEN3,
 		.turn_off_unused_lanes = true,
 		.link_aspm = 2,
-		.link_hotplug = 3,
+		.link_hotplug = HOTPLUG_ENHANCED,
 		.clk_req = CLK_REQ1,
 	},
 	{ /* NVMe SSD */
@@ -43,7 +43,7 @@ static const fsp_dxio_descriptor chausie_dxio_descriptors[] = {
 		.link_speed_capability = GEN3,
 		.turn_off_unused_lanes = true,
 		.link_aspm = 2,
-		.link_hotplug = 3,
+		.link_hotplug = HOTPLUG_ENHANCED,
 		.gpio_group_id = GPIO_27,
 		.clk_req = CLK_REQ0,
 	},
@@ -99,15 +99,12 @@ static uint8_t get_ddi1_type(void)
 	case 0xc:
 		printk(BIOS_DEBUG, "Configuring DDI1 as HDMI.\n");
 		return DDI_HDMI;
-		break;
 	case 0x13:
 		printk(BIOS_DEBUG, "Configuring DDI1 as DP.\n");
 		return DDI_DP;
-		break;
 	case 0x14:
 		printk(BIOS_DEBUG, "Configuring DDI1 as eDP.\n");
 		return DDI_EDP;
-		break;
 	default:
 		printk(BIOS_WARNING, "Unexpected display connector type %x. Disabling DDI1.\n",
 		       connector_type);

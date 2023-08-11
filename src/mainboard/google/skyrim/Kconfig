@@ -11,6 +11,7 @@ config AMD_FWM_POSITION_INDEX
 
 config BOARD_SPECIFIC_OPTIONS
 	def_bool y
+	select ACPI_S1_NOT_SUPPORTED
 	select AMD_SOC_CONSOLE_UART
 	select BOARD_ROMSIZE_KB_16384
 	select DISABLE_KEYBOARD_RESET_PIN
@@ -59,6 +60,10 @@ config DRIVER_TPM_I2C_BUS
 config DRIVER_TPM_I2C_ADDR
 	hex
 	default 0x50
+
+config GSC_IRQ_GPIO
+	int
+	default 18
 
 config AMDFW_CONFIG_FILE
 	string
@@ -181,6 +186,7 @@ config OVERRIDE_EFS_SPI_SPEED_MIN_BOARD
 	default 0x5 if BOARD_GOOGLE_SKYRIM
 	default 0x1 if BOARD_GOOGLE_FROSTFLOW
 	default 0x1 if BOARD_GOOGLE_MARKARTH
+	default 0x1 if BOARD_GOOGLE_CRYSTALDRIFT
 	default 0xffffffff
 	help
 	  Minimum board version starting which the Override EFS SPI Speed

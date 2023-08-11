@@ -18,6 +18,9 @@
 #define ADDR_MOD 0
 #endif
 
+#define SPI_FLASH_EXIT_4BYTE_STAGE	\
+	(ENV_INITIAL_STAGE || CONFIG(BOOT_DEVICE_MEMORY_MAPPED))
+
 static void spi_flash_addr(u32 addr, u8 *cmd)
 {
 	/* cmd[0] is actual command */
@@ -467,6 +470,7 @@ static int find_match(const struct spi_slave *spi, struct spi_flash *flash,
 		return fill_spi_flash(spi, flash, vi, part);
 	}
 
+	printk(BIOS_WARNING, "SF: no match for ID %04x %04x\n", id[0], id[1]);
 	return -1;
 }
 
@@ -547,8 +551,10 @@ int spi_flash_probe(unsigned int bus, unsigned int cs, struct spi_flash *flash)
 			CONFIG_ROM_SIZE);
 	}
 
-	if (CONFIG(SPI_FLASH_EXIT_4_BYTE_ADDR_MODE) && ENV_INITIAL_STAGE)
+	if (CONFIG(SPI_FLASH_EXIT_4_BYTE_ADDR_MODE) && SPI_FLASH_EXIT_4BYTE_STAGE) {
+		printk(BIOS_DEBUG, "SF: Exiting 4-byte addressing mode\n");
 		spi_flash_cmd(&flash->spi, CMD_EXIT_4BYTE_ADDR_MODE, NULL, 0);
+	}
 
 	return 0;
 }

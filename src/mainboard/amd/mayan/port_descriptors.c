@@ -13,8 +13,8 @@ static const fsp_dxio_descriptor mayan_dxio_descriptors[] = {
 		// MXM
 		.engine_type = PCIE_ENGINE,
 		.port_present = true,
-		.start_logical_lane = 0,
-		.end_logical_lane = 3,
+		.start_lane = 0,
+		.end_lane = 3,
 		.device_number = 1,
 		.function_number = 1,
 		.link_speed_capability = GEN_MAX,
@@ -22,7 +22,7 @@ static const fsp_dxio_descriptor mayan_dxio_descriptors[] = {
 		.link_aspm = ASPM_L1,
 		.link_aspm_L1_1 = true,
 		.link_aspm_L1_2 = true,
-		.link_hotplug = false,
+		.link_hotplug = HOTPLUG_DISABLED,
 		.gpio_group_id = 4,
 		.clk_pm_support = true,
 		.clk_req = CLK_REQ0,
@@ -33,8 +33,8 @@ static const fsp_dxio_descriptor mayan_dxio_descriptors[] = {
 		// M2 SSD0-NVME
 		.engine_type = PCIE_ENGINE,
 		.port_present = true,
-		.start_logical_lane = 16,
-		.end_logical_lane = 19,
+		.start_lane = 16,
+		.end_lane = 19,
 		.device_number = 2,
 		.function_number = 4,
 		.link_speed_capability = GEN_MAX,
@@ -42,7 +42,7 @@ static const fsp_dxio_descriptor mayan_dxio_descriptors[] = {
 		.link_aspm = ASPM_L1,
 		.link_aspm_L1_1 = true,
 		.link_aspm_L1_2 = true,
-		.link_hotplug = false,
+		.link_hotplug = HOTPLUG_DISABLED,
 		.gpio_group_id = 27,
 		.clk_pm_support = true,
 		.clk_req = CLK_REQ4,
@@ -53,8 +53,8 @@ static const fsp_dxio_descriptor mayan_dxio_descriptors[] = {
 		// X1
 		.engine_type = PCIE_ENGINE,
 		.port_present = true,
-		.start_logical_lane = 12,
-		.end_logical_lane = 12,
+		.start_lane = 12,
+		.end_lane = 12,
 		.device_number = 1,
 		.function_number = 3,
 		.link_speed_capability = GEN_MAX,
@@ -62,7 +62,7 @@ static const fsp_dxio_descriptor mayan_dxio_descriptors[] = {
 		.link_aspm = ASPM_L1,
 		.link_aspm_L1_1 = true,
 		.link_aspm_L1_2 = true,
-		.link_hotplug = false,
+		.link_hotplug = HOTPLUG_DISABLED,
 		.clk_pm_support = true,
 		.clk_req = CLK_REQ2,
 		.eq_preset = 3,
@@ -72,8 +72,8 @@ static const fsp_dxio_descriptor mayan_dxio_descriptors[] = {
 		// DT
 		.engine_type = PCIE_ENGINE,
 		.port_present = true,
-		.start_logical_lane = 8,
-		.end_logical_lane = 9,
+		.start_lane = 8,
+		.end_lane = 9,
 		.device_number = 1,
 		.function_number = 2,
 		.link_speed_capability = GEN_MAX,
@@ -81,7 +81,7 @@ static const fsp_dxio_descriptor mayan_dxio_descriptors[] = {
 		.link_aspm = ASPM_L1,
 		.link_aspm_L1_1 = true,
 		.link_aspm_L1_2 = true,
-		.link_hotplug = false,
+		.link_hotplug = HOTPLUG_DISABLED,
 		.clk_pm_support = true,
 		.clk_req = CLK_REQ1,
 		.eq_preset = 3,
@@ -139,15 +139,12 @@ static uint8_t get_ddi1_type(void)
 	case 0xc:
 		printk(BIOS_DEBUG, "Configuring DDI1 as HDMI.\n");
 		return DDI_HDMI;
-		break;
 	case 0x13:
 		printk(BIOS_DEBUG, "Configuring DDI1 as DP.\n");
 		return DDI_DP;
-		break;
 	case 0x14:
 		printk(BIOS_DEBUG, "Configuring DDI1 as eDP.\n");
 		return DDI_EDP;
-		break;
 	default:
 		printk(BIOS_WARNING, "Unexpected display connector type %x. Disabling DDI1.\n",
 		       connector_type);

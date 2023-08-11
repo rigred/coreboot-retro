@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 
 #include <assert.h>
+#include <bootsplash.h>
 #include <cbfs.h>
 #include <console/console.h>
 #include <cpu/intel/cpu_ids.h>
@@ -9,6 +10,7 @@
 #include <device/pci.h>
 #include <fsp/api.h>
 #include <fsp/fsp_debug_event.h>
+#include <fsp/fsp_gop_blt.h>
 #include <fsp/ppi/mp_service_ppi.h>
 #include <fsp/util.h>
 #include <option.h>
@@ -40,6 +42,8 @@
 /* SATA DEVSLP idle timeout default values */
 #define DEF_DMVAL	15
 #define DEF_DITOVAL	625
+
+#define MAX_ONBOARD_PCIE_DEVICES 256
 
 static const struct slot_irq_constraints irq_constraints[] = {
 	{
@@ -309,18 +313,23 @@ static int get_l1_substate_control(enum L1_substates_control ctl)
 }
 
 /*
+ * Chip config parameter pcie_rp_aspm uses (UPD value + 1) because
+ * a UPD value of 0 for pcie_rp_aspm means disabled. In order to ensure
+ * that the mainboard setting does not disable ASPM incorrectly, chip
+ * config parameter values are offset by 1 with 0 meaning use FSP UPD default.
  * get_aspm_control() ensures that the right UPD value is set in fsp_params.
- * 0: Disable ASPM
- * 1: L0s only
- * 2: L1 only
- * 3: L0s and L1
- * 4: Auto configuration
+ * 0: Use FSP UPD default
+ * 1: Disable ASPM
+ * 2: L0s only
+ * 3: L1 only
+ * 4: L0s and L1
+ * 5: Auto configuration
  */
 static unsigned int get_aspm_control(enum ASPM_control ctl)
 {
-	if (ctl > ASPM_AUTO)
+	if ((ctl > ASPM_AUTO) || (ctl == ASPM_DEFAULT))
 		ctl = ASPM_AUTO;
-	return ctl;
+	return ctl - 1;
 }
 
 __weak void mainboard_update_soc_chip_config(struct soc_intel_meteorlake_config *config)
@@ -410,10 +419,10 @@ static void fill_fsps_tcss_params(FSP_S_CONFIG *s_cfg,
 		const struct soc_intel_meteorlake_config *config)
 {
 	const struct device *tcss_port_arr[] = {
+		DEV_PTR(tcss_usb3_port0),
 		DEV_PTR(tcss_usb3_port1),
 		DEV_PTR(tcss_usb3_port2),
 		DEV_PTR(tcss_usb3_port3),
-		DEV_PTR(tcss_usb3_port4),
 	};
 
 	s_cfg->TcssAuxOri = config->tcss_aux_ori;
@@ -651,6 +660,10 @@ static void fill_fsps_misc_power_params(FSP_S_CONFIG *s_cfg,
 	/* Enable the energy efficient turbo mode */
 	s_cfg->EnergyEfficientTurbo = 1;
 	s_cfg->PmcLpmS0ixSubStateEnableMask = get_supported_lpm_mask();
+	/* Un-Demotion from Demoted C1 need to be disable when
+	 * C1 auto demotion is disabled */
+	s_cfg->C1StateUnDemotion = !config->disable_c1_state_auto_demotion;
+	s_cfg->C1StateAutoDemotion = !config->disable_c1_state_auto_demotion;
 	s_cfg->PkgCStateDemotion = !config->disable_package_c_state_demotion;
 	s_cfg->PmcV1p05PhyExtFetControlEn = 1;
 
@@ -700,6 +713,70 @@ static void arch_silicon_init_params(FSPS_ARCH_UPD *s_arch_cfg)
 				fsp_debug_event_handler;
 }
 
+static void evaluate_ssid(const struct device *dev, uint16_t *svid, uint16_t *ssid)
+{
+	if (!(dev && svid && ssid))
+		return;
+
+	*svid = CONFIG_SUBSYSTEM_VENDOR_ID ? : (dev->subsystem_vendor ? : 0x8086);
+	*ssid = CONFIG_SUBSYSTEM_DEVICE_ID ? : (dev->subsystem_device ? : 0xfffe);
+}
+
+/*
+ * Programming SSID before FSP-S is important because SSID registers of a few PCIE
+ * devices (e.g. IPU, Crashlog, XHCI, TCSS_XHCI etc.) are locked after FSP-S hence
+ * provide a custom SSID (same as DID by default) value via UPD.
+ */
+static void fill_fsps_pci_ssid_params(FSP_S_CONFIG *s_cfg,
+		const struct soc_intel_meteorlake_config *config)
+{
+	struct svid_ssid_init_entry {
+		union {
+			struct {
+				uint64_t reg:12;
+				uint64_t function:3;
+				uint64_t device:5;
+				uint64_t bus:8;
+				uint64_t ignore1:4;
+				uint64_t segment:16;
+				uint64_t ignore2:16;
+			};
+			uint64_t data;
+		};
+		struct {
+			uint16_t svid;
+			uint16_t ssid;
+		};
+		uint32_t ignore3;
+	};
+
+	static struct svid_ssid_init_entry ssid_table[MAX_ONBOARD_PCIE_DEVICES];
+	const struct device *dev;
+	int i = 0;
+
+	for (dev = all_devices; dev; dev = dev->next) {
+		if (!(is_dev_enabled(dev) && dev->path.type == DEVICE_PATH_PCI &&
+		    dev->bus->secondary == 0))
+			continue;
+
+		if (dev->path.pci.devfn == PCI_DEVFN_ROOT) {
+			evaluate_ssid(dev, &s_cfg->SiCustomizedSvid, &s_cfg->SiCustomizedSsid);
+		} else {
+			ssid_table[i].reg	= PCI_SUBSYSTEM_VENDOR_ID;
+			ssid_table[i].device	= PCI_SLOT(dev->path.pci.devfn);
+			ssid_table[i].function	= PCI_FUNC(dev->path.pci.devfn);
+			evaluate_ssid(dev, &ssid_table[i].svid, &ssid_table[i].ssid);
+			i++;
+		}
+	}
+
+	s_cfg->SiSsidTablePtr = (uintptr_t)ssid_table;
+	s_cfg->SiNumberOfSsidTableEntry = i;
+
+	/* Ensure FSP will program the registers */
+	s_cfg->SiSkipSsidProgramming = 0;
+}
+
 static void soc_silicon_init_params(FSP_S_CONFIG *s_cfg,
 		struct soc_intel_meteorlake_config *config)
 {
@@ -729,6 +806,7 @@ static void soc_silicon_init_params(FSP_S_CONFIG *s_cfg,
 		fill_fsps_ufs_params,
 		fill_fsps_ai_params,
 		fill_fsps_irq_params,
+		fill_fsps_pci_ssid_params,
 	};
 
 	for (size_t i = 0; i < ARRAY_SIZE(fill_fsps_params); i++)
@@ -786,4 +864,15 @@ void platform_fsp_multi_phase_init_cb(uint32_t phase_index)
 __weak void mainboard_silicon_init_params(FSP_S_CONFIG *s_cfg)
 {
 	printk(BIOS_DEBUG, "WEAK: %s/%s called\n", __FILE__, __func__);
+}
+
+/* Handle FSP logo params */
+void soc_load_logo(FSPS_UPD *supd)
+{
+	fsp_convert_bmp_to_gop_blt(&supd->FspsConfig.LogoPtr,
+			 &supd->FspsConfig.LogoSize,
+			 &supd->FspsConfig.BltBufferAddress,
+			 &supd->FspsConfig.BltBufferSize,
+			 &supd->FspsConfig.LogoPixelHeight,
+			 &supd->FspsConfig.LogoPixelWidth);
 }

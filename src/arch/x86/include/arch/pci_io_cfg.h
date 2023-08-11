@@ -7,13 +7,15 @@
 #include <arch/io.h>
 #include <device/pci_type.h>
 
-#define PCI_IO_CONFIG_INDEX	0xcf8
-#define PCI_IO_CONFIG_DATA	0xcfc
+#define PCI_IO_CONFIG_INDEX		0xcf8
+#define PCI_IO_CONFIG_DATA		0xcfc
+#define PCI_IO_CONFIG_PORT_COUNT	8
+#define PCI_IO_CONFIG_LAST_PORT		(PCI_IO_CONFIG_INDEX + PCI_IO_CONFIG_PORT_COUNT - 1)
 
 static __always_inline
 uint32_t pci_io_encode_addr(pci_devfn_t dev, uint16_t reg)
 {
-	uint32_t addr = 1 << 31;
+	uint32_t addr = 1U << 31;
 
 	addr |= dev >> 4;
 	addr |= reg & 0xfc;

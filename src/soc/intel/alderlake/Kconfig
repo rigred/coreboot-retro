@@ -36,10 +36,17 @@ config SOC_INTEL_ALDERLAKE_PCH_P
 config SOC_INTEL_ALDERLAKE_PCH_S
 	bool
 	select SOC_INTEL_ALDERLAKE
-	select HAVE_INTEL_FSP_REPO
+	select HAVE_INTEL_FSP_REPO if !SOC_INTEL_RAPTORLAKE_PCH_S || (SOC_INTEL_RAPTORLAKE_PCH_S && FSP_TYPE_IOT)
 	select PLATFORM_USES_FSP2_3
 	help
 	  Choose this option if your mainboard has a PCH-S chipset.
+
+config SOC_INTEL_RAPTORLAKE_PCH_S
+	bool
+	select SOC_INTEL_ALDERLAKE_PCH_S
+	select SOC_INTEL_RAPTORLAKE
+	help
+	  Choose this option if your mainboard has a Raptor Lake PCH-S chipset.
 
 if SOC_INTEL_ALDERLAKE
 
@@ -138,8 +145,8 @@ config CPU_SPECIFIC_OPTIONS
 
 config SOC_INTEL_ALDERLAKE_TCSS_USB4_SUPPORT
 	bool
-	default y if !SOC_INTEL_ALDERLAKE_PCH_S
 	default n if SOC_INTEL_ALDERLAKE_PCH_S
+	default y
 	select SOC_INTEL_COMMON_BLOCK_TCSS
 	select SOC_INTEL_COMMON_BLOCK_USB4
 	select SOC_INTEL_COMMON_BLOCK_USB4_PCIE
@@ -378,16 +385,15 @@ config VBOOT_HASH_BLOCK_SIZE
 	default 0x1000
 
 config CBFS_SIZE
-	default 0x200000
+	default 0x400000
 
 config PRERAM_CBMEM_CONSOLE_SIZE
 	hex
-	default 0x16000 if CONSOLE_SERIAL
 	default 0x4000
 
 config CONSOLE_CBMEM_BUFFER_SIZE
 	hex
-	default 0x100000 if CONSOLE_SERIAL
+	default 0x100000 if BUILDING_WITH_DEBUG_FSP
 	default 0x40000
 
 config FSP_TYPE_IOT
@@ -398,17 +404,19 @@ config FSP_TYPE_IOT
 
 config FSP_HEADER_PATH
 	string "Location of FSP headers"
-	default "src/vendorcode/intel/fsp/fsp2_0/alderlake_n/" if SOC_INTEL_ALDERLAKE_PCH_N
-	default "src/vendorcode/intel/fsp/fsp2_0/raptorlake/" if SOC_INTEL_RAPTORLAKE
+	default "src/vendorcode/intel/fsp/fsp2_0/alderlake_n/" if SOC_INTEL_ALDERLAKE_PCH_N && !FSP_USE_REPO
+	default "src/vendorcode/intel/fsp/fsp2_0/raptorlake/" if SOC_INTEL_RAPTORLAKE && !FSP_USE_REPO
+	default "3rdparty/fsp/RaptorLakeFspBinPkg/IoT/RaptorLakeS/Include/" if SOC_INTEL_RAPTORLAKE_PCH_S && FSP_TYPE_IOT
 	default "3rdparty/fsp/AlderLakeFspBinPkg/IoT/AlderLakeP/Include/" if SOC_INTEL_ALDERLAKE_PCH_P && FSP_TYPE_IOT
 	default "3rdparty/fsp/AlderLakeFspBinPkg/IoT/AlderLakeS/Include/" if SOC_INTEL_ALDERLAKE_PCH_S && FSP_TYPE_IOT
 	default "3rdparty/fsp/AlderLakeFspBinPkg/Client/AlderLakeP/Include/" if SOC_INTEL_ALDERLAKE_PCH_P
 	default "3rdparty/fsp/AlderLakeFspBinPkg/Client/AlderLakeS/Include/" if SOC_INTEL_ALDERLAKE_PCH_S
-	default "src/vendorcode/intel/fsp/fsp2_0/alderlake/"
+	default "src/vendorcode/intel/fsp/fsp2_0/alderlake/" if !FSP_USE_REPO
 
 config FSP_FD_PATH
 	string
 	depends on FSP_USE_REPO
+	default "3rdparty/fsp/RaptorLakeFspBinPkg/IoT/RaptorLakeS/FSP.fd" if SOC_INTEL_RAPTORLAKE_PCH_S && FSP_TYPE_IOT
 	default "3rdparty/fsp/AlderLakeFspBinPkg/IoT/AlderLakeP/Fsp.fd" if SOC_INTEL_ALDERLAKE_PCH_P && FSP_TYPE_IOT
 	default "3rdparty/fsp/AlderLakeFspBinPkg/IoT/AlderLakeS/Fsp.fd" if SOC_INTEL_ALDERLAKE_PCH_S && FSP_TYPE_IOT
 	default "3rdparty/fsp/AlderLakeFspBinPkg/Client/AlderLakeP/Fsp.fd" if SOC_INTEL_ALDERLAKE_PCH_P
@@ -526,5 +534,31 @@ config FSP_PUBLISH_MBP_HOB
 	  occur if no MBP HOB, so it results S0ix issue. This limitation is addressed in the
 	  later platforms so creation of MBP HOB can be skipped for ADL-N and RPL based
 	  platforms.
+
+config INCLUDE_HSPHY_IN_FMAP
+	bool "Include PCIe 5.0 HSPHY firmware in flash"
+	default n
+	help
+	  Set this option to cache the PCIe 5.0 HSPHY firmware after it is
+	  fetched from ME during boot. By default coreboot will fetch the
+	  HSPHY FW from ME, but if for some reason ME is not enabled or
+	  visible, the cached blob will be attempted to initialize the PCIe
+	  5.0 root port. Select it if ME is soft disabled or disabled with HAP
+	  bit. If possible, the HSPHY FW will be saved to flashmap region if
+	  the firmware file is not provided directly in the HSPHY_FW_FILE
+	  Kconfig.
+
+config HSPHY_FW_FILE
+	string "HSPHY firmware file path"
+	depends on INCLUDE_HSPHY_IN_FMAP
+	help
+	  Path pointing to the PCIe 5.0 HSPHY file. The file can be extracted
+	  from full firmware image or ME region using UEFITool. If left empty,
+	  HSPHY loading procedure will try to save the firmware to the flashmap
+	  region if fetched successfully from ME.
+
+config HSPHY_FW_MAX_SIZE
+	hex
+	default 0x8000
 
 endif

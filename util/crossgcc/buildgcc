@@ -37,13 +37,13 @@ COREBOOT_MIRROR_URL="https://www.coreboot.org/releases/crossgcc-sources"
 GMP_VERSION=6.2.1
 MPFR_VERSION=4.2.0
 MPC_VERSION=1.3.1
-GCC_VERSION=11.3.0
+GCC_VERSION=11.4.0
 BINUTILS_VERSION=2.40
-IASL_VERSION="R10_20_22"
+IASL_VERSION="R06_28_23"
 # CLANG version number
-CLANG_VERSION=15.0.7
-CMAKE_VERSION=3.26.3
-NASM_VERSION=2.15.05
+CLANG_VERSION=16.0.6
+CMAKE_VERSION=3.26.4
+NASM_VERSION=2.16.01
 
 # Filename for each package
 GMP_ARCHIVE="gmp-${GMP_VERSION}.tar.xz"
@@ -881,13 +881,6 @@ build_LLVM() {
 
 	cp -a ../$CLANG_DIR/tools/scan-build/* "$DESTDIR$TARGETDIR/bin"
 	cp -a ../$CLANG_DIR/tools/scan-view/* "$DESTDIR$TARGETDIR/bin"
-
-	# create symlinks to work around broken --print-librt-file-name
-	# when used with -target.
-	cd "$DESTDIR$TARGETDIR/lib/clang/${CLANG_VERSION}/lib" || exit 1
-	for i in */libclang_rt.builtins*.a; do
-		ln -s "$i" .
-	done
 }
 
 build_CMAKE() {

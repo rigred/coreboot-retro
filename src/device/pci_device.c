@@ -7,6 +7,7 @@
 
 #include <acpi/acpi.h>
 #include <assert.h>
+#include <cbmem.h>
 #include <device/pci_ops.h>
 #include <bootmode.h>
 #include <console/console.h>
@@ -561,8 +562,22 @@ void pci_domain_read_resources(struct device *dev)
 	res->flags = IORESOURCE_IO | IORESOURCE_SUBTRACTIVE |
 		     IORESOURCE_ASSIGNED;
 
-	/* Initialize the system-wide memory resources constraints. */
+	/*
+	 * Initialize 32-bit memory resource constraints.
+	 *
+	 * There are often undeclared chipset resources in lower memory
+	 * and memory right below the 4G barrier. Hence, only allow
+	 * one big range from cbmem_top to the configured limit.
+	 */
 	res = new_resource(dev, IOINDEX_SUBTRACTIVE(1, 0));
+	res->base  = (uintptr_t)cbmem_top();
+	res->limit = CONFIG_DOMAIN_RESOURCE_32BIT_LIMIT - 1;
+	res->flags = IORESOURCE_MEM | IORESOURCE_SUBTRACTIVE |
+		     IORESOURCE_ASSIGNED;
+
+	/* Initialize 64-bit memory resource constraints above 4G. */
+	res = new_resource(dev, IOINDEX_SUBTRACTIVE(2, 0));
+	res->base  = 4ULL * GiB;
 	res->limit = (1ULL << cpu_phys_address_size()) - 1;
 	res->flags = IORESOURCE_MEM | IORESOURCE_SUBTRACTIVE |
 		     IORESOURCE_ASSIGNED;
@@ -1423,7 +1438,7 @@ void pci_scan_bus(struct bus *bus, unsigned int min_devfn,
 		max_devfn=0xff;
 	}
 
-	post_code(POST_ENTER_PCI_SCAN_BUS);
+	post_code(POSTCODE_ENTER_PCI_SCAN_BUS);
 
 	if (pci_bus_only_one_child(bus))
 		max_devfn = MIN(max_devfn, 0x07);
@@ -1514,7 +1529,7 @@ void pci_scan_bus(struct bus *bus, unsigned int min_devfn,
 	 * side of any bridges that may be on this bus plus any devices.
 	 * Return how far we've got finding sub-buses.
 	 */
-	post_code(POST_EXIT_PCI_SCAN_BUS);
+	post_code(POSTCODE_EXIT_PCI_SCAN_BUS);
 }
 
 typedef enum {

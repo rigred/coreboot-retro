@@ -7,6 +7,7 @@
 #include <soc/pci_devs.h>
 #include <soc/soc_util.h>
 #include <soc/util.h>
+#include <pc80/mc146818rtc.h>
 
 const struct SystemMemoryMapHob *get_system_memory_map(void)
 {
@@ -44,7 +45,7 @@ uint32_t get_socket_stack_busno(uint32_t socket, uint32_t stack)
 {
 	const IIO_UDS *hob = get_iio_uds();
 
-	assert(socket < hob->SystemStatus.numCpus && stack < MAX_LOGIC_IIO_STACK);
+	assert(socket < CONFIG_MAX_SOCKET && stack < MAX_LOGIC_IIO_STACK);
 
 	return hob->PlatformData.IIO_resource[socket].StackRes[stack].BusBase;
 }
@@ -99,4 +100,14 @@ uint8_t soc_get_iio_ioapicid(int socket, int stack)
 		return 0xff;
 	}
 	return ioapic_id;
+}
+
+void soc_set_mrc_cold_boot_flag(bool cold_boot_required)
+{
+	uint8_t mrc_status = cmos_read(CMOS_OFFSET_MRC_STATUS);
+	uint8_t new_mrc_status = (mrc_status & 0xfe) | cold_boot_required;
+	printk(BIOS_SPEW, "MRC status: 0x%02x want 0x%02x\n", mrc_status, new_mrc_status);
+	if (new_mrc_status != mrc_status) {
+		cmos_write(new_mrc_status, CMOS_OFFSET_MRC_STATUS);
+	}
 }

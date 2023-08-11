@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 
 #include <assert.h>
+#include <bootsplash.h>
 #include <console/console.h>
 #include <cpu/intel/microcode.h>
 #include <delay.h>
@@ -49,6 +50,7 @@
 #define ICC_MAX_ID_ADL_M_MA	12000
 #define ICC_MAX_ID_ADL_N_MA	27000
 #define ICC_MAX_ADL_S		33000
+#define ICC_MAX_RPL_S		36000
 
 /*
  * ME End of Post configuration
@@ -482,18 +484,23 @@ static int get_l1_substate_control(enum L1_substates_control ctl)
 }
 
 /*
+ * Chip config parameter pcie_rp_aspm uses (UPD value + 1) because
+ * a UPD value of 0 for pcie_rp_aspm means disabled. In order to ensure
+ * that the mainboard setting does not disable ASPM incorrectly, chip
+ * config parameter values are offset by 1 with 0 meaning use FSP UPD default.
  * get_aspm_control() ensures that the right UPD value is set in fsp_params.
- * 0: Disable ASPM
- * 1: L0s only
- * 2: L1 only
- * 3: L0s and L1
- * 4: Auto configuration
+ * 0: Use FSP UPD default
+ * 1: Disable ASPM
+ * 2: L0s only
+ * 3: L1 only
+ * 4: L0s and L1
+ * 5: Auto configuration
  */
 static unsigned int get_aspm_control(enum ASPM_control ctl)
 {
-	if (ctl > ASPM_AUTO)
+	if ((ctl > ASPM_AUTO) || (ctl == ASPM_DEFAULT))
 		ctl = ASPM_AUTO;
-	return ctl;
+	return ctl - 1;
 }
 
 /* This function returns the VccIn Aux Imon IccMax values for ADL and RPL
@@ -537,7 +544,21 @@ static uint16_t get_vccin_aux_imon_iccmax(void)
 	case PCI_DID_INTEL_ADL_S_ID_10:
 	case PCI_DID_INTEL_ADL_S_ID_11:
 	case PCI_DID_INTEL_ADL_S_ID_12:
+	case PCI_DID_INTEL_RPL_HX_ID_1:
+	case PCI_DID_INTEL_RPL_HX_ID_2:
+	case PCI_DID_INTEL_RPL_HX_ID_3:
+	case PCI_DID_INTEL_RPL_HX_ID_4:
+	case PCI_DID_INTEL_RPL_HX_ID_5:
+	case PCI_DID_INTEL_RPL_HX_ID_6:
+	case PCI_DID_INTEL_RPL_HX_ID_7:
+	case PCI_DID_INTEL_RPL_HX_ID_8:
 		return ICC_MAX_ADL_S;
+	case PCI_DID_INTEL_RPL_S_ID_1:
+	case PCI_DID_INTEL_RPL_S_ID_2:
+	case PCI_DID_INTEL_RPL_S_ID_3:
+	case PCI_DID_INTEL_RPL_S_ID_4:
+	case PCI_DID_INTEL_RPL_S_ID_5:
+		return ICC_MAX_RPL_S;
 	default:
 		printk(BIOS_ERR, "Unknown MCH ID: 0x%4x, skipping VccInAuxImonIccMax config\n",
 			mch_id);
@@ -802,11 +823,9 @@ static void fill_fsps_cnvi_params(FSP_S_CONFIG *s_cfg,
 		const struct soc_intel_alderlake_config *config)
 {
 	/* CNVi */
-#if CONFIG(SOC_INTEL_ALDERLAKE_PCH_P) || CONFIG(SOC_INTEL_ALDERLAKE_PCH_S)
-#if !CONFIG(SOC_INTEL_RAPTORLAKE)
-	/* This option is only available in public FSP headers of ADL-P and ADL-S */
+#if CONFIG(FSP_USE_REPO)
+	/* This option is only available in public FSP headers on FSP repo */
 	s_cfg->CnviWifiCore = is_devfn_enabled(PCH_DEVFN_CNVI_WIFI);
-#endif
 #endif
 	s_cfg->CnviMode = is_devfn_enabled(PCH_DEVFN_CNVI_WIFI);
 	s_cfg->CnviBtCore = config->cnvi_bt_core;
@@ -903,6 +922,41 @@ static void fill_fsps_pcie_params(FSP_S_CONFIG *s_cfg,
 		s_cfg->PcieRpDetectTimeoutMs[i] = rp_cfg->pcie_rp_detect_timeout_ms;
 	}
 	s_cfg->PcieComplianceTestMode = CONFIG(SOC_INTEL_COMPLIANCE_TEST_MODE);
+
+#if CONFIG(FSP_TYPE_IOT)
+	/*
+	 * Intel requires that all enabled PCH PCIe ports have a CLK_REQ signal connected.
+	 * The CLK_REQ is used to wake the silicon when link entered L1 link-state. L1
+	 * link-state is also entered on PCI-PM D3, even with ASPM L1 disabled.
+	 * When no CLK_REQ signal is used, for example when it's using a free running
+	 * clock the Root port silicon will never wake from L1 link state.
+	 * This will trigger a MCE.
+	 *
+	 * Starting with FSP MR4 the UPD 'PchPcieClockGating' allows to work around
+	 * this issue by disabling ClockGating. Disabling ClockGating should be avoided
+	 * as the silicon draws more power when it is idle.
+	 */
+	for (int i = 0; i < CONFIG_MAX_PCH_ROOT_PORTS; i++) {
+		bool clk_req_missing = false;
+		if (!(enable_mask & BIT(i)))
+			continue;
+		const struct pcie_rp_config *rp_cfg = &config->pch_pcie_rp[i];
+		if (CONFIG(SOC_INTEL_COMPLIANCE_TEST_MODE)) {
+			clk_req_missing = true;
+		} else if (!rp_cfg->flags && rp_cfg->clk_src == 0 && rp_cfg->clk_req == 0) {
+			clk_req_missing = true;
+		} else if (rp_cfg->flags & PCIE_RP_CLK_REQ_UNUSED) {
+			clk_req_missing = true;
+		}
+		if (clk_req_missing) {
+			printk(BIOS_INFO, "PCH PCIe port %d has no CLK_REQ\n", i + 1);
+			printk(BIOS_INFO, "Disabling PCH PCIE ClockGating+PowerGating.\n");
+			s_cfg->PchPcieClockGating = false;
+			s_cfg->PchPciePowerGating = false;
+			break;
+		}
+	}
+#endif
 }
 
 static void fill_fsps_cpu_pcie_params(FSP_S_CONFIG *s_cfg,
@@ -1007,15 +1061,18 @@ static void fill_fsps_misc_power_params(FSP_S_CONFIG *s_cfg,
 	s_cfg->VrPowerDeliveryDesign = config->vr_power_delivery_design;
 
 	/* FIXME: Disable package C state demotion on Raptorlake as a W/A for S0ix issues */
-	if ((cpu_id == CPUID_RAPTORLAKE_P_J0) || (cpu_id == CPUID_RAPTORLAKE_P_Q0))
+	if ((cpu_id == CPUID_RAPTORLAKE_J0) || (cpu_id == CPUID_RAPTORLAKE_Q0))
 		s_cfg->PkgCStateDemotion = 0;
 	else
 		s_cfg->PkgCStateDemotion = !config->disable_package_c_state_demotion;
 
-	if (cpu_id == CPUID_RAPTORLAKE_P_J0 || cpu_id == CPUID_RAPTORLAKE_P_Q0)
+	if (cpu_id == CPUID_RAPTORLAKE_J0 || cpu_id == CPUID_RAPTORLAKE_Q0)
 		s_cfg->C1e = 0;
 	else
 		s_cfg->C1e = 1;
+#if CONFIG(SOC_INTEL_RAPTORLAKE) && !CONFIG(FSP_USE_REPO)
+	s_cfg->EnableHwpScalabilityTracking = config->enable_hwp_scalability_tracking;
+#endif
 }
 
 static void fill_fsps_irq_params(FSP_S_CONFIG *s_cfg,
@@ -1309,4 +1366,10 @@ void platform_fsp_multi_phase_init_cb(uint32_t phase_index)
 __weak void mainboard_silicon_init_params(FSP_S_CONFIG *s_cfg)
 {
 	printk(BIOS_DEBUG, "WEAK: %s/%s called\n", __FILE__, __func__);
+}
+
+/* Handle FSP logo params */
+void soc_load_logo(FSPS_UPD *supd)
+{
+	bmp_load_logo(&supd->FspsConfig.LogoPtr, &supd->FspsConfig.LogoSize);
 }

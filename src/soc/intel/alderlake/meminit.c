@@ -70,8 +70,8 @@ static const struct soc_mem_cfg soc_mem_cfg[] = {
 			 * configuration.
 			 */
 			.half_channel = BIT(0),
-			/* In mixed topologies, channel 1 is always memory-down. */
-			.mixed_topo = BIT(1),
+			/* In mixed topologies, either channel 0 or 1 can be memory-down. */
+			.mixed_topo = BIT(0) | BIT(1),
 		},
 	},
 	[MEM_TYPE_LP4X] = {
@@ -240,6 +240,9 @@ void memcfg_init(FSPM_UPD *memupd, const struct mb_cfg *mb_cfg,
 	bool dq_dqs_auto_detect = false;
 	FSP_M_CONFIG *mem_cfg = &memupd->FspmConfig;
 
+#if CONFIG(SOC_INTEL_RAPTORLAKE) && !CONFIG(FSP_USE_REPO)
+	mem_cfg->CsPiStartHighinEct = mb_cfg->cs_pi_start_high_in_ect;
+#endif
 	mem_cfg->ECT = mb_cfg->ect;
 	mem_cfg->UserBd = mb_cfg->UserBd;
 	set_rcomp_config(mem_cfg, mb_cfg);

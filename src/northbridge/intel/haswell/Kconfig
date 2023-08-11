@@ -6,10 +6,6 @@ config NORTHBRIDGE_INTEL_HASWELL
 	select CACHE_MRC_SETTINGS
 	select INTEL_DDI
 	select INTEL_GMA_ACPI
-	select NO_DDR5
-	select NO_LPDDR4
-	select NO_DDR2
-	select NO_DDR4
 	select USE_DDR3
 
 if NORTHBRIDGE_INTEL_HASWELL
@@ -36,6 +32,18 @@ config HASWELL_VBOOT_IN_BOOTBLOCK
 	  a separate verstage starting after the bootblock that same
 	  binary is used meaning a jump is made from RW to the RO region
 	  and back to the RW region after the binary is done.
+
+config USE_BROADWELL_MRC
+	bool "Use Broadwell MRC.bin"
+	depends on !USE_NATIVE_RAMINIT
+	help
+	  Haswell MRC.bin has several limitations: it does not support
+	  Broadwell CPUs nor 9-series PCHs, it does not initialise PEG
+	  ports properly and it can't use more than one SPD file entry
+	  at the same time (which would be useful for memory overclock
+	  when using different DIMMs, without patching SPD EEPROMs). A
+	  workaround for some of these limitations is to use Broadwell
+	  MRC.bin instead.
 
 config VBOOT
 	select VBOOT_MUST_REQUEST_DISPLAY

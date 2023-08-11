@@ -24,6 +24,7 @@
 #include <intelblocks/pmclib.h>
 #include <intelblocks/systemagent.h>
 #include <option.h>
+#include <soc/ahci.h>
 #include <soc/cpu.h>
 #include <soc/heci.h>
 #include <soc/intel/common/vbt.h>
@@ -601,27 +602,27 @@ static void glk_fsp_silicon_init_params_cb(
 	 * improve boot performance, configure PmicPmcIpcCtrl for PMC to program
 	 * PMIC PCH_PWROK delay.
 	 */
-	silconfig->PmicPmcIpcCtrl = cfg->PmicPmcIpcCtrl;
+	silconfig->PmicPmcIpcCtrl = cfg->pmic_pmc_ipc_ctrl;
 
 	/*
 	 * Options to disable XHCI Link Compliance Mode.
 	 */
-	silconfig->DisableComplianceMode = cfg->DisableComplianceMode;
+	silconfig->DisableComplianceMode = cfg->disable_compliance_mode;
 
 	/*
 	 * Options to change USB3 ModPhy setting for Integrated Filter value.
 	 */
-	silconfig->ModPhyIfValue = cfg->ModPhyIfValue;
+	silconfig->ModPhyIfValue = cfg->mod_phy_if_value;
 
 	/*
 	 * Options to bump USB3 LDO voltage with 40mv.
 	 */
-	silconfig->ModPhyVoltageBump = cfg->ModPhyVoltageBump;
+	silconfig->ModPhyVoltageBump = cfg->mod_phy_voltage_bump;
 
 	/*
 	 * Options to adjust PMIC Vdd2 voltage.
 	 */
-	silconfig->PmicVdd2Voltage = cfg->PmicVdd2Voltage;
+	silconfig->PmicVdd2Voltage = cfg->pmic_vdd2_voltage;
 
 	/* FSP should let coreboot set subsystem IDs, which are read/write-once */
 	silconfig->SiSVID = 0;
@@ -688,7 +689,7 @@ void platform_fsp_silicon_init_params_cb(FSPS_UPD *silupd)
 	if (cfg->emmc_host_max_speed != 0)
 		silconfig->eMMCHostMaxSpeed = cfg->emmc_host_max_speed;
 
-	memcpy(silconfig->SataPortsHotPlug, cfg->SataPortsHotPlug,
+	memcpy(silconfig->SataPortsHotPlug, cfg->sata_ports_hot_plug,
 		sizeof(silconfig->SataPortsHotPlug));
 
 	silconfig->LPSS_S0ixEnable = cfg->lpss_s0ix_enable;
@@ -735,13 +736,16 @@ void platform_fsp_silicon_init_params_cb(FSPS_UPD *silupd)
 
 	/* SATA config */
 	if (is_devfn_enabled(PCH_DEVFN_SATA)) {
-		silconfig->SataSalpSupport = !(cfg->DisableSataSalpSupport);
-		memcpy(silconfig->SataPortsEnable, cfg->SataPortsEnable,
+		silconfig->SataSalpSupport = !(cfg->disable_sata_salp_support);
+		ahci_set_speed(cfg->sata_speed);
+		memcpy(silconfig->SataPortsEnable, cfg->sata_ports_enable,
 			sizeof(silconfig->SataPortsEnable));
+		memcpy(silconfig->SataPortsSolidStateDrive, cfg->sata_ports_ssd,
+			sizeof(silconfig->SataPortsSolidStateDrive));
 	}
 
 	/* Sata Power Optimisation */
-	silconfig->SataPwrOptEnable = !(cfg->SataPwrOptimizeDisable);
+	silconfig->SataPwrOptEnable = !(cfg->sata_pwr_optimize_disable);
 
 	/* 8254 Timer */
 	bool use_8254 = get_uint_option("legacy_8254_timer", CONFIG(USE_LEGACY_8254_TIMER));

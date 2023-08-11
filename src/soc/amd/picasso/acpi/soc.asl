@@ -1,11 +1,16 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 
-Device(PCI0) {
+#include <soc/amd/common/acpi/pci_root.asl>
+
+ROOT_BRIDGE(PCI0)
+
+Scope(PCI0) {
 	/* Describe the AMD Northbridge */
 	#include "northbridge.asl"
 
 	/* Describe the AMD Fusion Controller Hub */
-	#include "sb_pci0_fch.asl"
+	#include <soc/amd/common/acpi/lpc.asl>
+	#include <soc/amd/common/acpi/platform.asl>
 }
 
 /* PCI IRQ mapping for the Southbridge */
@@ -14,8 +19,8 @@ Device(PCI0) {
 /* Describe PCI INT[A-H] for the Southbridge */
 #include <soc/amd/common/acpi/pci_int.asl>
 
-/* Describe the devices in the Southbridge */
-#include "sb_fch.asl"
+/* Describe the MMIO devices in the FCH */
+#include "mmio.asl"
 
 /* Add GPIO library */
 #include <soc/amd/common/acpi/gpio_bank_lib.asl>

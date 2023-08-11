@@ -8,9 +8,11 @@
 
 /* Speaker topology */
 enum _spkr_tplg {
-	max98373 = 1,
+	max98373 = 1,	/* port SSP1 */
+	max98373_ssp2,
 	max98360a,
 	max98357a,
+	max98357a_tdm,
 	max98390,
 	rt1011,
 	rt1015,
@@ -32,12 +34,10 @@ enum _mic_tplg {
 	_4ch,
 };
 
-
-
 struct drivers_sof_config {
-	unsigned int spkr_tplg;
-	unsigned int jack_tplg;
-	unsigned int mic_tplg;
+	enum _spkr_tplg spkr_tplg;
+	enum _jack_tplg jack_tplg;
+	enum _mic_tplg mic_tplg;
 };
 
 #endif /* __DRIVERS_AUDIO_SOF_H__ */

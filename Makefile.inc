@@ -23,7 +23,7 @@ ifeq ($(BUILD_TIMELESS),1)
 KERNELVERSION := -TIMELESS--LESSTIME-
 else
 KERNELVERSION := $(strip $(if $(GIT),\
-	$(shell git describe --dirty --always || git describe),\
+	$(shell git describe --abbrev=12 --dirty --always || git describe),\
 	$(if $(wildcard $(top)/.coreboot-version),\
 		$(shell cat $(top)/.coreboot-version),\
 		coreboot-unknown$(KERNELREVISION))))
@@ -66,8 +66,11 @@ coreboot: $(obj)/coreboot.rom $(obj)/cbfstool $(obj)/rmodtool $(obj)/ifwitool $(
 # targets after the build completes by creating a Makefile.inc in the
 # site-local directory with a target named 'build_complete::'
 build_complete:: coreboot
-	printf "\nBuilt %s (%s)\n" $(MAINBOARDDIR) \
-		$(CONFIG_MAINBOARD_PART_NUMBER)
+	printf "\nBuilt %s (%s)\n" $(MAINBOARDDIR) $(CONFIG_MAINBOARD_PART_NUMBER)
+	if [ -f "$(CCACHE_STATSLOG)" ]; then \
+		printf "\nccache statistics\n"; \
+		$(CCACHE) --show-log-stats -v; \
+	fi
 
 # This target can be used to run rules after all files were added to CBFS,
 # for example to process FMAP regions or the entire image.
@@ -143,6 +146,7 @@ $(foreach supported_arch,$(ARCH_SUPPORTED), \
 # tolower:        returns the value in all lowercase
 # toupper:        returns the value in all uppercase
 # ws_to_under:    returns the value with any whitespace changed to underscores
+# get_fmap_value  returns the value of a given FMAP field from fmap_config.h
 _toint=$(shell printf "%d" $1)
 _tohex=$(shell printf 0x"%x" $1)
 _int-add2=$(shell expr $(call _toint,$1) + $(call _toint,$2))
@@ -162,6 +166,7 @@ file-size=$(strip $(shell wc -c "$1" | cut -f 1 -d ' '))
 tolower=$(shell echo '$1' | tr '[:upper:]' '[:lower:]')
 toupper=$(shell echo '$1' | tr '[:lower:]' '[:upper:]')
 ws_to_under=$(shell echo '$1' | tr ' \t' '_')
+get_fmap_value=$(shell awk '$$2 == "$1" {print $$3}' $(obj)/fmap_config.h)
 
 #######################################################################
 # Helper functions for ramstage postprocess
@@ -327,6 +332,19 @@ define cbfs-files-processor-config
 endef
 
 #######################################################################
+# Add a file to CBFS with just type and compression values
+# arg1: name in CBFS
+# arg2: filename and path
+# arg3: type in CBFS
+# arg4: compression type
+define add-cbfs-file-simple
+	$(eval cbfs-files-y += $(1))
+	$(eval $(1)-file := $(2))
+	$(eval $(1)-type := $(3))
+	$(eval $(1)-compression := $(4))
+endef
+
+#######################################################################
 # Compile a C file with a bare struct definition into binary
 # arg1: C source file
 # arg2: binary file
@@ -337,6 +355,41 @@ cbfs-files-processor-struct= \
 		$(OBJCOPY_ramstage) -O binary --only-section='.data*' --only-section='.bss*' --set-section-flags .bss*=alloc,contents,load $(2).tmp $(2); \
 		rm -f $(2).tmp) \
 	$(eval DEPENDENCIES += $(2).d)
+
+#######################################################################
+# Convert image to YCC 4:2:0 JPEG
+#
+# In two steps:
+# 1. Convert to RGB colors, optionally resize and store as BMP.
+# 2. Round final size to multiples of 16, optionally swap colors,
+#    convert (back) to sRGB and store as JPEG.
+# The split is necessary because we don't know the exact, scaled
+# size due to aspect-ratio. Note: IM v7 would allow us to do the
+# calculations in one command using %[fx:...] syntax.
+#
+# arg1: image input file
+# arg2: output jpg
+cbfs-files-processor-jpg420= \
+	$(eval $(2): $(1) $(KCONFIG_AUTOCONFIG);				\
+		printf "    CONVERT    $$<\n";					\
+		res=$(CONFIG_BOOTSPLASH_CONVERT_RESOLUTION);			\
+		res=$$$$(convert $$<						\
+			-colorspace RGB						\
+			$$(BOOTSPLASH_RESIZE-y)					\
+			-format '%wx%h' -write info:				\
+			bmp:$$@);						\
+		convert $$@							\
+			$$(BOOTSPLASH_ROUND16)					\
+			$$(BOOTSPLASH_COLORSWAP-y)				\
+			-colorspace sRGB					\
+			-quality $$(CONFIG_BOOTSPLASH_CONVERT_QUALITY)%		\
+			-interlace none -colorspace YCC -sampling-factor 4:2:0	\
+			jpg:$$@)
+BOOTSPLASH_FLOOR = $$(($${res%%x*} & ~15))x$$(($${res\#\#*x} & ~15))
+BOOTSPLASH_RESIZE-$(CONFIG_BOOTSPLASH_CONVERT_RESIZE) = -resize $(BOOTSPLASH_FLOOR)
+BOOTSPLASH_CEIL = $$((($${res%%x*} + 15) & ~15))x$$((($${res\#\#*x} + 15) & ~15))
+BOOTSPLASH_ROUND16 = -background black -gravity center -extent $(BOOTSPLASH_CEIL)
+BOOTSPLASH_COLORSWAP-$(CONFIG_BOOTSPLASH_CONVERT_COLORSWAP) := -channel-fx 'red<=>blue'
 
 #######################################################################
 # Add handler for arbitrary files in CBFS
@@ -435,7 +488,7 @@ ifeq ($(CONFIG_COMPILER_GCC),y)
 ifeq ($(CCC_ANALYZER_OUTPUT_FORMAT),)
 CFLAGS_common += -Wno-packed-not-aligned
 CFLAGS_common += -fconserve-stack
-CFLAGS_common += -Wnull-dereference -Wreturn-type
+CFLAGS_common += -Wnull-dereference
 CFLAGS_common += -Wlogical-op -Wduplicated-cond -Wno-array-compare
 endif
 endif
@@ -596,6 +649,8 @@ AMDFWREAD:=$(objutil)/amdfwtool/amdfwread
 APCB_EDIT_TOOL:=$(top)/util/apcb/apcb_edit.py
 
 APCB_V3_EDIT_TOOL:=$(top)/util/apcb/apcb_v3_edit.py
+
+APCB_V3A_EDIT_TOOL:=$(top)/util/apcb/apcb_v3a_edit.py
 
 CBOOTIMAGE:=$(objutil)/cbootimage/cbootimage
 
@@ -811,7 +866,7 @@ $(objcbfs)/%.elf: $(objcbfs)/%.debug $(objcbfs)/%.map
 #                mma, efi, deleted, null
 # 4 - Compression type      [$(FILENAME)-compression]
 #                      none, LZMA
-# 5 - Base address          [$(FILANAME)-position]
+# 5 - Base address          [$(FILENAME)-position]
 # 6 - Alignment             [$(FILENAME)-align]
 # 7 - cbfstool flags        [$(FILENAME)-options]
 #
@@ -1013,6 +1068,15 @@ else
 FMAP_VPD_ENTRY :=
 endif
 
+ifeq ($(CONFIG_INCLUDE_HSPHY_IN_FMAP),y)
+FMAP_HSPHY_FW_BASE := $(call int-align, $(FMAP_CURRENT_BASE), 0x1000)
+FMAP_HSPHY_FW_SIZE := $(CONFIG_HSPHY_FW_MAX_SIZE)
+FMAP_HSPHY_FW_ENTRY := HSPHY_FW@$(FMAP_HSPHY_FW_BASE) $(FMAP_HSPHY_FW_SIZE)
+FMAP_CURRENT_BASE := $(call int-add, $(FMAP_HSPHY_FW_BASE) $(FMAP_HSPHY_FW_SIZE))
+else
+FMAP_HSPHY_FW_ENTRY :=
+endif
+
 #
 # X86 FMAP region
 #
@@ -1091,6 +1155,7 @@ $(obj)/fmap.fmd: $(top)/Makefile.inc $(DEFAULT_FLASHMAP) $(obj)/config.h
 	    -e "s,##SMMSTORE_ENTRY##,$(FMAP_SMMSTORE_ENTRY)," \
 	    -e "s,##SPD_CACHE_ENTRY##,$(FMAP_SPD_CACHE_ENTRY)," \
 	    -e "s,##VPD_ENTRY##,$(FMAP_VPD_ENTRY)," \
+	    -e "s,##HSPHY_FW_ENTRY##,$(FMAP_HSPHY_FW_ENTRY)," \
 	    -e "s,##CBFS_BASE##,$(FMAP_CBFS_BASE)," \
 	    -e "s,##CBFS_SIZE##,$(FMAP_CBFS_SIZE)," \
 		$(DEFAULT_FLASHMAP) > $@.tmp
@@ -1251,10 +1316,19 @@ cbfs-files-y += build_info
 build_info-file := $(obj)/build_info
 build_info-type := raw
 
+ifeq ($(CONFIG_BOOTSPLASH_CONVERT),y)
+ifeq ($(shell command -v convert),)
+$(error CONFIG_BOOTSPLASH_CONVERT requires the convert program (part of ImageMagick))
+endif
+cbfs-files-$(CONFIG_BOOTSPLASH_IMAGE) += bootsplash.jpg
+bootsplash.jpg-file := $(call strip_quotes,$(CONFIG_BOOTSPLASH_FILE)):jpg420
+bootsplash.jpg-type := bootsplash
+else
 BOOTSPLASH_SUFFIX=$(suffix $(call strip_quotes,$(CONFIG_BOOTSPLASH_FILE)))
 cbfs-files-$(CONFIG_BOOTSPLASH_IMAGE) += bootsplash$(BOOTSPLASH_SUFFIX)
 bootsplash$(BOOTSPLASH_SUFFIX)-file := $(call strip_quotes,$(CONFIG_BOOTSPLASH_FILE))
 bootsplash$(BOOTSPLASH_SUFFIX)-type := bootsplash
+endif
 
 # Ensure that no payload segment overlaps with memory regions used by ramstage
 # (not for x86 since it can relocate itself in that case)

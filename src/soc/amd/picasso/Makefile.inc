@@ -43,6 +43,7 @@ CPPFLAGS_common += -I$(src)/soc/amd/picasso/include
 CPPFLAGS_common += -I$(src)/soc/amd/picasso/acpi
 CPPFLAGS_common += -I$(src)/vendorcode/amd/fsp/picasso
 CPPFLAGS_common += -I$(src)/vendorcode/amd/fsp/picasso/include
+CPPFLAGS_common += -I$(src)/vendorcode/amd/fsp/common
 
 # ROMSIG Normally At ROMBASE + 0x20000
 # Overridden by CONFIG_AMD_FWM_POSITION_INDEX
@@ -65,12 +66,10 @@ PICASSO_FWM_POSITION=$(call int-add, \
 AMD_FW_AB_POSITION := 0x40
 
 PICASSO_FW_A_POSITION=$(call int-add, \
-	$(shell awk '$$2 == "FMAP_SECTION_FW_MAIN_A_START" {print $$3}' $(obj)/fmap_config.h) \
-	$(AMD_FW_AB_POSITION))
+	$(call get_fmap_value,FMAP_SECTION_FW_MAIN_A_START) $(AMD_FW_AB_POSITION))
 
 PICASSO_FW_B_POSITION=$(call int-add, \
-	$(shell awk '$$2 == "FMAP_SECTION_FW_MAIN_B_START" {print $$3}' $(obj)/fmap_config.h) \
-	$(AMD_FW_AB_POSITION))
+	$(call get_fmap_value,FMAP_SECTION_FW_MAIN_B_START) $(AMD_FW_AB_POSITION))
 
 #
 # PSP Directory Table items
@@ -110,8 +109,8 @@ endif
 
 # type = 0x4
 # The flashmap section used for this is expected to be named PSP_NVRAM
-PSP_NVRAM_BASE=$(shell awk '$$2 == "FMAP_SECTION_PSP_NVRAM_START" {print $$3}' $(obj)/fmap_config.h)
-PSP_NVRAM_SIZE=$(shell awk '$$2 == "FMAP_SECTION_PSP_NVRAM_SIZE" {print $$3}' $(obj)/fmap_config.h)
+PSP_NVRAM_BASE=$(call get_fmap_value,FMAP_SECTION_PSP_NVRAM_START)
+PSP_NVRAM_SIZE=$(call get_fmap_value,FMAP_SECTION_PSP_NVRAM_SIZE)
 
 # type = 0x7
 # RSA 2048 signature
@@ -130,10 +129,13 @@ PSP_BIOSBIN_FILE=$(obj)/amd_biospsp.img
 PSP_ELF_FILE=$(objcbfs)/bootblock.elf
 PSP_BIOSBIN_SIZE=$(shell $(READELF_bootblock) -Wl $(PSP_ELF_FILE) | grep LOAD | awk '{print $$5}')
 PSP_BIOSBIN_DEST=$(shell $(READELF_bootblock) -Wl $(PSP_ELF_FILE) | grep LOAD | awk '{print $$3}')
+
+ifneq ($(CONFIG_SOC_AMD_COMMON_BLOCK_APOB_NV_DISABLE),y)
 # type = 0x63 - construct APOB NV base/size from flash map
 # The flashmap section used for this is expected to be named RW_MRC_CACHE
-APOB_NV_SIZE=$(shell awk '$$2 == "FMAP_SECTION_RW_MRC_CACHE_SIZE" {print $$3}' $(obj)/fmap_config.h)
-APOB_NV_BASE=$(shell awk '$$2 == "FMAP_SECTION_RW_MRC_CACHE_START" {print $$3}' $(obj)/fmap_config.h)
+APOB_NV_SIZE=$(call get_fmap_value,FMAP_SECTION_RW_MRC_CACHE_SIZE)
+APOB_NV_BASE=$(call get_fmap_value,FMAP_SECTION_RW_MRC_CACHE_START)
+endif # !CONFIG_SOC_AMD_COMMON_BLOCK_APOB_NV_DISABLE
 
 ifeq ($(CONFIG_VBOOT_STARTS_BEFORE_BOOTBLOCK),y)
 # type = 0x6B - PSP Shared memory location
@@ -238,7 +240,7 @@ $(obj)/amdfw.rom:	$(call strip_quotes, $(PSP_BIOSBIN_FILE)) \
 		$(OPT_APOB0_NV_BASE) \
 		$(OPT_VERSTAGE_FILE) \
 		$(OPT_VERSTAGE_SIG_FILE) \
-		--location $(shell printf "%#x" $(PICASSO_FWM_POSITION)) \
+		--location $(call _tohex,$(PICASSO_FWM_POSITION)) \
 		--output $@
 
 $(PSP_BIOSBIN_FILE): $(PSP_ELF_FILE) $(AMDCOMPRESS)
@@ -254,7 +256,7 @@ $(obj)/amdfw_a.rom: $(obj)/amdfw.rom
 		$(AMDFW_COMMON_ARGS) \
 		$(OPT_APOB_NV_SIZE) \
 		$(OPT_APOB_NV_BASE) \
-		--location $(shell printf "%#x" $(PICASSO_FW_A_POSITION)) \
+		--location $(call _tohex,$(PICASSO_FW_A_POSITION)) \
 		--anywhere \
 		--output $@
 
@@ -265,7 +267,7 @@ $(obj)/amdfw_b.rom: $(obj)/amdfw.rom
 		$(AMDFW_COMMON_ARGS) \
 		$(OPT_APOB_NV_SIZE) \
 		$(OPT_APOB_NV_BASE) \
-		--location $(shell printf "%#x" $(PICASSO_FW_B_POSITION)) \
+		--location $(call _tohex,$(PICASSO_FW_B_POSITION)) \
 		--anywhere \
 		--output $@
 

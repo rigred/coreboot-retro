@@ -28,7 +28,7 @@ static const struct soc_amd_gpio base_gpio_table[] = {
 	/* EN_PP3300_WLAN */
 	PAD_GPO(GPIO_9, HIGH),
 	/* WWAN_RST */
-	PAD_GPO(GPIO_11, LOW),
+	PAD_GPO(GPIO_11, HIGH),
 	/* Unused */
 	PAD_NC(GPIO_12),
 	/* GPIO_13 - GPIO_15: Not available */
@@ -52,7 +52,7 @@ static const struct soc_amd_gpio base_gpio_table[] = {
 	PAD_NC(GPIO_24),
 	/* GPIO_25-26: Not available */
 	/* SOC_PCIE_RST1_R_L  */
-	PAD_NFO(GPIO_27, PCIE_RST1_L, HIGH),
+	PAD_NC(GPIO_27),
 	/* GPIO_28: Not available */
 	/* SD_AUX_RST */
 	PAD_GPO(GPIO_29, LOW),
@@ -68,7 +68,7 @@ static const struct soc_amd_gpio base_gpio_table[] = {
 	/* WWAN_AUX_RST_L */
 	PAD_GPO(GPIO_39, HIGH),
 	/* SOC_FP_RST_L */
-	PAD_GPO(GPIO_40, HIGH),
+	PAD_GPO(GPIO_40, LOW),
 	/* GPIO_41 - GPIO_66: Not available */
 	/* GPIO_67 (Unused) */
 	PAD_NC(GPIO_67),
@@ -196,8 +196,22 @@ static const struct soc_amd_gpio early_gpio_table[] = {
 /* PCIE_RST needs to be brought high before FSP-M runs */
 static const struct soc_amd_gpio romstage_gpio_table[] = {
 	/* Deassert all AUX_RESET lines & PCIE_RST */
+	/* SD_AUX_RST */
+	PAD_GPO(GPIO_29, LOW),
+	/* SSD_AUX_RESET */
+	PAD_GPO(GPIO_31, LOW),
 	/* WLAN_AUX_RST_L (ACTIVE LOW) */
 	PAD_GPO(GPIO_38, HIGH),
+	/* WWAN_AUX_RST_L (ACTIVE LOW) */
+	PAD_GPO(GPIO_39, HIGH),
+	/* CLK_REQ0_L / WLAN */
+	PAD_NF(GPIO_92, CLK_REQ0_L, PULL_NONE),
+	/* CLK_REQ1_L / SD */
+	PAD_NF(GPIO_115, CLK_REQ1_L, PULL_NONE),
+	/* CLK_REQ2_L / WWAN */
+	PAD_NF(GPIO_116, CLK_REQ2_L, PULL_NONE),
+	/* CLK_REQ3_L / SSD */
+	PAD_NF(GPIO_131, CLK_REQ3_L, PULL_NONE),
 	/* PCIE_RST0_L */
 	PAD_NFO(GPIO_26, PCIE_RST0_L, HIGH),
 };

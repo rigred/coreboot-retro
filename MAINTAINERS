@@ -342,6 +342,8 @@ GOOGLE REX MAINBOARDS
 M:	Subrata Banik <subratabanik@google.com>
 M:	Tarun Tuli <taruntuli@google.com>
 M:	Kapil Porwal <kapilporwal@google.com>
+M:	Jakub Czapiga <jacz@semihalf.com>
+M:	Eran Mitrani <mitrani@google.com>
 S:	Maintained
 F:	src/mainboard/google/rex/
 
@@ -417,7 +419,10 @@ M:	Vanessa Eusebio <vanessa.f.eusebio@intel.com>
 S:	Maintained
 F:	src/mainboard/intel/harcuvar/
 
-
+INVENTEC MAINBOARDS
+M:	Annie Chen <Chen.AnnieET@inventec.com>
+S:	Maintained
+F:	src/mainboard/inventec/
 
 JETWAY MAINBOARDS
 S:	Orphan
@@ -863,6 +868,8 @@ INTEL METEORLAKE SOC
 M:	Subrata Banik <subratabanik@google.com>
 M:	Tarun Tuli <taruntuli@google.com>
 M:	Kapil Porwal <kapilporwal@google.com>
+M:	Jakub Czapiga <jacz@semihalf.com>
+M:	Eran Mitrani <mitrani@google.com>
 S:	Maintained
 F:	src/soc/intel/meteorlake/
 
@@ -884,6 +891,10 @@ M:	Frans Hendriks <fhendriks@eltan.com>
 S:	Maintained
 F:	/src/soc/intel/braswell/
 F:	/src/vendorcode/intel/fsp/fsp1_1/braswell/
+
+INTEL CANNONLAKE SOC
+S:	Orphan
+F:	src/soc/intel/cannonlake/
 
 INTEL DENVERTON-NS SOC
 M:	Jeff Daly <jeffd@silicom-usa.com>
@@ -1114,8 +1125,7 @@ F:	src/drivers/*/tpm/
 F:	src/security/tpm/
 
 SUPERIOS & SUPERIOTOOL
-M:	Felix Held <felix-coreboot@felixheld.de>
-S:	Odd Fixes
+S:	Orphan
 F:	src/superio/
 F:	util/superiotool/
 

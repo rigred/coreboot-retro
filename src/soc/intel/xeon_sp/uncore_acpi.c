@@ -149,6 +149,7 @@ static unsigned long acpi_fill_srat(unsigned long current)
 	/* create all subtables for processors */
 	current = acpi_create_srat_lapics(current);
 
+	memset(srat_mem, 0, sizeof(srat_mem));
 	mem_count = get_srat_memory_entries(srat_mem);
 	for (int i = 0; i < mem_count; ++i) {
 		printk(BIOS_DEBUG, "adding srat memory %d entry length: %d, addr: 0x%x%x, "
@@ -383,7 +384,11 @@ static unsigned long acpi_create_drhd(unsigned long current, int socket,
 
 static unsigned long acpi_create_atsr(unsigned long current, const IIO_UDS *hob)
 {
-	for (int socket = 0; socket < hob->PlatformData.numofIIO; ++socket) {
+	for (int socket = 0, iio = 0; iio < hob->PlatformData.numofIIO; ++socket) {
+		if (!soc_cpu_is_enabled(socket))
+			continue;
+		iio++;
+
 		uint32_t pcie_seg = hob->PlatformData.CpuQpiInfo[socket].PcieSegment;
 		unsigned long tmp = current;
 		bool first = true;
@@ -462,7 +467,11 @@ static unsigned long acpi_create_rhsa(unsigned long current)
 {
 	const IIO_UDS *hob = get_iio_uds();
 
-	for (int socket = 0; socket < hob->PlatformData.numofIIO; ++socket) {
+	for (int socket = 0, iio = 0; iio < hob->PlatformData.numofIIO; ++socket) {
+		if (!soc_cpu_is_enabled(socket))
+			continue;
+		iio++;
+
 		IIO_RESOURCE_INSTANCE iio_resource =
 			hob->PlatformData.IIO_resource[socket];
 		for (int stack = 0; stack < MAX_LOGIC_IIO_STACK; ++stack) {
@@ -503,14 +512,15 @@ static unsigned long xeonsp_create_satc_dino(unsigned long current, const STACK_
 /* SoC Integrated Address Translation Cache */
 static unsigned long acpi_create_satc(unsigned long current, const IIO_UDS *hob)
 {
-
 	const unsigned long tmp = current;
 
 	// Add the SATC header
 	current += acpi_create_dmar_satc(current, 0, 0);
 
 	// Find the DINO devices on each socket
-	for (int socket = (hob->PlatformData.numofIIO - 1); socket >= 0; --socket) {
+	for (int socket = CONFIG_MAX_SOCKET - 1; socket >= 0; --socket) {
+		if (!soc_cpu_is_enabled(socket))
+			continue;
 		for (int stack = (MAX_LOGIC_IIO_STACK - 1); stack >= 0; --stack) {
 			const STACK_RES *ri = &hob->PlatformData.IIO_resource[socket].StackRes[stack];
 			// Add the DINO ATS devices to the SATC
@@ -529,7 +539,9 @@ static unsigned long acpi_fill_dmar(unsigned long current)
 	const IIO_UDS *hob = get_iio_uds();
 
 	// DRHD - socket 0 stack 0 must be the last DRHD entry.
-	for (int socket = (hob->PlatformData.numofIIO - 1); socket >= 0; --socket) {
+	for (int socket = (CONFIG_MAX_SOCKET - 1); socket >= 0; --socket) {
+		if (!soc_cpu_is_enabled(socket))
+			continue;
 		for (int stack = (MAX_LOGIC_IIO_STACK - 1); stack >= 0; --stack)
 			current = acpi_create_drhd(current, socket, stack, hob);
 	}

@@ -216,8 +216,8 @@ static void prepare_dmi_16_17(void *unused)
 		}
 	}
 
-	for (unsigned int channel = 0; channel < MAX_CHANNELS_PER_SOCKET; channel++) {
-		for (unsigned int dimm = 0; dimm < MAX_DIMMS_PER_CHANNEL; dimm++) {
+	for (unsigned int channel = 0; channel < AGESA_STRUCT_CHANNELS_PER_SOCKET; channel++) {
+		for (unsigned int dimm = 0; dimm < AGESA_STRUCT_DIMMS_PER_CHANNEL; dimm++) {
 			type17_dmi_info = &dmi_table->T17[0][channel][dimm];
 			/* DIMMs that are present will have a non-zero
 			   handle. */
@@ -226,7 +226,7 @@ static void prepare_dmi_16_17(void *unused)
 			print_dmi_info(type17_dmi_info);
 			dimm_info = &mem_info->dimm[dimm_cnt];
 			dimm_info->channel_num = channel;
-			dimm_info->dimm_num = channel;
+			dimm_info->dimm_num = dimm;
 			transfer_memory_info(type17_dmi_info, dimm_info);
 			if (use_cbi_part_number) {
 				/* mem_info is memset to 0 above, so it's

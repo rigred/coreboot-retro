@@ -40,7 +40,7 @@
 
 ## Building coreboot
 
-Please follow the [Star Labs build instructions](../common/building.md) to build coreboot, using `config.starlabs_starbook_tgl` as config file.
+Please follow the [Star Labs build instructions](common/building.md) to build coreboot, using `config.starlabs_starbook_tgl` as config file.
 
 ## Flashing coreboot
 
@@ -62,5 +62,6 @@ Please follow the [Star Labs build instructions](../common/building.md) to build
 +---------------------+------------+
 | External flashing   | yes        |
 +---------------------+------------+
+```
 
-Please see [here](../common/flashing.md) for instructions on how to flash with fwupd.
+Please see [here](common/flashing.md) for instructions on how to flash with fwupd.

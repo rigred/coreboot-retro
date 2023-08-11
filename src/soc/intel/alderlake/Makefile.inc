@@ -73,19 +73,16 @@ CPPFLAGS_common += -I$(src)/soc/intel/alderlake/include
 ifeq ($(CONFIG_SOC_INTEL_ALDERLAKE_PCH_S),y)
 # 06-97-00, 06-97-01, 06-97-04 are ADL-S Engineering Samples
 # 06-97-02 are ADL-S/HX Quality Samples but also ADL-HX Engineering Samples
-# ADL-S/HX C0
-cpu_microcode_bins += 3rdparty/intel-microcode/intel-ucode/06-97-02
-# ADL-S H0
+# ADL-S/HX C0 and ADL-S H0
 cpu_microcode_bins += 3rdparty/intel-microcode/intel-ucode/06-97-05
 # RPL-S/HX B0
 cpu_microcode_bins += 3rdparty/intel-microcode/intel-ucode/06-b7-01
+# 06-b7-00, 06-b7-02, 06-b7-05 RPL-S/HX A0, C0 and H0 missing
 else
 ifneq ($(CONFIG_SOC_INTEL_ALDERLAKE_PCH_N),y)
 # 06-9a-00, 06-9a-01 are ADL-P/ADL-M Engineering Samples
 # Missing 06-9a-02 ADL-P K0
-# ADL-P L0
-cpu_microcode_bins += 3rdparty/intel-microcode/intel-ucode/06-9a-03
-# ADL-P R0 and ADL-M R0
+# ADL-P L0, ADL-P R0 and ADL-M R0
 cpu_microcode_bins += 3rdparty/intel-microcode/intel-ucode/06-9a-04
 # RPL-P/H J0, RPL-U Q0
 cpu_microcode_bins += 3rdparty/intel-microcode/intel-ucode/06-ba-02
@@ -112,6 +109,30 @@ $(eval $(call cse_add_decomp,bp2,NFTP))
 $(eval $(call cse_add_dummy,bp2,ISHP))
 $(eval $(call cse_add_input,bp2,IUNP))
 
+endif
+
+ifeq ($(CONFIG_INCLUDE_HSPHY_IN_FMAP),y)
+ifneq ($(call strip_quotes,$(CONFIG_HSPHY_FW_FILE)),)
+
+# Create the target HSPHY file that will be put into flashmap region.
+# First goes the HSPHY size, then hash algorithm (3 - SHA384, default for now),
+# the hash digest, padding to max digest size (SHA512 - 64 bytes) and at last the
+# HSPHY firmware itself
+$(obj)/hsphy_fw.bin: $(call strip_quotes,$(top)/$(CONFIG_HSPHY_FW_FILE))
+	printf "    HSPHY      $(obj)/hsphy_fw.bin\n"
+	$(shell wc -c $< | awk '{print $$1}' | tr -d '\n' | xargs -0 printf '%08X' | \
+			 tac -rs .. | xxd -r -p > $@)
+	$(shell printf '%02X' 3 | xxd -r -p >> $@)
+	$(shell sha384sum $< | awk '{print $$1}' | tac -rs .. | xxd -r -p >> $@)
+	$(shell dd if=/dev/zero bs=1 count=16 2> /dev/null >> $@)
+	$(shell cat $< >> $@)
+
+add_hsphy_firmware: $(obj)/hsphy_fw.bin $(obj)/fmap.fmap $(obj)/coreboot.pre $(CBFSTOOL)
+	$(CBFSTOOL) $(obj)/coreboot.pre write -u -r HSPHY_FW -f $(obj)/hsphy_fw.bin
+
+$(call add_intermediate, add_hsphy_firmware)
+
+endif
 endif
 
 endif

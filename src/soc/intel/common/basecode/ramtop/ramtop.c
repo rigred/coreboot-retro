@@ -11,8 +11,6 @@
 
 #define RAMTOP_SIGNATURE   0x52544F50 /* 'RTOP' */
 
-#define RAMTOP_CMOS_OFFSET 0x64
-
 /*
  * Address of the ramtop byte in CMOS. Should be reserved
  * in mainboards' cmos.layout and not covered by checksum.
@@ -20,13 +18,22 @@
 
 #if CONFIG(USE_OPTION_TABLE)
 #include "option_table.h"
-#if CMOS_VSTART_ramtop != RAMTOP_CMOS_OFFSET * 8
-#error "CMOS start for RAMTOP_CMOS is not correct, check your cmos.layout"
+
+#ifndef CMOS_VSTART_ramtop
+#error "The `ramtop` CMOS entry is missing, please add it to your cmos.layout."
 #endif
-#if CMOS_VLEN_ramtop != 12
-#error "CMOS length for RAMTOP_CMOS bytes are not correct, check your cmos.layout"
-#endif
-#endif
+
+#if CMOS_VSTART_ramtop % 8 != 0
+#error "The `ramtop` CMOS entry needs to be byte aligned, check your cmos.layout."
+#endif	// CMOS_VSTART_ramtop % 8 != 0
+
+#if CMOS_VLEN_ramtop != (10 * 8)
+#error "The `ramtop` CMOS entry needs to be 10 bytes long, check your cmos.layout."
+#endif	// CMOS_VLEN_ramtop != (10 * 8)
+
+#else
+#define CMOS_VSTART_ramtop 800
+#endif	// CONFIG(USE_OPTION_TABLE)
 
 struct ramtop_table {
 	uint32_t signature;
@@ -41,7 +48,7 @@ static int ramtop_cmos_read(struct ramtop_table *ramtop)
 	u16 csum;
 
 	for (p = (u8 *)ramtop, i = 0; i < sizeof(*ramtop); i++, p++)
-		*p = cmos_read(RAMTOP_CMOS_OFFSET + i);
+		*p = cmos_read((CMOS_VSTART_ramtop / 8) + i);
 
 	/* Verify signature */
 	if (ramtop->signature != RAMTOP_SIGNATURE) {
@@ -70,7 +77,7 @@ static void ramtop_cmos_write(struct ramtop_table *ramtop)
 		ramtop, offsetof(struct ramtop_table, checksum));
 
 	for (p = (u8 *)ramtop, i = 0; i < sizeof(*ramtop); i++, p++)
-		cmos_write(*p, RAMTOP_CMOS_OFFSET + i);
+		cmos_write(*p, (CMOS_VSTART_ramtop / 8) + i);
 }
 
 /* Update the RAMTOP if required based on the input top_of_ram address */
@@ -97,7 +104,7 @@ void update_ramtop(uint32_t addr)
 	printk(BIOS_DEBUG, "Updated the RAMTOP address into CMOS 0x%x\n", ramtop.addr);
 }
 
-static uint32_t get_ramtop_addr(void)
+uint32_t get_ramtop_addr(void)
 {
 	struct ramtop_table ramtop;
 

@@ -31,38 +31,31 @@ static void ec_mirror_with_count(void)
 {
 	unsigned int cmos_mirror_flag_counter = get_uint_option("mirror_flag_counter", UINT_MAX);
 
-	if (cmos_mirror_flag_counter != UINT_MAX) {
-		printk(BIOS_DEBUG, "ITE: mirror_flag_counter = %u\n", cmos_mirror_flag_counter);
+	if (cmos_mirror_flag_counter == UINT_MAX)
+		return;
 
-		/* Avoid boot loops by only trying a state change once */
-		if (cmos_mirror_flag_counter < MIRROR_ATTEMPTS) {
-			cmos_mirror_flag_counter++;
-			set_uint_option("mirror_flag_counter", cmos_mirror_flag_counter);
-			printk(BIOS_DEBUG, "ITE: Mirror attempt %u/%u.\n", cmos_mirror_flag_counter,
-				MIRROR_ATTEMPTS);
+	printk(BIOS_DEBUG, "ITE: mirror_flag_counter = %u\n", cmos_mirror_flag_counter);
 
-			/* Write the EC mirror flag */
-			ec_write(ECRAM_MIRROR_FLAG, MIRROR_ENABLED);
+	/* Avoid boot loops by only trying a state change once */
+	if (cmos_mirror_flag_counter < MIRROR_ATTEMPTS) {
+		cmos_mirror_flag_counter++;
+		set_uint_option("mirror_flag_counter", cmos_mirror_flag_counter);
+		printk(BIOS_DEBUG, "ITE: Mirror attempt %u/%u.\n", cmos_mirror_flag_counter,
+			MIRROR_ATTEMPTS);
 
-			/* Check what has been written */
-			if (ec_read(ECRAM_MIRROR_FLAG) == MIRROR_ENABLED)
-				poweroff();
-		} else {
-			/*
-			 * If the mirror flags fails after 1 attempt, it will
-			 * likely need a cold boot, or recovering.
-			 */
-			printk(BIOS_ERR, "ITE: Failed to mirror the EC in %u attempts!\n",
-				MIRROR_ATTEMPTS);
-		}
-	} else {
-		printk(BIOS_DEBUG, "ITE: Powering Off");
 		/* Write the EC mirror flag */
 		ec_write(ECRAM_MIRROR_FLAG, MIRROR_ENABLED);
 
 		/* Check what has been written */
 		if (ec_read(ECRAM_MIRROR_FLAG) == MIRROR_ENABLED)
 			poweroff();
+	} else {
+		/*
+		 * If the mirror flags fails after 1 attempt, it will
+		 * likely need a cold boot, or recovering.
+		 */
+		printk(BIOS_ERR, "ITE: Failed to mirror the EC in %u attempts!\n",
+			MIRROR_ATTEMPTS);
 	}
 }
 
@@ -79,10 +72,13 @@ void ec_mirror_flag(void)
 	 * that have CCG6, present on devices with TBT, but have a manual
 	 * flag for devices without it.
 	 */
+	uint16_t ec_version = ec_get_version();
+
 	if (CONFIG(EC_STARLABS_MIRROR_SUPPORT) &&
-		(CONFIG(SOC_INTEL_COMMON_BLOCK_TCSS) || get_uint_option("mirror_flag", 0)) &&
-		(ec_get_version() != CONFIG_EC_STARLABS_MIRROR_VERSION))	{
-		printk(BIOS_ERR, "ITE: System and EC ROM version mismatch.\n");
+		(CONFIG(DRIVERS_INTEL_USB4_RETIMER) || get_uint_option("mirror_flag", 0)) &&
+		(ec_version != CONFIG_EC_STARLABS_MIRROR_VERSION)) {
+		printk(BIOS_ERR, "ITE: EC version 0x%x doesn't match coreboot version 0x%x.\n",
+			ec_version, CONFIG_EC_STARLABS_MIRROR_VERSION);
 		ec_mirror_with_count();
 	}
 }

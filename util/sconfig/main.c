@@ -1328,16 +1328,17 @@ static void expose_device_names(FILE *fil, FILE *head, struct device *ptr, struc
 
 	/* Only devices on root bus here. */
 	if (ptr->bustype == PCI && ptr->parent->dev->bustype == DOMAIN) {
-		fprintf(head, "extern DEVTREE_CONST struct device *const __pci_0_%02x_%d;\n",
-			ptr->path_a, ptr->path_b);
-		fprintf(fil, "DEVTREE_CONST struct device *const __pci_0_%02x_%d = &%s;\n",
-			ptr->path_a, ptr->path_b, ptr->name);
+		fprintf(head, "extern DEVTREE_CONST struct device *const __pci_%d_%02x_%d;\n",
+			ptr->parent->dev->path_a, ptr->path_a, ptr->path_b);
+		fprintf(fil, "DEVTREE_CONST struct device *const __pci_%d_%02x_%d = &%s;\n",
+			ptr->parent->dev->path_a, ptr->path_a, ptr->path_b, ptr->name);
 
 		if (chip_ins->chip->chiph_exists) {
-			fprintf(head, "extern DEVTREE_CONST void *const __pci_0_%02x_%d_config;\n",
-				ptr->path_a, ptr->path_b);
-			fprintf(fil, "DEVTREE_CONST void *const __pci_0_%02x_%d_config = &%s_info_%d;\n",
-				ptr->path_a, ptr->path_b, chip_ins->chip->name_underscore, chip_ins->id);
+			fprintf(head, "extern DEVTREE_CONST void *const __pci_%d_%02x_%d_config;\n",
+				ptr->parent->dev->path_a, ptr->path_a, ptr->path_b);
+			fprintf(fil, "DEVTREE_CONST void *const __pci_%d_%02x_%d_config = &%s_info_%d;\n",
+				ptr->parent->dev->path_a, ptr->path_a, ptr->path_b,
+				chip_ins->chip->name_underscore, chip_ins->id);
 		}
 	}
 
@@ -1491,20 +1492,6 @@ static void inherit_subsystem_ids(FILE *file, FILE *head, struct device *dev,
 			break;
 		}
 	}
-}
-
-static void usage(void)
-{
-	printf("usage: sconfig <options>\n");
-	printf("  -c | --output_c          : Path to output static.c file (required)\n");
-	printf("  -r | --output_h          : Path to header static.h file (required)\n");
-	printf("  -d | --output_d          : Path to header static_devices.h file (required)\n");
-	printf("  -f | --output_f          : Path to header static_fw_config.h file (required)\n");
-	printf("  -m | --mainboard_devtree : Path to mainboard devicetree file (required)\n");
-	printf("  -o | --override_devtree  : Path to override devicetree file (optional)\n");
-	printf("  -p | --chipset_devtree   : Path to chipset/SOC devicetree file (optional)\n");
-
-	exit(1);
 }
 
 static void parse_devicetree(const char *file, struct bus *parent)
@@ -1999,17 +1986,31 @@ static void generate_outputf(FILE *f)
 	fprintf(f, "\n#endif /* __STATIC_FW_CONFIG_H */\n");
 }
 
+static void usage(void)
+{
+	printf("Usage: sconfig <options>\n");
+	printf("  -c | --output_c          : Path to output static.c file (required)\n");
+	printf("  -r | --output_h          : Path to header static.h file (required)\n");
+	printf("  -d | --output_d          : Path to header static_devices.h file (required)\n");
+	printf("  -f | --output_f          : Path to header static_fw_config.h file (required)\n");
+	printf("  -m | --mainboard_devtree : Path to mainboard devicetree file (required)\n");
+	printf("  -o | --override_devtree  : Path to override devicetree file (optional)\n");
+	printf("  -p | --chipset_devtree   : Path to chipset/SOC devicetree file (optional)\n");
+
+	exit(1);
+}
+
 int main(int argc, char **argv)
 {
 	static const struct option long_options[] = {
-		{ "mainboard_devtree", 1, NULL, 'm' },
-		{ "override_devtree", 1, NULL, 'o' },
-		{ "chipset_devtree", 1, NULL, 'p' },
-		{ "output_c", 1, NULL, 'c' },
-		{ "output_h", 1, NULL, 'r' },
-		{ "output_d", 1, NULL, 'd' },
-		{ "output_f", 1, NULL, 'f' },
-		{ "help", 1, NULL, 'h' },
+		{ "mainboard_devtree", required_argument, NULL, 'm' },
+		{ "override_devtree", required_argument, NULL, 'o' },
+		{ "chipset_devtree", required_argument, NULL, 'p' },
+		{ "output_c", required_argument, NULL, 'c' },
+		{ "output_h", required_argument, NULL, 'r' },
+		{ "output_d", required_argument, NULL, 'd' },
+		{ "output_f", required_argument, NULL, 'f' },
+		{ "help", no_argument, NULL, 'h' },
 		{ }
 	};
 	const char *override_devtree = NULL;

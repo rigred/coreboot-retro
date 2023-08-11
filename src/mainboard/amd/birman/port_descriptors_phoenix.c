@@ -10,14 +10,14 @@
 #define phx_mxm_dxio_descriptor {			\
 	.engine_type = PCIE_ENGINE,			\
 	.port_present = CONFIG(ENABLE_EVAL_CARD),	\
-	.start_logical_lane = 0,			\
-	.end_logical_lane = 7,				\
+	.start_lane = 0,				\
+	.end_lane = 7,					\
 	.device_number = 1,				\
 	.function_number = 1,				\
 	.link_speed_capability = GEN3,			\
 	.turn_off_unused_lanes = true,			\
 	.link_aspm = ASPM_L1,				\
-	.link_hotplug = 0,				\
+	.link_hotplug = HOTPLUG_DISABLED,		\
 	.clk_req = CLK_REQ0,				\
 }
 
@@ -25,28 +25,28 @@
 #define phx2_mxm_dxio_descriptor {			\
 	.engine_type = PCIE_ENGINE,			\
 	.port_present = CONFIG(ENABLE_EVAL_CARD),	\
-	.start_logical_lane = 0,			\
-	.end_logical_lane = 3,				\
+	.start_lane = 0,				\
+	.end_lane = 3,					\
 	.device_number = 1,				\
 	.function_number = 1,				\
 	.link_speed_capability = GEN3,			\
 	.turn_off_unused_lanes = true,			\
 	.link_aspm = ASPM_L1,				\
-	.link_hotplug = 0,				\
+	.link_hotplug = HOTPLUG_DISABLED,		\
 	.clk_req = CLK_REQ0,				\
 }
 
 #define phx_ssd1_dxio_descriptor {			\
 	.engine_type = PCIE_ENGINE,			\
 	.port_present = !CONFIG(DISABLE_DT_M2),		\
-	.start_logical_lane = 8,			\
-	.end_logical_lane = 11,				\
+	.start_lane = 8,				\
+	.end_lane = 11,					\
 	.device_number = 1,				\
 	.function_number = 2,				\
 	.link_speed_capability = GEN3,			\
 	.turn_off_unused_lanes = true,			\
 	.link_aspm = ASPM_L1,				\
-	.link_hotplug = 0,				\
+	.link_hotplug = HOTPLUG_DISABLED,		\
 	.clk_req = CLK_REQ1,				\
 }
 
@@ -54,84 +54,84 @@
 #define phx2_ssd1_dxio_descriptor {			\
 	.engine_type = PCIE_ENGINE,			\
 	.port_present = true,				\
-	.start_logical_lane = 8,			\
-	.end_logical_lane = 9,				\
+	.start_lane = 8,				\
+	.end_lane = 9,					\
 	.device_number = 1,				\
 	.function_number = 2,				\
 	.link_speed_capability = GEN3,			\
 	.turn_off_unused_lanes = true,			\
 	.link_aspm = ASPM_L1,				\
-	.link_hotplug = 0,				\
+	.link_hotplug = HOTPLUG_DISABLED,		\
 	.clk_req = CLK_REQ1,				\
 }
 
 #define gbe_dxio_descriptor {				\
 	.engine_type = PCIE_ENGINE,			\
 	.port_present = true,				\
-	.start_logical_lane = 12,			\
-	.end_logical_lane = 12,				\
+	.start_lane = 12,				\
+	.end_lane = 12,					\
 	.device_number = 1,				\
 	.function_number = 3,				\
 	.link_speed_capability = GEN3,			\
 	.turn_off_unused_lanes = true,			\
-	.link_aspm = ASPM_L1,				\
-	.link_hotplug = 0,				\
+	.link_aspm = ASPM_DISABLED,			\
+	.link_hotplug = HOTPLUG_DISABLED,		\
 	.clk_req = CLK_REQ6,				\
 }
 
 #define sd_dxio_descriptor {				\
 	.engine_type = PCIE_ENGINE,			\
 	.port_present = true,				\
-	.start_logical_lane = 13,			\
-	.end_logical_lane = 13,				\
+	.start_lane = 13,				\
+	.end_lane = 13,					\
 	.device_number = 2,				\
 	.function_number = 1,				\
 	.link_speed_capability = GEN3,			\
 	.turn_off_unused_lanes = true,			\
-	.link_aspm = ASPM_L1,				\
-	.link_hotplug = 0,				\
+	.link_aspm = ASPM_DISABLED,			\
+	.link_hotplug = HOTPLUG_DISABLED,		\
 	.clk_req = CLK_REQ5,				\
 }
 
 #define wwan_dxio_descriptor {				\
 	.engine_type = PCIE_ENGINE,			\
 	.port_present = true,				\
-	.start_logical_lane = 14,			\
-	.end_logical_lane = CONFIG(WWAN01) ? 15 : 14,	\
+	.start_lane = 14,				\
+	.end_lane = CONFIG(WWAN01) ? 15 : 14,		\
 	.device_number = 2,				\
 	.function_number = 2,				\
 	.link_speed_capability = GEN3,			\
 	.turn_off_unused_lanes = true,			\
-	.link_aspm = ASPM_L1,				\
-	.link_hotplug = 0,				\
+	.link_aspm = ASPM_DISABLED,			\
+	.link_hotplug = HOTPLUG_DISABLED,		\
 	.clk_req = CLK_REQ4,				\
 }
 
 #define wlan_dxio_descriptor {				\
 	.engine_type = PCIE_ENGINE,			\
 	.port_present = true,				\
-	.start_logical_lane = 15,			\
-	.end_logical_lane = CONFIG(WLAN01) ? 14 : 15,	\
+	.start_lane = 15,				\
+	.end_lane = CONFIG(WLAN01) ? 14 : 15,		\
 	.device_number = 2,				\
 	.function_number = 3,				\
 	.link_speed_capability = GEN3,			\
 	.turn_off_unused_lanes = true,			\
-	.link_aspm = ASPM_L1,				\
-	.link_hotplug = 0,				\
+	.link_aspm = ASPM_DISABLED,			\
+	.link_hotplug = HOTPLUG_DISABLED,		\
 	.clk_req = CLK_REQ3,				\
 }
 
 #define ssd0_dxio_descriptor {				\
 	.engine_type = PCIE_ENGINE,			\
 	.port_present = true,				\
-	.start_logical_lane = 16,			\
-	.end_logical_lane = 19,				\
+	.start_lane = 16,				\
+	.end_lane = 19,					\
 	.device_number = 2,				\
 	.function_number = 4,				\
 	.link_speed_capability = GEN3,			\
 	.turn_off_unused_lanes = true,			\
-	.link_aspm = ASPM_L1,				\
-	.link_hotplug = 0,				\
+	.link_aspm = ASPM_DISABLED,			\
+	.link_hotplug = HOTPLUG_DISABLED,		\
 	.clk_req = CLK_REQ2,				\
 }
 

@@ -15,6 +15,7 @@
 #include <intelblocks/systemagent.h>
 #include <intelblocks/tcss.h>
 #include <intelblocks/xdci.h>
+#include <soc/intel/common/reset.h>
 #include <soc/intel/common/vbt.h>
 #include <soc/iomap.h>
 #include <soc/itss.h>
@@ -71,6 +72,7 @@ const char *soc_acpi_name(const struct device *dev)
 
 	switch (dev->path.pci.devfn) {
 	case PCI_DEVFN_ROOT:		return "MCHC";
+	case PCI_DEVFN_IGD:		return "GFX0";
 	case PCI_DEVFN_TCSS_XHCI:	return "TXHC";
 	case PCI_DEVFN_TCSS_XDCI:	return "TXDC";
 	case PCI_DEVFN_TCSS_DMA0:	return "TDM0";
@@ -225,8 +227,24 @@ static void soc_enable(struct device *dev)
 		block_gpio_enable(dev);
 }
 
+static void soc_init_final_device(void *chip_info)
+{
+	uint32_t reset_status = fsp_get_pch_reset_status();
+
+	if (reset_status == FSP_SUCCESS)
+		return;
+
+	/* Handle any pending reset request from previously executed FSP APIs */
+	fsp_handle_reset(reset_status);
+
+	/* Control shouldn't return here */
+	die_with_post_code(POSTCODE_HW_INIT_FAILURE,
+		 "Failed to handle the FSP reset request with error 0x%08x\n", reset_status);
+}
+
 struct chip_operations soc_intel_meteorlake_ops = {
 	CHIP_NAME("Intel Meteorlake")
 	.enable_dev	= &soc_enable,
 	.init		= &soc_init_pre_device,
+	.final		= &soc_init_final_device,
 };

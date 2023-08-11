@@ -18,13 +18,80 @@ static const char *resource2str(const struct resource *res)
 	return "undefined";
 }
 
+static void print_domain_res(const struct device *dev,
+			     const struct resource *res, const char *suffix)
+{
+	printk(BIOS_DEBUG, "%s %s: base: %llx size: %llx align: %u gran: %u limit: %llx%s\n",
+	       dev_path(dev), resource2str(res), res->base, res->size,
+	       res->align, res->gran, res->limit, suffix);
+}
+
+#define res_printk(depth, str, ...)	printk(BIOS_DEBUG, "%*c"str, depth, ' ', __VA_ARGS__)
+
+static void print_bridge_res(const struct device *dev, const struct resource *res,
+			     int depth, const char *suffix)
+{
+	res_printk(depth, "%s %s: size: %llx align: %u gran: %u limit: %llx%s\n", dev_path(dev),
+		   resource2str(res), res->size, res->align, res->gran, res->limit, suffix);
+}
+
+static void print_child_res(const struct device *dev, const struct resource *res, int depth)
+{
+	res_printk(depth + 1, "%s %02lx *  [0x%llx - 0x%llx] %s\n", dev_path(dev),
+		   res->index, res->base, res->base + res->size - 1, resource2str(res));
+}
+
+static void print_fixed_res(const struct device *dev,
+			    const struct resource *res, const char *prefix)
+{
+	printk(BIOS_DEBUG, " %s: %s %02lx base %08llx limit %08llx %s (fixed)\n",
+	       prefix, dev_path(dev), res->index, res->base, res->base + res->size - 1,
+	       resource2str(res));
+}
+
+static void print_assigned_res(const struct device *dev, const struct resource *res)
+{
+	printk(BIOS_DEBUG, "  %s %02lx *  [0x%llx - 0x%llx] limit: %llx %s\n",
+	       dev_path(dev), res->index, res->base, res->limit, res->limit, resource2str(res));
+}
+
+static void print_failed_res(const struct device *dev, const struct resource *res)
+{
+	printk(BIOS_DEBUG, "  %s %02lx *  size: 0x%llx limit: %llx %s\n",
+	       dev_path(dev), res->index, res->size, res->limit, resource2str(res));
+}
+
+static void print_resource_ranges(const struct device *dev, const struct memranges *ranges)
+{
+	const struct range_entry *r;
+
+	printk(BIOS_INFO, " %s: Resource ranges:\n", dev_path(dev));
+
+	if (memranges_is_empty(ranges))
+		printk(BIOS_INFO, " * EMPTY!!\n");
+
+	memranges_each_entry(r, ranges) {
+		printk(BIOS_INFO, " * Base: %llx, Size: %llx, Tag: %lx\n",
+		       range_entry_base(r), range_entry_size(r), range_entry_tag(r));
+	}
+}
+
 static bool dev_has_children(const struct device *dev)
 {
 	const struct bus *bus = dev->link_list;
 	return bus && bus->children;
 }
 
-#define res_printk(depth, str, ...)	printk(BIOS_DEBUG, "%*c"str, depth, ' ', __VA_ARGS__)
+static resource_t effective_limit(const struct resource *const res)
+{
+	/* Always allow bridge resources above 4G. */
+	if (res->flags & IORESOURCE_BRIDGE)
+		return res->limit;
+
+	const resource_t quirk_4g_limit =
+		res->flags & IORESOURCE_ABOVE_4G ? UINT64_MAX : UINT32_MAX;
+	return MIN(res->limit, quirk_4g_limit);
+}
 
 /*
  * During pass 1, once all the requirements for downstream devices of a
@@ -38,14 +105,20 @@ static bool dev_has_children(const struct device *dev)
  * resource. This is required to guarantee that the upstream bridge/
  * domain honors the limit and alignment requirements for this bridge
  * based on the tightest constraints downstream.
+ *
+ * Last but not least, it stores the offset inside the bridge resource
+ * for each child resource in its base field. This simplifies pass 2
+ * for resources behind a bridge, as we only have to add offsets to the
+ * allocated base of the bridge resource.
  */
 static void update_bridge_resource(const struct device *bridge, struct resource *bridge_res,
-				   unsigned long type_match, int print_depth)
+				   int print_depth)
 {
 	const struct device *child;
 	struct resource *child_res;
 	resource_t base;
 	const unsigned long type_mask = IORESOURCE_TYPE_MASK | IORESOURCE_PREFETCH;
+	const unsigned long type_match = bridge_res->flags & type_mask;
 	struct bus *bus = bridge->link_list;
 
 	child_res = NULL;
@@ -61,9 +134,7 @@ static void update_bridge_resource(const struct device *bridge, struct resource 
 	 */
 	base = 0;
 
-	res_printk(print_depth, "%s %s: size: %llx align: %d gran: %d limit: %llx\n",
-	       dev_path(bridge), resource2str(bridge_res), bridge_res->size,
-	       bridge_res->align, bridge_res->gran, bridge_res->limit);
+	print_bridge_res(bridge, bridge_res, print_depth, "");
 
 	while ((child = largest_resource(bus, &child_res, type_mask, type_match))) {
 
@@ -78,13 +149,8 @@ static void update_bridge_resource(const struct device *bridge, struct resource 
 		/*
 		 * Propagate the resource alignment to the bridge resource. The
 		 * condition can only be true for the first (largest) resource. For all
-		 * other children resources, alignment is taken care of by updating the
-		 * base to round up as per the child resource alignment. It is
-		 * guaranteed that pass 2 follows the exact same method of picking the
-		 * resource for allocation using largest_resource(). Thus, as long as
-		 * the alignment for the largest child resource is propagated up to the
-		 * bridge resource, it can be guaranteed that the alignment for all
-		 * resources is appropriately met.
+		 * other child resources, alignment is taken care of by rounding their
+		 * base up.
 		 */
 		if (child_res->align > bridge_res->align)
 			bridge_res->align = child_res->align;
@@ -92,27 +158,11 @@ static void update_bridge_resource(const struct device *bridge, struct resource 
 		/*
 		 * Propagate the resource limit to the bridge resource. If a downstream
 		 * device has stricter requirements w.r.t. limits for any resource, that
-		 * constraint needs to be propagated back up to the downstream bridges
-		 * of the domain. This guarantees that the resource allocation which
-		 * starts at the domain level takes into account all these constraints
-		 * thus working on a global view.
+		 * constraint needs to be propagated back up to the bridges downstream
+		 * of the domain. This way, the whole bridge resource fulfills the limit.
 		 */
-		if (child_res->limit < bridge_res->limit)
-			bridge_res->limit = child_res->limit;
-
-		/*
-		 * Propagate the downstream resource request to allocate above 4G
-		 * boundary to upstream bridge resource. This ensures that during
-		 * pass 2, the resource allocator at domain level has a global view
-		 * of all the downstream device requirements and thus address space
-		 * is allocated as per updated flags in the bridge resource.
-		 *
-		 * Since the bridge resource is a single window, all the downstream
-		 * resources of this bridge resource will be allocated in space above
-		 * the 4G boundary.
-		 */
-		if (child_res->flags & IORESOURCE_ABOVE_4G)
-			bridge_res->flags |= IORESOURCE_ABOVE_4G;
+		if (effective_limit(child_res) < bridge_res->limit)
+			bridge_res->limit = effective_limit(child_res);
 
 		/*
 		 * Alignment value of 0 means that the child resource has no alignment
@@ -120,9 +170,15 @@ static void update_bridge_resource(const struct device *bridge, struct resource 
 		 */
 		base = ALIGN_UP(base, POWER_OF_2(child_res->align));
 
-		res_printk(print_depth + 1, "%s %02lx *  [0x%llx - 0x%llx] %s\n",
-		       dev_path(child), child_res->index, base, base + child_res->size - 1,
-		       resource2str(child_res));
+		/*
+		 * Store the relative offset inside the bridge resource for later
+		 * consumption in allocate_bridge_resources(), and invalidate flags
+		 * related to the base.
+		 */
+		child_res->base = base;
+		child_res->flags &= ~(IORESOURCE_ASSIGNED | IORESOURCE_STORED);
+
+		print_child_res(child, child_res, print_depth);
 
 		base += child_res->size;
 	}
@@ -136,9 +192,7 @@ static void update_bridge_resource(const struct device *bridge, struct resource 
 	 */
 	bridge_res->size = ALIGN_UP(base, POWER_OF_2(bridge_res->gran));
 
-	res_printk(print_depth, "%s %s: size: %llx align: %d gran: %d limit: %llx done\n",
-	       dev_path(bridge), resource2str(bridge_res), bridge_res->size,
-	       bridge_res->align, bridge_res->gran, bridge_res->limit);
+	print_bridge_res(bridge, bridge_res, print_depth, " done");
 }
 
 /*
@@ -175,7 +229,7 @@ static void compute_bridge_resources(const struct device *bridge, unsigned long 
 		 * Update the window for current bridge resource now that all downstream
 		 * requirements are gathered.
 		 */
-		update_bridge_resource(bridge, res, type_match, print_depth);
+		update_bridge_resource(bridge, res, print_depth);
 	}
 }
 
@@ -215,208 +269,6 @@ static void compute_domain_resources(const struct device *domain)
 	}
 }
 
-static unsigned char get_alignment_by_resource_type(const struct resource *res)
-{
-	if (res->flags & IORESOURCE_MEM)
-		return 12;  /* Page-aligned --> log2(4KiB) */
-	else if (res->flags & IORESOURCE_IO)
-		return 0;   /* No special alignment required --> log2(1) */
-
-	die("Unexpected resource type: flags(%d)!\n", res->flags);
-}
-
-/*
- * If the resource is NULL or if the resource is not assigned, then it
- * cannot be used for allocation for downstream devices.
- */
-static bool is_resource_invalid(const struct resource *res)
-{
-	return (res == NULL) || !(res->flags & IORESOURCE_ASSIGNED);
-}
-
-static void initialize_domain_io_resource_memranges(struct memranges *ranges,
-						    const struct resource *res,
-						    unsigned long memrange_type)
-{
-	memranges_insert(ranges, res->base, res->limit - res->base + 1, memrange_type);
-}
-
-static void initialize_domain_mem_resource_memranges(struct memranges *ranges,
-						     const struct resource *res,
-						     unsigned long memrange_type)
-{
-	resource_t res_base;
-	resource_t res_limit;
-
-	const resource_t limit_4g = 0xffffffff;
-
-	res_base = res->base;
-	res_limit = res->limit;
-
-	/*
-	 * Split the resource into two separate ranges if it crosses the 4G
-	 * boundary. Memrange type is set differently to ensure that memrange
-	 * does not merge these two ranges. For the range above 4G boundary,
-	 * given memrange type is ORed with IORESOURCE_ABOVE_4G.
-	 */
-	if (res_base <= limit_4g) {
-
-		resource_t range_limit;
-
-		/* Clip the resource limit at 4G boundary if necessary. */
-		range_limit = MIN(res_limit, limit_4g);
-		memranges_insert(ranges, res_base, range_limit - res_base + 1, memrange_type);
-
-		/*
-		 * If the resource lies completely below the 4G boundary, nothing more
-		 * needs to be done.
-		 */
-		if (res_limit <= limit_4g)
-			return;
-
-		/*
-		 * If the resource window crosses the 4G boundary, then update res_base
-		 * to add another entry for the range above the boundary.
-		 */
-		res_base = limit_4g + 1;
-	}
-
-	if (res_base > res_limit)
-		return;
-
-	/*
-	 * If resource lies completely above the 4G boundary or if the resource
-	 * was clipped to add two separate ranges, the range above 4G boundary
-	 * has the resource flag IORESOURCE_ABOVE_4G set. This allows domain to
-	 * handle any downstream requests for resource allocation above 4G
-	 * differently.
-	 */
-	memranges_insert(ranges, res_base, res_limit - res_base + 1,
-			 memrange_type | IORESOURCE_ABOVE_4G);
-}
-
-/*
- * This function initializes memranges for domain device. If the
- * resource crosses 4G boundary, then this function splits it into two
- * ranges -- one for the window below 4G and the other for the window
- * above 4G. The latter range has IORESOURCE_ABOVE_4G flag set to
- * satisfy resource requests from downstream devices for allocations
- * above 4G.
- */
-static void initialize_domain_memranges(struct memranges *ranges, const struct resource *res,
-					unsigned long memrange_type)
-{
-	unsigned char align = get_alignment_by_resource_type(res);
-
-	memranges_init_empty_with_alignment(ranges, NULL, 0, align);
-
-	if (is_resource_invalid(res))
-		return;
-
-	if (res->flags & IORESOURCE_IO)
-		initialize_domain_io_resource_memranges(ranges, res, memrange_type);
-	else
-		initialize_domain_mem_resource_memranges(ranges, res, memrange_type);
-}
-
-/*
- * This function initializes memranges for bridge device. Unlike domain,
- * bridge does not need to care about resource window crossing 4G
- * boundary. This is handled by the resource allocator at domain level
- * to ensure that all downstream bridges are allocated space either
- * above or below 4G boundary as per the state of IORESOURCE_ABOVE_4G
- * for the respective bridge resource.
- *
- * So, this function creates a single range of the entire resource
- * window available for the bridge resource. Thus all downstream
- * resources of the bridge for the given resource type get allocated
- * space from the same window. If there is any downstream resource of
- * the bridge which requests allocation above 4G, then all other
- * downstream resources of the same type under the bridge get allocated
- * above 4G.
- */
-static void initialize_bridge_memranges(struct memranges *ranges, const struct resource *res,
-					unsigned long memrange_type)
-{
-	unsigned char align = get_alignment_by_resource_type(res);
-
-	memranges_init_empty_with_alignment(ranges, NULL, 0, align);
-
-	if (is_resource_invalid(res))
-		return;
-
-	memranges_insert(ranges, res->base, res->limit - res->base + 1, memrange_type);
-}
-
-static void print_resource_ranges(const struct device *dev, const struct memranges *ranges)
-{
-	const struct range_entry *r;
-
-	printk(BIOS_INFO, " %s: Resource ranges:\n", dev_path(dev));
-
-	if (memranges_is_empty(ranges))
-		printk(BIOS_INFO, " * EMPTY!!\n");
-
-	memranges_each_entry(r, ranges) {
-		printk(BIOS_INFO, " * Base: %llx, Size: %llx, Tag: %lx\n",
-		       range_entry_base(r), range_entry_size(r), range_entry_tag(r));
-	}
-}
-
-/*
- * This is where the actual allocation of resources happens during
- * pass 2. Given the list of memory ranges corresponding to the
- * resource of given type, it finds the biggest unallocated resource
- * using the type mask on the downstream bus. This continues in a
- * descending order until all resources of given type are allocated
- * address space within the current resource window.
- */
-static void allocate_child_resources(struct bus *bus, struct memranges *ranges,
-				     unsigned long type_mask, unsigned long type_match)
-{
-	const bool allocate_top_down =
-		bus->dev->path.type == DEVICE_PATH_DOMAIN &&
-		CONFIG(RESOURCE_ALLOCATION_TOP_DOWN);
-	struct resource *resource = NULL;
-	const struct device *dev;
-
-	while ((dev = largest_resource(bus, &resource, type_mask, type_match))) {
-
-		if (!resource->size)
-			continue;
-
-		if (memranges_steal(ranges, resource->limit, resource->size, resource->align,
-				    type_match, &resource->base, allocate_top_down) == false) {
-			printk(BIOS_ERR, "  ERROR: Resource didn't fit!!! ");
-			printk(BIOS_DEBUG, "  %s %02lx *  size: 0x%llx limit: %llx %s\n",
-			       dev_path(dev), resource->index,
-			       resource->size, resource->limit, resource2str(resource));
-			continue;
-		}
-
-		resource->limit = resource->base + resource->size - 1;
-		resource->flags |= IORESOURCE_ASSIGNED;
-
-		printk(BIOS_DEBUG, "  %s %02lx *  [0x%llx - 0x%llx] limit: %llx %s\n",
-		       dev_path(dev), resource->index, resource->base,
-		       resource->size ? resource->base + resource->size - 1 :
-		       resource->base, resource->limit, resource2str(resource));
-	}
-}
-
-static void update_constraints(struct memranges *ranges, const struct device *dev,
-			      const struct resource *res)
-{
-	if (!res->size)
-		return;
-
-	printk(BIOS_DEBUG, " %s: %s %02lx base %08llx limit %08llx %s (fixed)\n",
-	       __func__, dev_path(dev), res->index, res->base,
-	       res->base + res->size - 1, resource2str(res));
-
-	memranges_create_hole(ranges, res->base, res->size);
-}
-
 /*
  * Scan the entire tree to identify any fixed resources allocated by
  * any device to ensure that the address map for domain resources are
@@ -438,7 +290,10 @@ static void avoid_fixed_resources(struct memranges *ranges, const struct device 
 	for (res = dev->resource_list; res != NULL; res = res->next) {
 		if ((res->flags & mask_match) != mask_match)
 			continue;
-		update_constraints(ranges, dev, res);
+		if (!res->size)
+			continue;
+		print_fixed_res(dev, res, __func__);
+		memranges_create_hole(ranges, res->base, res->size);
 	}
 
 	bus = dev->link_list;
@@ -449,10 +304,32 @@ static void avoid_fixed_resources(struct memranges *ranges, const struct device 
 		avoid_fixed_resources(ranges, child, mask_match);
 }
 
-static void constrain_domain_resources(const struct device *domain, struct memranges *ranges,
-				       unsigned long type)
+/*
+ * This function creates a list of memranges of given type using the
+ * resource that is provided. It applies additional constraints to
+ * ensure that the memranges do not overlap any of the fixed resources
+ * under the domain. The domain typically provides a memrange for the
+ * entire address space. Thus, it is up to the chipset to add DRAM and
+ * all other windows which cannot be used for resource allocation as
+ * fixed resources.
+ */
+static void setup_resource_ranges(const struct device *const domain,
+				  const unsigned long type,
+				  struct memranges *const ranges)
 {
-	unsigned long mask_match = type | IORESOURCE_FIXED;
+	/* Align mem resources to 2^12 (4KiB pages) at a minimum, so they
+	   can be memory-mapped individually (e.g. for virtualization guests). */
+	const unsigned char alignment = type == IORESOURCE_MEM ? 12 : 0;
+	const unsigned long type_mask = IORESOURCE_TYPE_MASK | IORESOURCE_FIXED;
+
+	memranges_init_empty_with_alignment(ranges, NULL, 0, alignment);
+
+	for (struct resource *res = domain->resource_list; res != NULL; res = res->next) {
+		if ((res->flags & type_mask) != type)
+			continue;
+		print_domain_res(domain, res, "");
+		memranges_insert(ranges, res->base, res->limit - res->base + 1, type);
+	}
 
 	if (type == IORESOURCE_IO) {
 		/*
@@ -468,112 +345,124 @@ static void constrain_domain_resources(const struct device *domain, struct memra
 		 */
 	}
 
-	avoid_fixed_resources(ranges, domain, mask_match);
+	avoid_fixed_resources(ranges, domain, type | IORESOURCE_FIXED);
+
+	print_resource_ranges(domain, ranges);
+}
+
+static void cleanup_domain_resource_ranges(const struct device *dev, struct memranges *ranges,
+					   unsigned long type)
+{
+	memranges_teardown(ranges);
+	for (struct resource *res = dev->resource_list; res != NULL; res = res->next) {
+		if (res->flags & IORESOURCE_FIXED)
+			continue;
+		if ((res->flags & IORESOURCE_TYPE_MASK) != type)
+			continue;
+		print_domain_res(dev, res, " done");
+	}
+}
+
+static void assign_resource(struct resource *const res, const resource_t base,
+			    const struct device *const dev)
+{
+	res->base = base;
+	res->limit = res->base + res->size - 1;
+	res->flags |= IORESOURCE_ASSIGNED;
+	res->flags &= ~IORESOURCE_STORED;
+
+	print_assigned_res(dev, res);
 }
 
 /*
- * This function creates a list of memranges of given type using the
- * resource that is provided. If the given resource is NULL or if the
- * resource window size is 0, then it creates an empty list. This
- * results in resource allocation for that resource type failing for
- * all downstream devices since there is nothing to allocate from.
- *
- * In case of domain, it applies additional constraints to ensure that
- * the memranges do not overlap any of the fixed resources under that
- * domain. Domain typically seems to provide memrange for entire address
- * space. Thus, it is up to the chipset to add DRAM and all other
- * windows which cannot be used for resource allocation as fixed
- * resources.
+ * This is where the actual allocation of resources happens during
+ * pass 2. We construct a list of memory ranges corresponding to the
+ * resource of a given type, then look for the biggest unallocated
+ * resource on the downstream bus. This continues in a descending order
+ * until all resources of a given type have space allocated within the
+ * domain's resource window.
  */
-static void setup_resource_ranges(const struct device *dev, const struct resource *res,
-				  unsigned long type, struct memranges *ranges)
+static void allocate_toplevel_resources(const struct device *const domain,
+					const unsigned long type)
 {
-	printk(BIOS_DEBUG, "%s %s: base: %llx size: %llx align: %d gran: %d limit: %llx\n",
-	       dev_path(dev), resource2str(res), res->base, res->size, res->align,
-	       res->gran, res->limit);
+	const unsigned long type_mask = IORESOURCE_TYPE_MASK;
+	struct resource *res = NULL;
+	const struct device *dev;
+	struct memranges ranges;
+	resource_t base;
 
-	if (dev->path.type == DEVICE_PATH_DOMAIN) {
-		initialize_domain_memranges(ranges, res, type);
-		constrain_domain_resources(dev, ranges, type);
-	} else {
-		initialize_bridge_memranges(ranges, res, type);
+	if (!dev_has_children(domain))
+		return;
+
+	setup_resource_ranges(domain, type, &ranges);
+
+	while ((dev = largest_resource(domain->link_list, &res, type_mask, type))) {
+
+		if (!res->size)
+			continue;
+
+		if (!memranges_steal(&ranges, effective_limit(res), res->size, res->align,
+				     type, &base, CONFIG(RESOURCE_ALLOCATION_TOP_DOWN))) {
+			printk(BIOS_ERR, "Resource didn't fit!!!\n");
+			print_failed_res(dev, res);
+			continue;
+		}
+
+		assign_resource(res, base, dev);
 	}
 
-	print_resource_ranges(dev, ranges);
-}
-
-static void cleanup_resource_ranges(const struct device *dev, struct memranges *ranges,
-				    const struct resource *res)
-{
-	memranges_teardown(ranges);
-	printk(BIOS_DEBUG, "%s %s: base: %llx size: %llx align: %d gran: %d limit: %llx done\n",
-	       dev_path(dev), resource2str(res), res->base, res->size, res->align,
-	       res->gran, res->limit);
+	cleanup_domain_resource_ranges(domain, &ranges, type);
 }
 
 /*
  * Pass 2 of the resource allocator at the bridge level loops through
- * all the resources for the bridge and generates a list of memory
- * ranges similar to that at the domain level. However, there is no need
- * to apply any additional constraints since the window allocated to the
- * bridge is guaranteed to be non-overlapping by the allocator at domain
- * level.
- *
- * Allocation at the bridge level works the same as at domain level
- * (starts with the biggest resource requirement from downstream devices
- * and continues in descending order). One major difference at the
- * bridge level is that it considers prefmem resources separately from
- * mem resources.
+ * all the resources for the bridge and assigns all the base addresses
+ * of its children's resources of the same type. update_bridge_resource()
+ * of pass 1 pre-calculated the offsets of these bases inside the bridge
+ * resource. Now that the bridge resource is allocated, all we have to
+ * do is to add its final base to these offsets.
  *
  * Once allocation at the current bridge is complete, resource allocator
  * continues walking down the downstream bridges until it hits the leaf
  * devices.
  */
+static void assign_resource_cb(void *param, struct device *dev, struct resource *res)
+{
+	/* We have to filter the same resources as update_bridge_resource(). */
+	if (!res->size || !res->limit)
+		return;
+
+	assign_resource(res, *(const resource_t *)param + res->base, dev);
+}
 static void allocate_bridge_resources(const struct device *bridge)
 {
-	struct memranges ranges;
-	const struct resource *res;
-	struct bus *bus = bridge->link_list;
-	unsigned long type_match;
+	const unsigned long type_mask =
+		IORESOURCE_TYPE_MASK | IORESOURCE_PREFETCH | IORESOURCE_FIXED;
+	struct bus *const bus = bridge->link_list;
+	struct resource *res;
 	struct device *child;
-	const unsigned long type_mask = IORESOURCE_TYPE_MASK | IORESOURCE_PREFETCH;
 
-	for (res = bridge->resource_list; res; res = res->next) {
+	for (res = bridge->resource_list; res != NULL; res = res->next) {
 		if (!res->size)
 			continue;
 
 		if (!(res->flags & IORESOURCE_BRIDGE))
 			continue;
 
-		type_match = res->flags & type_mask;
+		if (!(res->flags & IORESOURCE_ASSIGNED))
+			continue;
 
-		setup_resource_ranges(bridge, res, type_match, &ranges);
-		allocate_child_resources(bus, &ranges, type_mask, type_match);
-		cleanup_resource_ranges(bridge, &ranges, res);
+		/* Run assign_resource_cb() for all downstream resources of the same type. */
+		search_bus_resources(bus, type_mask, res->flags & type_mask,
+				     assign_resource_cb, &res->base);
 	}
 
-	for (child = bus->children; child; child = child->sibling) {
+	for (child = bus->children; child != NULL; child = child->sibling) {
 		if (!dev_has_children(child))
 			continue;
 
 		allocate_bridge_resources(child);
 	}
-}
-
-static const struct resource *find_domain_resource(const struct device *domain,
-						   unsigned long type)
-{
-	const struct resource *res;
-
-	for (res = domain->resource_list; res; res = res->next) {
-		if (res->flags & IORESOURCE_FIXED)
-			continue;
-
-		if ((res->flags & IORESOURCE_TYPE_MASK) == type)
-			return res;
-	}
-
-	return NULL;
 }
 
 /*
@@ -586,23 +475,13 @@ static const struct resource *find_domain_resource(const struct device *domain,
  * resource requirements of the downstream devices.
  *
  * Once resources are allocated to all downstream devices of the domain,
- * it walks down each downstream bridge to continue the same process
- * until resources are allocated to all devices under the domain.
+ * it walks down each downstream bridge to finish resource assignment
+ * of its children resources within its own window.
  */
 static void allocate_domain_resources(const struct device *domain)
 {
-	struct memranges ranges;
-	struct device *child;
-	const struct resource *res;
-
 	/* Resource type I/O */
-	res = find_domain_resource(domain, IORESOURCE_IO);
-	if (res) {
-		setup_resource_ranges(domain, res, IORESOURCE_IO, &ranges);
-		allocate_child_resources(domain->link_list, &ranges, IORESOURCE_TYPE_MASK,
-					 IORESOURCE_IO);
-		cleanup_resource_ranges(domain, &ranges, res);
-	}
+	allocate_toplevel_resources(domain, IORESOURCE_IO);
 
 	/*
 	 * Resource type Mem:
@@ -610,29 +489,10 @@ static void allocate_domain_resources(const struct device *domain)
 	 * the resource allocation at domain level considers mem and prefmem
 	 * together when finding the best fit based on the biggest resource
 	 * requirement.
-	 *
-	 * However, resource requests for allocation above 4G boundary need to
-	 * be handled separately if the domain resource window crosses this
-	 * boundary. There is a single window for resource of type
-	 * IORESOURCE_MEM. When creating memranges, this resource is split into
-	 * two separate ranges -- one for the window below 4G boundary and other
-	 * for the window above 4G boundary (with IORESOURCE_ABOVE_4G flag set).
-	 * Thus, when allocating child resources, requests for below and above
-	 * the 4G boundary are handled separately by setting the type_mask and
-	 * type_match to allocate_child_resources() accordingly.
 	 */
-	res = find_domain_resource(domain, IORESOURCE_MEM);
-	if (res) {
-		setup_resource_ranges(domain, res, IORESOURCE_MEM, &ranges);
-		allocate_child_resources(domain->link_list, &ranges,
-					 IORESOURCE_TYPE_MASK | IORESOURCE_ABOVE_4G,
-					 IORESOURCE_MEM);
-		allocate_child_resources(domain->link_list, &ranges,
-					 IORESOURCE_TYPE_MASK | IORESOURCE_ABOVE_4G,
-					 IORESOURCE_MEM | IORESOURCE_ABOVE_4G);
-		cleanup_resource_ranges(domain, &ranges, res);
-	}
+	allocate_toplevel_resources(domain, IORESOURCE_MEM);
 
+	struct device *child;
 	for (child = domain->link_list->children; child; child = child->sibling) {
 		if (!dev_has_children(child))
 			continue;
@@ -671,12 +531,12 @@ static void allocate_domain_resources(const struct device *domain)
  * resource allocation for all immediate downstream devices is complete
  * at the domain level, the resource allocator walks down the subtree
  * for each downstream bridge to continue the allocation process at the
- * bridge level. Since bridges have separate windows for i/o, mem and
- * prefmem, best fit algorithm at bridge level looks for the biggest
- * requirement considering prefmem resources separately from non-prefmem
- * resources. This continues until resource allocation is performed for
- * all downstream bridges in the domain sub-tree. This is referred to as
- * pass 2 of the resource allocator.
+ * bridge level. Since bridges have either their whole window allocated
+ * or nothing, we only need to place downstream resources inside these
+ * windows by re-using offsets that were pre-calculated in pass 1. This
+ * continues until resource allocation is realized for all downstream
+ * bridges in the domain sub-tree. This is referred to as pass 2 of the
+ * resource allocator.
  *
  * Some rules that are followed by the resource allocator:
  *  - Allocate resource locations for every device as long as
@@ -700,8 +560,8 @@ void allocate_resources(const struct device *root)
 
 		post_log_path(child);
 
-		/* Pass 1 - Gather requirements. */
-		printk(BIOS_INFO, "=== Resource allocator: %s - Pass 1 (gathering requirements) ===\n",
+		/* Pass 1 - Relative placement. */
+		printk(BIOS_INFO, "=== Resource allocator: %s - Pass 1 (relative placement) ===\n",
 		       dev_path(child));
 		compute_domain_resources(child);
 

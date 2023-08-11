@@ -13,20 +13,22 @@ chip soc/intel/alderlake
 	register "pmc_gpe0_dw2" = "GPD"
 
 	# USB Configuration
-	register "usb2_ports[0]" = "USB2_PORT_TYPE_C(OC2)" # USB-C LAN_USB1
-	register "usb2_ports[1]" = "USB2_PORT_MAX(OC1)" # MSI MYSTIC LIGHT
-	register "usb2_ports[2]" = "USB2_PORT_MAX(OC0)" # USB-A LAN_USB1
-	register "usb2_ports[3]" = "USB2_PORT_TYPE_C(OC0)" # JUSB5
-	register "usb2_ports[4]" = "USB2_PORT_MAX(OC3)" # HUB to rear USB 2.0
+	register "usb2_ports[0]" = "USB2_PORT_SHORT(OC2)" # USB-C LAN_USB1
+	register "usb2_ports[1]" = "USB2_PORT_SHORT(OC1)" # MSI MYSTIC LIGHT
+	register "usb2_ports[2]" = "USB2_PORT_SHORT(OC0)" # USB-A LAN_USB1
+	register "usb2_ports[3]" = "USB2_PORT_LONG(OC0)" # JUSB5
+	register "usb2_ports[4]" = "USB2_PORT_SHORT(OC3)" # HUB to rear USB 2.0
 	register "usb2_ports[5]" = "USB2_PORT_LONG(OC3)" # empty?
 	register "usb2_ports[6]" = "USB2_PORT_LONG(OC7)" # JUSB4
 	register "usb2_ports[7]" = "USB2_PORT_LONG(OC0)" # JUSB4
 	register "usb2_ports[8]" = "USB2_PORT_LONG(OC2)" # JUSB3
 	register "usb2_ports[9]" = "USB2_PORT_LONG(OC7)" # JUSB3
-	register "usb2_ports[10]" = "USB2_PORT_MAX(OC0)" # PS2_USB1
-	register "usb2_ports[11]" = "USB2_PORT_MAX(OC0)" # PS2_USB1
-	register "usb2_ports[12]" = "USB2_PORT_MAX(OC0)" # HUB to USB 2.0 headers
-	register "usb2_ports[13]" = "USB2_PORT_MAX(OC6)" # CNVi BT
+	register "usb2_ports[10]" = "USB2_PORT_SHORT(OC0)" # PS2_USB1
+	register "usb2_ports[11]" = "USB2_PORT_SHORT(OC0)" # PS2_USB1
+	register "usb2_ports[12]" = "USB2_PORT_SHORT(OC0)" # HUB to USB 2.0 headers
+	register "usb2_ports[13]" = "USB2_PORT_SHORT(OC6)" # CNVi BT
+	register "usb2_ports[14]" = "USB2_PORT_EMPTY" # USB Redirection port 1
+	register "usb2_ports[15]" = "USB2_PORT_EMPTY" # USB Redirection port 2
 
 	register "usb3_ports[0]" = "USB3_PORT_DEFAULT(OC2)" # USB-C LAN_USB1
 	register "usb3_ports[1]" = "USB3_PORT_DEFAULT(OC2)" # USB-A LAN_USB1
@@ -96,7 +98,7 @@ chip soc/intel/alderlake
 			register "cpu_pcie_rp[CPU_RP(2)]" = "{
 				.clk_src = 0,
 				.clk_req = 0,
-				.flags = PCIE_RP_LTR | PCIE_RP_AER | PCIE_RP_HOTPLUG,
+				.flags = PCIE_RP_LTR | PCIE_RP_AER,
 				.PcieRpL1Substates = L1_SS_L1_2,
 				.pcie_rp_aspm = ASPM_L0S_L1,
 			}"
@@ -109,7 +111,7 @@ chip soc/intel/alderlake
 			register "cpu_pcie_rp[CPU_RP(1)]" = "{
 				.clk_src = 9,
 				.clk_req = 9,
-				.flags = PCIE_RP_LTR | PCIE_RP_AER | PCIE_RP_CLK_REQ_DETECT,
+				.flags = PCIE_RP_LTR | PCIE_RP_AER,
 				.PcieRpL1Substates = L1_SS_L1_2,
 				.pcie_rp_aspm = ASPM_L0S_L1,
 			}"
@@ -139,7 +141,7 @@ chip soc/intel/alderlake
 			register "pch_pcie_rp[PCH_RP(1)]" = "{
 				.clk_src = 10,
 				.clk_req = 10,
-				.flags = PCIE_RP_LTR | PCIE_RP_AER | PCIE_RP_HOTPLUG | PCIE_RP_CLK_REQ_DETECT,
+				.flags = PCIE_RP_LTR | PCIE_RP_AER,
 				.PcieRpL1Substates = L1_SS_L1_2,
 				.pcie_rp_aspm = ASPM_L0S_L1,
 			}"
@@ -150,7 +152,7 @@ chip soc/intel/alderlake
 			register "pch_pcie_rp[PCH_RP(2)]" = "{
 				.clk_src = 17,
 				.clk_req = 17,
-				.flags = PCIE_RP_LTR | PCIE_RP_AER | PCIE_RP_HOTPLUG | PCIE_RP_CLK_REQ_DETECT,
+				.flags = PCIE_RP_LTR | PCIE_RP_AER,
 				.PcieRpL1Substates = L1_SS_L1_2,
 				.pcie_rp_aspm = ASPM_L0S_L1,
 			}"
@@ -172,7 +174,7 @@ chip soc/intel/alderlake
 			register "pch_pcie_rp[PCH_RP(5)]" = "{
 				.clk_src = 15,
 				.clk_req = 15,
-				.flags = PCIE_RP_LTR | PCIE_RP_AER | PCIE_RP_HOTPLUG | PCIE_RP_CLK_REQ_DETECT,
+				.flags = PCIE_RP_LTR | PCIE_RP_AER,
 				.PcieRpL1Substates = L1_SS_L1_2,
 				.pcie_rp_aspm = ASPM_L0S_L1,
 			}"
@@ -184,7 +186,7 @@ chip soc/intel/alderlake
 			register "pch_pcie_rp[PCH_RP(9)]" = "{
 				.clk_src = 13,
 				.clk_req = 13,
-				.flags = PCIE_RP_LTR | PCIE_RP_AER | PCIE_RP_CLK_REQ_DETECT,
+				.flags = PCIE_RP_LTR | PCIE_RP_AER,
 				.PcieRpL1Substates = L1_SS_L1_2,
 				.pcie_rp_aspm = ASPM_L0S_L1,
 			}"
@@ -208,7 +210,7 @@ chip soc/intel/alderlake
 			register "pch_pcie_rp[PCH_RP(21)]" = "{
 				.clk_src = 14,
 				.clk_req = 14,
-				.flags = PCIE_RP_LTR | PCIE_RP_AER | PCIE_RP_CLK_REQ_DETECT,
+				.flags = PCIE_RP_LTR | PCIE_RP_AER,
 				.PcieRpL1Substates = L1_SS_L1_2,
 				.pcie_rp_aspm = ASPM_L0S_L1,
 			}"
@@ -220,7 +222,7 @@ chip soc/intel/alderlake
 			register "pch_pcie_rp[PCH_RP(25)]" = "{
 				.clk_src = 8,
 				.clk_req = 8,
-				.flags = PCIE_RP_LTR | PCIE_RP_AER | PCIE_RP_CLK_REQ_DETECT,
+				.flags = PCIE_RP_LTR | PCIE_RP_AER,
 				.PcieRpL1Substates = L1_SS_L1_2,
 				.pcie_rp_aspm = ASPM_L0S_L1,
 			}"

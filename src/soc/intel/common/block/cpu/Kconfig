@@ -142,6 +142,26 @@ config INTEL_TME
 	 it would get enabled. If CPU supports MKTME, this same config option
 	 enables MKTME.
 
+config TME_KEY_REGENERATION_ON_WARM_BOOT
+	bool "Generate new TME key on each warm boot"
+	depends on INTEL_TME
+	default n
+	help
+	  Program Intel TME to generate a new key for each warm boot. TME always
+	  generates a new key on each cold boot. With this option enabled TME
+	  generates a new key even in warm boot. Without this option TME reuses
+	  the key for warm boot.
+
+	  If a new key is generated on warm boot, DRAM contents from previous
+	  warm boot will not get decrypted. This creates issue in accessing
+	  CBMEM region from previous warm boot. To mitigate the issue coreboot
+	  also programs exclusion range. Intel TME does not encrypt physical
+	  memory range set in exclusion range. Current coreboot implementation
+	  programs TME to exclude CBMEM region. When this config option is
+	  enabled, coreboot instructs Intel FSP to program TME to generate
+	  a new key on every warm boot and also exclude CBMEM region from being
+	  encrypted by TME.
+
 config CPU_XTAL_HZ
 	int
 	help

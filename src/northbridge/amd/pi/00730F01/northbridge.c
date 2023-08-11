@@ -6,6 +6,7 @@
 #include <acpi/acpi.h>
 #include <acpi/acpi_ivrs.h>
 #include <arch/ioapic.h>
+#include <arch/vga.h>
 #include <types.h>
 #include <device/device.h>
 #include <device/pci.h>
@@ -139,7 +140,7 @@ static void add_fixed_resources(struct device *dev, int index)
 	 * 0xa0000 - 0xbffff: legacy VGA
 	 * 0xc0000 - 0xfffff: option ROMs and SeaBIOS (if used)
 	 */
-	mmio_resource_kb(dev, index++, 0xa0000 >> 10, (0xc0000 - 0xa0000) >> 10);
+	mmio_resource_kb(dev, index++, VGA_MMIO_BASE >> 10, VGA_MMIO_SIZE >> 10);
 	reserved_ram_resource_kb(dev, index++, 0xc0000 >> 10, (0x100000 - 0xc0000) >> 10);
 
 	if (fx_devs == 0)
@@ -241,7 +242,7 @@ static unsigned long acpi_fill_hest(acpi_hest_t *hest)
 	return (unsigned long)current;
 }
 
-unsigned long acpi_fill_ivrs_ioapic(acpi_ivrs_t *ivrs, unsigned long current)
+static unsigned long acpi_fill_ivrs_ioapic(acpi_ivrs_t *ivrs, unsigned long current)
 {
 	/* 8-byte IVHD structures must be aligned to the 8-byte boundary. */
 	current = ALIGN_UP(current, 8);
@@ -848,21 +849,11 @@ static struct device_operations pci_domain_ops = {
 	.acpi_name        = domain_acpi_name,
 };
 
-static void pre_mp_init(void)
-{
-	x86_setup_mtrrs_with_detect();
-	x86_mtrr_check();
-}
-
-static const struct mp_ops mp_ops = {
-	.pre_mp_init = pre_mp_init,
-	.get_cpu_count = get_cpu_count,
-};
-
 void mp_init_cpus(struct bus *cpu_bus)
 {
+	extern const struct mp_ops amd_mp_ops_no_smm;
 	/* TODO: Handle mp_init_with_smm failure? */
-	mp_init_with_smm(cpu_bus, &mp_ops);
+	mp_init_with_smm(cpu_bus, &amd_mp_ops_no_smm);
 
 	/* The flash is now no longer cacheable. Reset to WP for performance. */
 	mtrr_use_temp_range(OPTIMAL_CACHE_ROM_BASE, OPTIMAL_CACHE_ROM_SIZE,

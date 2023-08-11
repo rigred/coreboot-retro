@@ -253,6 +253,7 @@ $(CONFIG_CBFS_PREFIX)/postcar-compression := none
 ifeq ($(CONFIG_ARCH_RAMSTAGE_X86_32)$(CONFIG_ARCH_RAMSTAGE_X86_64),y)
 
 ramstage-y += acpi.c
+ramstage-$(CONFIG_HAVE_ACPI_TABLES) += ../../acpi/acpi_apic.c ../../acpi/acpi_hpet.c ../../acpi/acpi_dmar.c
 ramstage-$(CONFIG_HAVE_ACPI_RESUME) += acpi_s3.c
 ramstage-$(CONFIG_ACPI_BERT) += acpi_bert_storage.c
 ramstage-y += boot.c
@@ -276,7 +277,6 @@ ramstage-$(CONFIG_DEBUG_NULL_DEREF_BREAKPOINTS) += null_breakpoint.c
 ramstage-$(CONFIG_GENERATE_PIRQ_TABLE) += pirq_routing.c
 ramstage-y += rdrand.c
 ramstage-$(CONFIG_GENERATE_SMBIOS_TABLES) += smbios.c
-ramstage-$(CONFIG_GENERATE_SMBIOS_TABLES) += smbios_defaults.c
 ramstage-y += tables.c
 ramstage-$(CONFIG_COOP_MULTITASKING) += thread.c
 ramstage-$(CONFIG_COOP_MULTITASKING) += thread_switch.S
@@ -300,6 +300,10 @@ ifeq ($(CONFIG_ARCH_RAMSTAGE_X86_64),y)
 target-objcopy=-O elf64-x86-64 -B i386:x86-64
 LD_MACHINE =-m elf_x86_64
 endif
+
+# Make sure generated code does not use XMMx and MMx registers
+CFLAGS_x86_32 += -mno-mmx -mno-sse
+CFLAGS_x86_64 += -mno-mmx -mno-sse
 
 ramstage-srcs += $(wildcard src/mainboard/$(MAINBOARDDIR)/mainboard.c)
 ifeq ($(CONFIG_GENERATE_MP_TABLE),y)

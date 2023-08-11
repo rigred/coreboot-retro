@@ -1,3 +1,5 @@
+## SPDX-License-Identifier: GPL-2.0-only
+
 ramstage-y += haswell_init.c
 
 romstage-y += romstage.c
@@ -30,4 +32,6 @@ else
 cpu_microcode_bins += $(wildcard 3rdparty/intel-microcode/intel-ucode/06-3c-*)
 # Crystal Well (Trad)
 cpu_microcode_bins += $(wildcard 3rdparty/intel-microcode/intel-ucode/06-46-*)
+# Broadwell Trad
+cpu_microcode_bins += $(wildcard 3rdparty/intel-microcode/intel-ucode/06-47-*)
 endif

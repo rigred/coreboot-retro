@@ -55,7 +55,7 @@ struct fsp_patch_table {
 	uint8_t header_revision;
 	uint8_t reserved;
 	uint32_t patch_entry_num;
-	uint32_t patch_entries[0];
+	uint32_t patch_entries[];
 } __packed;
 
 #define FSPP_SIG 0x50505346
@@ -275,7 +275,7 @@ static int pe_relocate(uintptr_t new_addr, void *pe, void *fsp, size_t fih_off)
 	img_base_off += delta;
 	write_le32(&ophdr->ImageBase, img_base_off);
 
-	return -1;
+	return 0;
 }
 
 static int te_relocate(uintptr_t new_addr, void *te)

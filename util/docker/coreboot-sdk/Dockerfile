@@ -35,7 +35,7 @@ RUN \
 		gawk \
 		gcc \
 		git \
-		gnat-12 \
+		gnat \
 		golang \
 		graphicsmagick-imagemagick-compat \
 		graphviz \
@@ -45,19 +45,17 @@ RUN \
 		libcurl4-openssl-dev \
 		libelf-dev \
 		libfreetype6-dev \
-		libftdi-dev \
 		libftdi1-dev \
 		libglib2.0-dev \
 		libgmp-dev \
 		libgpiod-dev \
 		libjaylink-dev \
 		liblzma-dev \
-		libncurses5-dev \
+		libncurses-dev \
 		libpci-dev \
 		libreadline-dev \
 		libssl-dev \
 		libusb-1.0-0-dev \
-		libusb-dev \
 		libxml2-dev \
 		libyaml-dev \
 		m4 \
@@ -65,27 +63,27 @@ RUN \
 		msitools \
 		nasm \
 		openssl \
+		parted \
 		patch \
 		pbzip2 \
 		pkg-config \
 		python3 \
+		python-is-python3 \
 		qemu-system-arm \
 		qemu-system-misc \
 		qemu-system-ppc \
 		qemu-system-x86 \
 		rsync \
+		sharutils \
 		shellcheck \
-		subversion \
 		unifont \
+		unzip \
 		uuid-dev \
 		vim-common \
 		wget \
 		xz-utils \
 		zlib1g-dev \
-	&& apt-get clean \
-	&& update-alternatives --install /usr/bin/python python /usr/bin/python3 1 \
-	&& ln -s /usr/bin/automake /usr/bin/automake-1.15 \
-	&& ln -s /usr/bin/aclocal /usr/bin/aclocal-1.15
+	&& apt-get clean
 
 RUN \
 	cd /tmp && \
@@ -112,40 +110,6 @@ ENV PATH $PATH:/opt/xgcc/bin
 ENV SDK_VERSION={{SDK_VERSION}}
 ENV SDK_COMMIT={{DOCKER_COMMIT}}
 USER coreboot
-
-FROM coreboot-sdk
-# Test the built image
-RUN mkdir -p /tmp/work && \
-  cd /tmp/work && \
-  git clone https://review.coreboot.org/bios_extract.git && \
-  make -C bios_extract && \
-  git clone https://review.coreboot.org/memtest86plus.git && \
-  make -C memtest86plus && \
-  git clone https://review.coreboot.org/flashrom.git && \
-  CONFIG_EVERYTHING=yes make -C flashrom && \
-  git clone https://review.coreboot.org/em100.git && \
-  make -C em100 && \
-  git clone https://review.coreboot.org/coreboot.git && \
-  (cd coreboot && git submodule update --init --checkout ) && \
-  make -C coreboot CPUS=$(nproc) test-abuild
-
-RUN \
-  cd /tmp/work && \
-  make -C coreboot olddefconfig && \
-  make -C coreboot all -j && \
-  make -C coreboot printall && \
-  make -C coreboot filelist && \
-  make -C coreboot ctags-project && \
-  make -C coreboot cscope-project
-
-RUN \
-  cd /tmp/work && \
-  make -C coreboot test-payloads&& \
-  make -C coreboot test-tools -j && \
-  make -C coreboot test-lint -j && \
-  make -C coreboot test-cleanup -j && \
-  cd && \
-  rm -rf /tmp/work/
 
 FROM coreboot-sdk
 VOLUME /home/coreboot/.ccache

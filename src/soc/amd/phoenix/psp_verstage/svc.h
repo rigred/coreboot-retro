@@ -92,7 +92,19 @@ struct cmd_param_set_platform_boot_mode {
 };
 
 struct cmd_param_set_fw_hash_table {
-	struct psp_fw_hash_table *ptr_psp_fw_hash_table;
+	void *ptr_psp_fw_hash_table;
+};
+
+struct cmd_param_get_prev_boot_status {
+	unsigned int *ptr_boot_status;
+};
+
+struct cmd_param_get_hsp_secure_state {
+	unsigned int hsp_secure_state;
+};
+
+struct cmd_param_postcode {
+	uint32_t postcode;
 };
 
 #endif /* PSP_VERSTAGE_SVC_H */

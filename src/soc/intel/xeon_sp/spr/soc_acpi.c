@@ -2,6 +2,7 @@
 
 #include <acpi/acpigen.h>
 #include <arch/smp/mpspec.h>
+#include <arch/vga.h>
 #include <assert.h>
 #include <cbmem.h>
 #include <cpu/intel/turbo.h>
@@ -48,38 +49,8 @@ void soc_fill_fadt(acpi_fadt_t *fadt)
 	fadt->pm2_cnt_blk = pmbase + PM2_CNT;
 	fadt->pm2_cnt_len = 1;
 
-	fadt->x_pm1b_evt_blk.space_id = ACPI_ADDRESS_SPACE_IO;
-	fadt->x_pm1b_cnt_blk.space_id = ACPI_ADDRESS_SPACE_IO;
-
-	/* PM2 Control Registers */
-	fadt->x_pm2_cnt_blk.space_id = ACPI_ADDRESS_SPACE_IO;
-	fadt->x_pm2_cnt_blk.bit_width = fadt->pm2_cnt_len * 8;
-	fadt->x_pm2_cnt_blk.bit_offset = 0;
-	fadt->x_pm2_cnt_blk.access_size = ACPI_ACCESS_SIZE_BYTE_ACCESS;
-	fadt->x_pm2_cnt_blk.addrl = fadt->pm2_cnt_blk;
-	fadt->x_pm2_cnt_blk.addrh = 0x0;
-
-	/* PM1 Timer Register */
-	fadt->x_pm_tmr_blk.space_id = ACPI_ADDRESS_SPACE_IO;
-	fadt->x_pm_tmr_blk.bit_width = fadt->pm_tmr_len * 8;
-	fadt->x_pm_tmr_blk.bit_offset = 0;
-	fadt->x_pm_tmr_blk.access_size = ACPI_ACCESS_SIZE_DWORD_ACCESS;
-	fadt->x_pm_tmr_blk.addrl = fadt->pm_tmr_blk;
-	fadt->x_pm_tmr_blk.addrh = 0x0;
-
-	fadt->x_gpe0_blk.space_id = ACPI_ADDRESS_SPACE_IO;
-	fadt->x_gpe0_blk.bit_width = fadt->gpe0_blk_len * 8;
-	fadt->x_gpe0_blk.bit_offset = 0;
-	fadt->x_gpe0_blk.access_size = ACPI_ACCESS_SIZE_BYTE_ACCESS;
-	fadt->x_gpe0_blk.addrl = fadt->gpe0_blk;
-	fadt->x_gpe0_blk.addrh = 0x0;
-
-	fadt->x_gpe1_blk.space_id = ACPI_ADDRESS_SPACE_IO;
-	fadt->x_gpe1_blk.bit_width = fadt->gpe1_blk_len * 8;
-	fadt->x_gpe1_blk.bit_offset = 0;
-	fadt->x_gpe1_blk.access_size = ACPI_ACCESS_SIZE_BYTE_ACCESS;
-	fadt->x_gpe1_blk.addrl = fadt->gpe1_blk;
-	fadt->x_gpe1_blk.addrh = 0x0;
+	/* PM Extended Registers */
+	fill_fadt_extended_pm_io(fadt);
 }
 
 static void create_dsdt_iou_pci_resource(uint8_t socket, uint8_t stack, const STACK_RES *ri,
@@ -134,9 +105,8 @@ static void create_dsdt_iou_pci_resource(uint8_t socket, uint8_t stack, const ST
 
 		/* Additional Mem32 resources on socket 0 bus 0 */
 		if (socket == 0 && stack == 0) {
-			acpigen_resource_dword(0, 0xc, 3, 0, VGA_BASE_ADDRESS,
-					       (VGA_BASE_ADDRESS + VGA_BASE_SIZE - 1), 0x0,
-					       VGA_BASE_SIZE);
+			acpigen_resource_dword(0, 0xc, 3, 0, VGA_MMIO_BASE,
+					       VGA_MMIO_LIMIT, 0x0, VGA_MMIO_SIZE);
 			acpigen_resource_dword(0, 0xc, 1, 0, SPI_BASE_ADDRESS,
 					       (SPI_BASE_ADDRESS + SPI_BASE_SIZE - 1), 0x0,
 					       SPI_BASE_SIZE);
@@ -397,7 +367,7 @@ void uncore_inject_dsdt(const struct device *device)
 			const STACK_RES *ri =
 				&hob->PlatformData.IIO_resource[socket].StackRes[stack];
 
-			stack_enabled = hob->PlatformData.IIO_resource[socket].Valid &&
+			stack_enabled = soc_cpu_is_enabled(socket) &&
 					ri->Personality < TYPE_RESERVED;
 
 			printk(BIOS_DEBUG, "%s processing socket: %d, stack: %d, type: %d\n",
@@ -561,13 +531,17 @@ unsigned long acpi_fill_cedt(unsigned long current)
 	cxl_uid.byte0 = 'C';
 	cxl_uid.byte1 = 'X';
 	/* Loop through all sockets and stacks, add CHBS for each CXL IIO stack */
-	for (uint8_t s = 0; s < hob->PlatformData.numofIIO; ++s) {
+	for (uint8_t socket = 0, iio = 0; iio < hob->PlatformData.numofIIO; ++socket) {
+		if (!soc_cpu_is_enabled(socket))
+			continue;
+		iio++;
 		for (int x = 0; x < MAX_LOGIC_IIO_STACK; ++x) {
-			const STACK_RES *ri = &hob->PlatformData.IIO_resource[s].StackRes[x];
+			const STACK_RES *ri;
+			ri = &hob->PlatformData.IIO_resource[socket].StackRes[x];
 			if (!is_iio_cxl_stack_res(ri))
 				continue;
 			/* uid needs to match with ACPI CXL device ID, eg. acpi/iiostack.asl */
-			cxl_uid.byte2 = s + '0';
+			cxl_uid.byte2 = socket + '0';
 			cxl_uid.byte3 = x + '0';
 			cxl_ver = ACPI_CEDT_CHBS_CXL_VER_1_1;
 			base = ri->Mmio32Base; /* DP RCRB base */

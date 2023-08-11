@@ -33,11 +33,31 @@ chip soc/intel/meteorlake
 	# S0ix enable
 	register "s0ix_enable" = "1"
 
+	# Disable C1 C-state auto-demotion
+	register "disable_c1_state_auto_demotion" = "1"
+
+	# Enable Energy Reporting
+	register "pch_pm_energy_report_enable" = "1"
+
 	# DPTF enable
 	register "dptf_enable" = "1"
 
 	# Enable CNVi BT
 	register "cnvi_bt_core" = "true"
+
+	register "sagv" = "SAGV_ENABLED"
+
+	register "sagv_freq_mhz[0]" = "3200"
+	register "sagv_gear[0]" = "4"
+
+	register "sagv_freq_mhz[1]" = "6000"
+	register "sagv_gear[1]" = "4"
+
+	register "sagv_freq_mhz[2]" = "6400"
+	register "sagv_gear[2]" = "4"
+
+	register "sagv_freq_mhz[3]" = "5600"
+	register "sagv_gear[3]" = "2"
 
 	# Set on-board graphics as primary display
 	register "skip_ext_gfx_scan" = "1"
@@ -56,8 +76,9 @@ chip soc/intel/meteorlake
 	device domain 0 on
 		device ref igpu on end
 		device ref dtt on end
+		device ref ioe_shared_sram on end
 		device ref xhci on end
-		device ref shared_sram on end
+		device ref pmc_shared_sram on end
 		device ref heci1 on end
 		device ref uart0 on end
 		device ref soc_espi on

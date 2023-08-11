@@ -129,7 +129,7 @@ uint32_t get_socket_stack_busno(uint32_t socket, uint32_t stack)
 {
 	const IIO_UDS *hob = get_iio_uds();
 
-	assert(socket < hob->SystemStatus.numCpus && stack < MAX_LOGIC_IIO_STACK);
+	assert(socket < CONFIG_MAX_SOCKET && stack < MAX_LOGIC_IIO_STACK);
 
 	return hob->PlatformData.IIO_resource[socket].StackRes[stack].BusBase;
 }
@@ -138,7 +138,7 @@ uint32_t get_ubox_busno(uint32_t socket, uint8_t offset)
 {
 	const IIO_UDS *hob = get_iio_uds();
 
-	assert(socket < hob->SystemStatus.numCpus);
+	assert(socket < CONFIG_MAX_SOCKET);
 	for (int stack = 0; stack < MAX_LOGIC_IIO_STACK; ++stack) {
 		if (hob->PlatformData.IIO_resource[socket].StackRes[stack].Personality
 		    == TYPE_UBOX)
@@ -162,7 +162,7 @@ void bios_done_msr(void *unused)
 	}
 }
 
-void set_cmos_mrc_cold_boot_flag(bool cold_boot_required)
+void soc_set_mrc_cold_boot_flag(bool cold_boot_required)
 {
 	uint8_t mrc_status = cmos_read(CMOS_OFFSET_MRC_STATUS);
 	uint8_t new_mrc_status = (mrc_status & 0xfe) | cold_boot_required;

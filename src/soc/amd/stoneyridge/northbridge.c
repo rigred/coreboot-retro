@@ -7,6 +7,7 @@
 #include <device/pci_ops.h>
 #include <arch/hpet.h>
 #include <arch/ioapic.h>
+#include <arch/vga.h>
 #include <acpi/acpi.h>
 #include <acpi/acpigen.h>
 #include <cbmem.h>
@@ -165,6 +166,31 @@ static void set_resources(struct device *dev)
 static void northbridge_init(struct device *dev)
 {
 	register_new_ioapic((u8 *)IO_APIC2_ADDR);
+}
+
+/* Used by \_SB.PCI0._CRS */
+static void acpi_fill_root_complex_tom(const struct device *device)
+{
+	const char *scope;
+
+	assert(device);
+
+	scope = acpi_device_scope(device);
+	assert(scope);
+	acpigen_write_scope(scope);
+
+	acpigen_write_name_dword("TOM1", get_top_of_mem_below_4gb());
+
+	/*
+	 * Since XP only implements parts of ACPI 2.0, we can't use a qword
+	 * here.
+	 * See http://www.acpi.info/presentations/S01USMOBS169_OS%2520new.ppt
+	 * slide 22ff.
+	 * Shift value right by 20 bit to make it fit into 32bit,
+	 * giving us 1MB granularity and a limit of almost 4Exabyte of memory.
+	 */
+	acpigen_write_name_dword("TOM2", get_top_of_mem_above_4gb() >> 20);
+	acpigen_pop_len();
 }
 
 static unsigned long acpi_fill_hest(acpi_hest_t *hest)
@@ -334,25 +360,25 @@ void domain_read_resources(struct device *dev)
 
 	pci_domain_read_resources(dev);
 
+	fixed_io_range_reserved(dev, idx++, PCI_IO_CONFIG_INDEX, PCI_IO_CONFIG_PORT_COUNT);
+
 	/* 0x0 -> 0x9ffff */
-	ram_resource_kb(dev, idx++, 0, 0xa0000 / KiB);
+	ram_range(dev, idx++, 0, 0xa0000);
 
 	/* 0xa0000 -> 0xbffff: legacy VGA */
-	mmio_resource_kb(dev, idx++, 0xa0000 / KiB, 0x20000 / KiB);
+	mmio_range(dev, idx++, VGA_MMIO_BASE, VGA_MMIO_SIZE);
 
 	/* 0xc0000 -> 0xfffff: Option ROM */
-	reserved_ram_resource_kb(dev, idx++, 0xc0000 / KiB, 0x40000 / KiB);
+	reserved_ram_from_to(dev, idx++, 0xc0000, 1 * MiB);
 
 	/*
 	 * 0x100000 (1MiB) -> low top usable RAM
 	 * cbmem_top() accounts for low UMA and TSEG if they are used.
 	 */
-	ram_resource_kb(dev, idx++, (1 * MiB) / KiB,
-			(mem_useable - (1 * MiB)) / KiB);
+	ram_from_to(dev, idx++, 1 * MiB, mem_useable);
 
 	/* Low top usable RAM -> Low top RAM (bottom pci mmio hole) */
-	reserved_ram_resource_kb(dev, idx++, mem_useable / KiB,
-					(tom - mem_useable) / KiB);
+	reserved_ram_from_to(dev, idx++, mem_useable, tom);
 
 	/* If there is memory above 4GiB */
 	if (high_tom >> 32) {
@@ -362,13 +388,11 @@ void domain_read_resources(struct device *dev)
 		else
 			high_mem_useable = high_tom;
 
-		ram_resource_kb(dev, idx++, (4ull * GiB) / KiB,
-				((high_mem_useable - (4ull * GiB)) / KiB));
+		ram_from_to(dev, idx++, 4ull * GiB, high_mem_useable);
 
 		/* High top usable RAM -> high top RAM */
 		if (uma_base >= (4ull * GiB)) {
-			reserved_ram_resource_kb(dev, idx++, uma_base / KiB,
-						uma_size / KiB);
+			reserved_ram_range(dev, idx++, uma_base, uma_size);
 		}
 	}
 }

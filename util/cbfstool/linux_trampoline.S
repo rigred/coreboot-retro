@@ -17,6 +17,7 @@
 
 #define ACPI_RSDP_ADDR 0x70
 #define E820_NR_OFFSET 0x1e8
+#define PROTOCOL_VERSION 0x206
 #define LINUX_ENTRY_OFFSET 0x214
 #define E820_OFFSET 0x2d0
 
@@ -102,7 +103,44 @@ jmp .endScan
 .testFramebuffer:
 cmp $CB_TAG_FRAMEBUFFER, (%ebx)
 jne .endScan
-/* TODO: handle framebuffer tag */
+
+cmpw $0x020f, (LINUX_PARAM_LOC + PROTOCOL_VERSION)
+jge .framebufferSetup  /* protocol version >= 2.15 can handle 64-bit address */
+cmpl $0, 0x0c(%ebx)    /* check if upper 32-bit of framebuffer address are 0 */
+jne .endScan
+
+.framebufferSetup:
+mov $LINUX_PARAM_LOC, %edi   /* translate the framebuffer entry into Linux' struct screen_info */
+mov 0x08(%ebx), %eax   /* physical_address   */
+mov %eax, 0x18(%edi)   /* -> lfb_base        */
+mov 0x0c(%ebx), %eax   /* physical_address   */
+mov %eax, 0x3a(%edi)   /* -> ext_lfb_base    */
+mov 0x10(%ebx), %eax   /* x_resolution       */
+mov %ax,  0x12(%edi)   /* -> lfb_width       */
+mov 0x14(%ebx), %eax   /* y_resolution       */
+mov %ax,  0x14(%edi)   /* -> lfb_height      */
+mov 0x18(%ebx), %edx   /* bytes_per_line     */
+mov %dx,  0x24(%edi)   /* -> lfb_linelength  */
+
+mul %edx    /* bytes_per_line * y_resolution */
+mov %eax, 0x1c(%edi)   /* -> lfb_size        */
+
+movzbw 0x1c(%ebx), %ax /* bits_per_pixel     */
+mov %ax,  0x16(%edi)   /* -> lfb_depth       */
+
+mov $4, %esi           /* Copy 4 color components' pos and size, each 1 byte. */
+1:
+mov 0x1b(%ebx, %esi, 2), %ax
+rol %ax                /* Order is reversed for Linux, hence swap. */
+mov %ax, 0x24(%edi, %esi, 2)
+dec %esi
+jnz 1b
+
+#define VIDEO_CAPABILITY_64BIT_BASE (1 << 1)
+movl $VIDEO_CAPABILITY_64BIT_BASE, 0x36(%edi)
+
+#define LFB_EFI_SIMPLE 0x70      /* VIDEO_TYPE_EFI in Linux */
+movb $LFB_EFI_SIMPLE, 0x0f(%edi) /* -> orig_video_isVGA     */
 
 .endScan:
 add 4(%ebx), %ebx

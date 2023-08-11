@@ -2,9 +2,36 @@ comment "Rex"
 
 config BOARD_GOOGLE_REX0
 	bool "-> Rex 0"
-	select BOARD_GOOGLE_BASEBOARD_REX
-	select DRIVERS_GENESYSLOGIC_GL9755
+	select BOARD_GOOGLE_MODEL_REX
 
 config BOARD_GOOGLE_SCREEBO
 	bool "->  Screebo"
-	select BOARD_GOOGLE_BASEBOARD_REX
+	select BOARD_GOOGLE_MODEL_SCREEBO
+
+config BOARD_GOOGLE_SCREEBO4ES
+	bool "->  Screebo4ES"
+	select BOARD_GOOGLE_MODEL_SCREEBO
+
+config BOARD_GOOGLE_KARIS
+	bool "->  Karis"
+	select BOARD_GOOGLE_MODEL_KARIS
+
+config BOARD_GOOGLE_KARIS4ES
+	bool "->  Karis4ES"
+	select BOARD_GOOGLE_MODEL_KARIS
+
+config BOARD_GOOGLE_REX_EC_ISH
+	bool "-> Rex EC ISH"
+	select BOARD_GOOGLE_MODEL_REX
+
+config BOARD_GOOGLE_OVIS
+	bool "-> Ovis"
+	select BOARD_GOOGLE_MODEL_OVIS
+
+config BOARD_GOOGLE_OVIS4ES
+	bool "-> Ovis4ES"
+	select BOARD_GOOGLE_MODEL_OVIS
+
+config BOARD_GOOGLE_REX4ES
+	bool "-> Rex4ES"
+	select BOARD_GOOGLE_MODEL_REX

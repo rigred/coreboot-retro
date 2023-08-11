@@ -11,8 +11,10 @@ chip soc/amd/mendocino
 	# Set DPTC multi-profile common parameters
 
 	# Refer the spec "FT6 Infrastructure Roadmap"#57316
-	# Set system_configuration to 4 for 15W
-	register "system_configuration" = "4"
+	# Set system_configuration to 3 for 15W. Spec lists 4 for 15W,
+	# however, setting to 3 will avoid an additional communication
+	# with the SMU and save boot time.
+	register "system_configuration" = "3"
 	register "thermctl_limit_degreeC" = "97"
 
 	register "stt_control" = "1"
@@ -136,26 +138,18 @@ chip soc/amd/mendocino
 				chip drivers/usb/acpi
 					device ref xhci_1_root_hub on # XHCI1 root hub
 						chip drivers/usb/acpi
-							device ref usb3_port3 on # USB 3.1 port3
-								chip drivers/usb/acpi
-									register "desc" = ""USB3 Type-A Port A0 (MLB)""
-									register "type" = "UPC_TYPE_USB3_A"
-									register "use_custom_pld" = "true"
-									register "custom_pld" = "ACPI_PLD_TYPE_A(LEFT, LEFT, ACPI_PLD_GROUP(3, 1))"
-									device usb 3.2 on end
-								end
-							end # USB 3.1 port3
+							register "desc" = ""USB3 Type-A Port A0 (MLB)""
+							register "type" = "UPC_TYPE_USB3_A"
+							register "use_custom_pld" = "true"
+							register "custom_pld" = "ACPI_PLD_TYPE_A(LEFT, LEFT, ACPI_PLD_GROUP(3, 1))"
+							device ref usb3_port3 on end # USB 3.1 port3
 						end
 						chip drivers/usb/acpi
-							device ref usb2_port3 on # USB 2 port3
-								chip drivers/usb/acpi
-									register "desc" = ""USB2 Type-A Port A0 (MLB)""
-									register "type" = "UPC_TYPE_USB3_A"
-									register "use_custom_pld" = "true"
-									register "custom_pld" = "ACPI_PLD_TYPE_A(LEFT, LEFT, ACPI_PLD_GROUP(3, 1))"
-									device usb 2.2 on end
-								end
-							end # USB 2 port3
+							register "desc" = ""USB2 Type-A Port A0 (MLB)""
+							register "type" = "UPC_TYPE_USB3_A"
+							register "use_custom_pld" = "true"
+							register "custom_pld" = "ACPI_PLD_TYPE_A(LEFT, LEFT, ACPI_PLD_GROUP(3, 1))"
+							device ref usb2_port3 on end # USB 2 port3
 						end
 					end # XHCI1 root hub
 				end

@@ -26,12 +26,12 @@ chip soc/intel/apollolake
 
 	register "pnp_settings"			= "PNP_PERF_POWER"
 
-	register "ModPhyIfValue"		= "0x12"
+	register "mod_phy_if_value"		= "0x12"
 
 	register "prt0_gpio"			= "GPIO_PRT0_UDEF"
 
 	register "usb_config_override"		= "1"
-	register "DisableComplianceMode"	= "1"
+	register "disable_compliance_mode"	= "1"
 
 	register "pcie_rp_clkreq_pin[0]"	= "CLKREQ_DISABLED"
 	register "pcie_rp_clkreq_pin[1]"	= "CLKREQ_DISABLED"
@@ -71,7 +71,7 @@ chip soc/intel/apollolake
 		device ref heci2	on  end
 		device ref heci3	on  end
 		device ref sata		on
-			register "SataPortsEnable[0]"	= "1"
+			register "sata_ports_enable[0]"	= "1"
 		end
 		device ref xhci		on
 			# Motherboard USB Type C

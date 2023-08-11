@@ -7,7 +7,7 @@ Device (TBMC)
 	Name (_DDN, "Tablet Motion Control")
 	Method (TBMC)
 	{
-		If (^^RCTM == 1) {
+		If (RCTM == 1) {
 			Return (0x1)
 		} Else {
 			Return (0x0)
@@ -15,6 +15,10 @@ Device (TBMC)
 	}
 	Method(_STA, 0)
 	{
-		Return (0xB)
+		If (MTNS == 1) {
+			Return (0xF)
+		} Else {
+			Return (0x0)
+		}
 	}
 }

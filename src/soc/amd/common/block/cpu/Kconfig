@@ -35,7 +35,7 @@ config CBFS_CACHE_SIZE
 
 config ACPI_CPU_STRING
 	string
-	default "C%03d"
+	default "C%03X"
 
 endif # SOC_AMD_COMMON_BLOCK_NONCAR
 
@@ -105,6 +105,12 @@ config SOC_AMD_COMMON_BLOCK_TSC
 	  Select this option to add the common functions for getting the TSC
 	  frequency of AMD family 17h, 19h and 1Ah CPUs/APUs and to provide
 	  TSC-based monotonic timer functionality to the build.
+
+config SOC_AMD_COMMON_BLOCK_CPU_SYNC_PSP_ADDR_MSR
+	bool
+	help
+	  Select this option to have coreboot sync the PSP_ADDR_MSR from
+	  the BSP to all APs.
 
 config SOC_AMD_COMMON_BLOCK_UCODE
 	bool

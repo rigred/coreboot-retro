@@ -531,6 +531,15 @@ config PCI
 
 if PCI
 
+config DOMAIN_RESOURCE_32BIT_LIMIT
+	hex
+	default 0xfe000000
+	help
+	  When the default pci_domain_read_resources() is used,
+	  keep 32-bit memory resources below this limit. This is
+	  used as a workaround for missing/wrong reservations of
+	  chipset resources that usually reside above this limit.
+
 config NO_ECAM_MMCONF_SUPPORT
 	bool
 	default n
@@ -703,12 +712,10 @@ if PCIEXP_HOTPLUG
 
 config PCIEXP_HOTPLUG_BUSES
 	int "PCI Express Hotplug Buses"
-	default  8 if ECAM_MMCONF_SUPPORT && ECAM_MMCONF_BUS_NUMBER <=  64
-	default 16 if ECAM_MMCONF_SUPPORT && ECAM_MMCONF_BUS_NUMBER <= 128
-	default 32
+	default 8
 	help
 	  This is the number of buses allocated for hotplug PCI express
-	  bridges, for use by hotplugged child devices. The default is 32
+	  bridges, for use by hotplugged child devices. The default is 8
 	  buses.
 
 config PCIEXP_HOTPLUG_MEM
@@ -745,11 +752,11 @@ config PCIEXP_HOTPLUG_PREFETCH_MEM_BELOW_4G
 
 config PCIEXP_HOTPLUG_IO
 	hex "PCI Express Hotplug I/O Space"
-	default 0x2000
+	default 0x800
 	help
 	  This is the amount of I/O space to allocate to hot-plug PCI
 	  express bridges, for use by hotplugged child devices. The default
-	  is 8 KiB.
+	  is 2 KiB.
 
 endif # PCIEXP_HOTPLUG
 
@@ -988,10 +995,14 @@ config I2C_TRANSFER_TIMEOUT_US
 
 config RESOURCE_ALLOCATION_TOP_DOWN
 	bool "Allocate resources from top down"
-	default n
+	default n if PAYLOAD_EDK2
+	default y
 	help
-	  Should be the default, but many platforms don't report resources
-	  correctly. Hence, the allocator might cause conflicts.
+	  Top-down allocation is required to place resources above 4G by
+	  default (i.e. even when there is still space below). On some
+	  platforms, it might make a difference because of conflicts with
+	  undeclared resources. EDK2 is currently reported to also have
+	  problems on some platforms, at least with Intel's IGD.
 
 config XHCI_UTILS
 	def_bool n

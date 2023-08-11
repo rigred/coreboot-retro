@@ -1,12 +1,5 @@
 config SOC_INTEL_METEORLAKE
 	bool
-	help
-	  Intel Meteorlake support
-
-if SOC_INTEL_METEORLAKE
-
-config CPU_SPECIFIC_OPTIONS
-	def_bool y
 	select ACPI_INTEL_HARDWARE_SLEEP_VALUES
 	select ARCH_X86
 	select BOOT_DEVICE_SUPPORTS_WRITES
@@ -43,6 +36,7 @@ config CPU_SPECIFIC_OPTIONS
 	select MP_SERVICES_PPI_V2
 	select MRC_SETTINGS_PROTECT
 	select PARALLEL_MP_AP_WORK
+	select PCIE_CLOCK_CONTROL_THROUGH_P2SB
 	select PLATFORM_USES_FSP2_3
 	select PMC_GLOBAL_RESET_ENABLE_LOCK
 	select SOC_INTEL_COMMON
@@ -95,11 +89,37 @@ config CPU_SPECIFIC_OPTIONS
 	select SOC_INTEL_MEM_MAPPED_PM_CONFIGURATION
 	select SSE2
 	select SUPPORT_CPU_UCODE_IN_CBFS
+	select TME_KEY_REGENERATION_ON_WARM_BOOT
 	select TSC_MONOTONIC_TIMER
 	select UDELAY_TSC
-	select UDK_202111_BINDING
+	select UDK_202302_BINDING
 	select X86_CLFLUSH_CAR
 	select X86_INIT_NEED_1_SIPI
+	select INTEL_KEYLOCKER
+	help
+	  Intel Meteorlake support. Mainboards should specify the SoC
+	  type using the `SOC_INTEL_METEORLAKE_*` options instead
+	  of selecting this option directly.
+
+config SOC_INTEL_METEORLAKE_U_H
+	bool
+	select SOC_INTEL_METEORLAKE
+	help
+	  Choose this option if your mainboard has a MTL-U (9W or 15W)
+	  or MTL-H (28W or 45W) SoC.
+
+	  Note, the MTL-U/H-Processor Line offered in a 1-Chip Platform
+	  that includes the Compute, SOC, GT, and IOE tile on the same
+	  package.
+
+config SOC_INTEL_METEORLAKE_S
+	bool
+	select SOC_INTEL_METEORLAKE
+	help
+	  Choose this option if your mainboard has a MTL-S (35W or 65W) SoC.
+	  Note, MTL-S SoC combines Compute, GFX, SoC, IOE and PCH die.
+
+if SOC_INTEL_METEORLAKE
 
 config SOC_INTEL_METEORLAKE_TCSS_USB4_SUPPORT
 	bool
@@ -167,6 +187,7 @@ config IED_REGION_SIZE
 
 config HEAP_SIZE
 	hex
+	default 0x80000 if BMP_LOGO
 	default 0x10000
 
 # Intel recommends reserving the PCIe TBT root port resources as below:
@@ -214,6 +235,12 @@ config PCR_BASE_ADDRESS
 	default 0xe0000000
 	help
 	  This option allows you to select MMIO Base Address of sideband bus.
+
+config IOE_PCR_BASE_ADDRESS
+	hex
+	default 0x3fff0000000
+	help
+	  This option allows you to select MMIO Base Address of IOE sideband bus.
 
 config ECAM_MMCONF_BASE_ADDRESS
 	default 0xc0000000
@@ -301,7 +328,6 @@ config CBFS_SIZE
 
 config PRERAM_CBMEM_CONSOLE_SIZE
 	hex
-	default 0x16000 if BUILDING_WITH_DEBUG_FSP
 	default 0x2000
 
 config CONSOLE_CBMEM_BUFFER_SIZE
@@ -320,9 +346,9 @@ config FSP_FD_PATH
 
 config SOC_INTEL_METEORLAKE_DEBUG_CONSENT
 	int "Debug Consent for MTL"
-	# USB DBC is more common for developers so make this default to 3 if
+	# USB DBC is more common for developers so make this default to 6 if
 	# SOC_INTEL_DEBUG_CONSENT=y
-	default 3 if SOC_INTEL_DEBUG_CONSENT
+	default 6 if SOC_INTEL_DEBUG_CONSENT
 	default 0
 	help
 	  This is to control debug interface on SOC.
@@ -330,9 +356,8 @@ config SOC_INTEL_METEORLAKE_DEBUG_CONSENT
 	  PlatformDebugConsent in FspmUpd.h has the details.
 
 	  Desired platform debug type are
-	  0:Disabled, 1:Enabled (DCI OOB+[DbC]), 2:Enabled (DCI OOB),
-	  3:Enabled (USB3 DbC), 4:Enabled (XDP/MIPI60), 5:Enabled (USB2 DbC),
-	  6:Enable (2-wire DCI OOB), 7:Manual
+	  0:Disabled, 2:Enabled Trace Active, 4:Enabled Trace Ready,
+	  6:Enable Trace Power-Off, 7:Manual
 
 config DATA_BUS_WIDTH
 	int
@@ -396,5 +421,9 @@ config PCIE_LTR_MAX_NO_SNOOP_LATENCY
 	default 0x100f
 	help
 	  Latency tolerance reporting, max non-snoop latency value defaults to 15.73 ms.
+
+config IOE_DIE_CLOCK_START
+	int
+	default 6 if SOC_INTEL_METEORLAKE_U_H
 
 endif

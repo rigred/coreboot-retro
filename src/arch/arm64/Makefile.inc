@@ -118,6 +118,7 @@ ramstage-y += memmove.S
 ramstage-$(CONFIG_ARM64_USE_ARM_TRUSTED_FIRMWARE) += bl31.c
 ramstage-y += transition.c transition_asm.S
 ramstage-$(CONFIG_PAYLOAD_FIT_SUPPORT) += fit_payload.c
+ramstage-$(CONFIG_HAVE_ACPI_SUPPORT) += acpi.c
 
 rmodules_arm64-y += memset.S
 rmodules_arm64-y += memcpy.S
@@ -150,7 +151,7 @@ endif
 # Build ARM TF in debug mode (with assertions) if coreboot has hard assertions
 ifeq ($(CONFIG_FATAL_ASSERTS),y)
 BL31_MAKEARGS += DEBUG=1
-endif # CONFIG_CONSOLE_SERIAL
+endif # CONFIG_FATAL_ASSERTS
 
 # ARM TF's VERBOSE (50) is *very* spammy, so default to INFO (40)
 BL31_MAKEARGS += LOG_LEVEL=40

@@ -12,13 +12,14 @@ struct panel_serializable_data STA_ILI9882T = {
 			.pixel_clock = 165280,
 			.lvds_dual_channel = 0,
 			.refresh = 60,
-			.ha = 1200, .hbl = 94, .hso = 32, .hspw = 30,
+			.ha = 1200, .hbl = 174, .hso = 72, .hspw = 30,
 			.va = 1920, .vbl = 80, .vso = 68, .vspw = 2,
 			.phsync = '-', .pvsync = '-',
 			.x_mm = 141, .y_mm = 226,
 		},
 	},
 	.init = {
+		PANEL_DELAY(20),
 		PANEL_DCS(0xFF, 0x98, 0x82, 0x01),
 		PANEL_DCS(0x00, 0x42),
 		PANEL_DCS(0x01, 0x11),
@@ -325,5 +326,6 @@ struct panel_serializable_data STA_ILI9882T = {
 		PANEL_DCS(0x11),
 		PANEL_DELAY(120),
 		PANEL_DCS(0x29),
+		PANEL_DELAY(20),
 	},
 };
