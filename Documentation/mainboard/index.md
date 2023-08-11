@@ -85,6 +85,7 @@ The boards in this section are not real mainboards, but emulators.
 - [EliteBook 2560p](hp/2560p.md)
 - [EliteBook 8760w](hp/8760w.md)
 - [EliteBook Folio 9480m](hp/folio_9480m.md)
+- [EliteBook 820 G2](hp/elitebook_820_g2.md)
 
 ## Intel
 
@@ -205,24 +206,33 @@ The boards in this section are not real mainboards, but emulators.
 
 - [Adder Workstation 1](system76/addw1.md)
 - [Adder Workstation 2](system76/addw2.md)
+- [Adder Workstation 3](system76/addw3.md)
 - [Bonobo Workstation 14](system76/bonw14.md)
+- [Bonobo Workstation 15](system76/bonw15.md)
 - [Darter Pro 6](system76/darp6.md)
 - [Darter Pro 7](system76/darp7.md)
 - [Darter Pro 8](system76/darp8.md)
+- [Darter Pro 9](system76/darp9.md)
 - [Galago Pro 4](system76/galp4.md)
 - [Galago Pro 5](system76/galp5.md)
 - [Galago Pro 6](system76/galp6.md)
+- [Galago Pro 7](system76/galp7.md)
 - [Gazelle 15](system76/gaze15.md)
 - [Gazelle 16](system76/gaze16.md)
+- [Gazelle 17](system76/gaze17.md)
+- [Gazelle 18](system76/gaze18.md)
 - [Lemur Pro 9](system76/lemp9.md)
 - [Lemur Pro 10](system76/lemp10.md)
 - [Lemur Pro 11](system76/lemp11.md)
+- [Lemur Pro 12](system76/lemp12.md)
 - [Oryx Pro 5](system76/oryp5.md)
 - [Oryx Pro 6](system76/oryp6.md)
 - [Oryx Pro 7](system76/oryp7.md)
 - [Oryx Pro 8](system76/oryp8.md)
 - [Oryx Pro 9](system76/oryp9.md)
 - [Oryx Pro 10](system76/oryp10.md)
+- [Oryx Pro 11](system76/oryp11.md)
+- [Serval Workstation 13](system76/serw13.md)
 
 ## Texas Instruments
 

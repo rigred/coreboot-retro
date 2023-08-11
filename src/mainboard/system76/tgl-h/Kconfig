@@ -3,10 +3,11 @@ if BOARD_SYSTEM76_GAZE16_3050 || BOARD_SYSTEM76_GAZE16_3060 || BOARD_SYSTEM76_GA
 config BOARD_SPECIFIC_OPTIONS
 	def_bool y
 	select BOARD_ROMSIZE_KB_16384
+	select DRIVERS_GENERIC_CBFS_SERIAL
+	select DRIVERS_GENERIC_CBFS_UUID
 	select DRIVERS_I2C_HID
 	select DRIVERS_I2C_TAS5825M if BOARD_SYSTEM76_ORYP8
 	select EC_SYSTEM76_EC
-	select EC_SYSTEM76_EC_COLOR_KEYBOARD
 	select EC_SYSTEM76_EC_DGPU
 	select HAVE_ACPI_RESUME
 	select HAVE_ACPI_TABLES
@@ -55,11 +56,12 @@ config VARIANT_DIR
 config OVERRIDE_DEVICETREE
 	default "variants/\$(CONFIG_VARIANT_DIR)/overridetree.cb"
 
-config CBFS_SIZE
-	default 0xA00000
-
 config CONSOLE_POST
 	default y
+
+config FMDFILE
+	default "src/mainboard/\$(CONFIG_MAINBOARD_DIR)/board.fmd" if !MAINBOARD_USES_IFD_GBE_REGION
+	default "src/mainboard/\$(CONFIG_MAINBOARD_DIR)/board-gbe.fmd" if MAINBOARD_USES_IFD_GBE_REGION
 
 config ONBOARD_VGA_IS_PRIMARY
 	default y
@@ -72,6 +74,9 @@ config UART_FOR_CONSOLE
 
 # PM Timer Disabled, saves power
 config USE_PM_ACPI_TIMER
+	default n
+
+config D3COLD_SUPPORT
 	default n
 
 endif

@@ -8,6 +8,9 @@ entries
 0	120	r	0	reserved_memory
 
 # -----------------------------------------------------------------
+# coreboot config options: ramtop
+304	80	h	0	ramtop
+
 # RTC_BOOT_BYTE (coreboot hardcoded)
 384	1	e	2	boot_option
 388	4	h	0	reboot_counter
@@ -37,9 +40,6 @@ entries
 624	2	e	9	fan_mode
 632	1	e	1	mirror_flag
 640	4	h	0	mirror_flag_counter
-
-# coreboot config options: southbridge
-800	2	e	6	power_on_after_fail
 
 # coreboot config options: check sums
 984	16	h	0	check_sum

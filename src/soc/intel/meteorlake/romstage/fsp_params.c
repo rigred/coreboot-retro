@@ -8,6 +8,7 @@
 #include <drivers/wifi/generic/wifi.h>
 #include <fsp/fsp_debug_event.h>
 #include <fsp/util.h>
+#include <intelbasecode/ramtop.h>
 #include <intelblocks/cpulib.h>
 #include <intelblocks/pcie_rp.h>
 #include <option.h>
@@ -73,9 +74,18 @@ static void fill_fspm_pcie_rp_params(FSP_M_CONFIG *m_cfg,
 	}
 
 	/* PCIE ports */
-	m_cfg->PcieRpEnableMask = pcie_rp_enable_mask(get_pcie_rp_table());
-	pcie_rp_init(m_cfg, m_cfg->PcieRpEnableMask, config->pcie_rp,
-			get_max_pcie_port());
+	if (CONFIG(SOC_INTEL_METEORLAKE_U_H)) {
+		m_cfg->PcieRpEnableMask = pcie_rp_enable_mask(get_pcie_rp_table());
+		m_cfg->PchPcieRpEnableMask = 0; /* Don't care about PCH PCIE RP Mask */
+		pcie_rp_init(m_cfg, m_cfg->PcieRpEnableMask, config->pcie_rp,
+				get_max_pcie_port());
+	} else {
+		/*
+		 * FIXME: Implement PCIe RP mask for `PchPcieRpEnableMask` and
+		 *        perform pcie_rp_init().
+		 */
+		m_cfg->PcieRpEnableMask = 0; /* Don't care about SOC/IOE PCIE RP Mask */
+	}
 }
 
 static void fill_fspm_igd_params(FSP_M_CONFIG *m_cfg,
@@ -123,7 +133,27 @@ static void fill_fspm_igd_params(FSP_M_CONFIG *m_cfg,
 static void fill_fspm_mrc_params(FSP_M_CONFIG *m_cfg,
 		const struct soc_intel_meteorlake_config *config)
 {
+	unsigned int i;
+
 	m_cfg->SaGv = config->sagv;
+
+	if (m_cfg->SaGv) {
+		/*
+		 * Set SaGv work points after reviewing the power and performance impact
+		 * with SaGv set to 1 (Enabled) and various work points between 0-3 being
+		 * enabled.
+		 */
+		if (config->sagv_wp_bitmap)
+			m_cfg->SaGvWpMask = config->sagv_wp_bitmap;
+		else
+			m_cfg->SaGvWpMask = SAGV_POINTS_0_1_2_3;
+
+		for  (i = 0; i < HOB_MAX_SAGV_POINTS; i++) {
+			m_cfg->SaGvFreq[i] = config->sagv_freq_mhz[i];
+			m_cfg->SaGvGear[i] = config->sagv_gear[i];
+		}
+	}
+
 	m_cfg->RMT = config->rmt;
 	/* Enable MRC Fast Boot */
 	m_cfg->MrcFastBoot = 1;
@@ -144,12 +174,30 @@ static void fill_fspm_cpu_params(FSP_M_CONFIG *m_cfg,
 	m_cfg->HyperThreading = get_uint_option("hyper_threading", CONFIG(FSP_HYPERTHREADING));
 }
 
+static void fill_tme_params(FSP_M_CONFIG *m_cfg)
+{
+	m_cfg->TmeEnable = CONFIG(INTEL_TME) && is_tme_supported();
+	if (!m_cfg->TmeEnable)
+		return;
+	m_cfg->GenerateNewTmeKey = CONFIG(TME_KEY_REGENERATION_ON_WARM_BOOT);
+	if (m_cfg->GenerateNewTmeKey) {
+		uint32_t ram_top = get_ramtop_addr();
+		if (!ram_top) {
+			printk(BIOS_WARNING, "Invalid exclusion range start address. "
+						"Full memory encryption is enabled.\n");
+			return;
+		}
+		m_cfg->TmeExcludeBase = (ram_top - 16*MiB);
+		m_cfg->TmeExcludeSize = 16*MiB;
+	}
+}
+
 static void fill_fspm_security_params(FSP_M_CONFIG *m_cfg,
 		const struct soc_intel_meteorlake_config *config)
 {
 	/* Disable BIOS Guard */
 	m_cfg->BiosGuard = 0;
-	m_cfg->TmeEnable = CONFIG(INTEL_TME) && is_tme_supported();
+	fill_tme_params(m_cfg);
 }
 
 static void fill_fspm_uart_params(FSP_M_CONFIG *m_cfg,
@@ -203,6 +251,10 @@ static void fill_fspm_audio_params(FSP_M_CONFIG *m_cfg,
 	m_cfg->PchHdaIDispLinkTmode = config->pch_hda_idisp_link_tmode;
 	m_cfg->PchHdaIDispLinkFrequency = config->pch_hda_idisp_link_frequency;
 	m_cfg->PchHdaIDispCodecDisconnect = !config->pch_hda_idisp_codec_enable;
+
+	for (int i = 0; i < MAX_HD_AUDIO_SDI_LINKS; i++)
+		m_cfg->PchHdaSdiEnable[i] = config->pch_hda_sdi_enable[i];
+
 	/*
 	 * All the PchHdaAudioLink{Hda|Dmic|Ssp|Sndw}Enable UPDs are used by FSP only to
 	 * configure GPIO pads for audio. Mainboard is expected to perform all GPIO

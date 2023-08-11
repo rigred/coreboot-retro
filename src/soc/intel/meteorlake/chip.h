@@ -18,15 +18,20 @@
 #include <soc/usb.h>
 #include <stdint.h>
 
+#define MAX_SAGV_POINTS 4
+#define MAX_HD_AUDIO_SDI_LINKS 2
+
 /* Types of different SKUs */
 enum soc_intel_meteorlake_power_limits {
 	MTL_P_282_CORE,
+	MTL_P_682_CORE,
 	MTL_POWER_LIMITS_COUNT
 };
 
 /* TDP values for different SKUs */
 enum soc_intel_meteorlake_cpu_tdps {
-	TDP_15W = 15
+	TDP_15W = 15,
+	TDP_28W = 28
 };
 
 /* Mapping of different SKUs based on CPU ID and TDP values */
@@ -36,6 +41,7 @@ static const struct {
 	enum soc_intel_meteorlake_cpu_tdps cpu_tdp;
 } cpuid_to_mtl[] = {
 	{ PCI_DID_INTEL_MTL_P_ID_2, MTL_P_282_CORE, TDP_15W },
+	{ PCI_DID_INTEL_MTL_P_ID_1, MTL_P_682_CORE, TDP_28W },
 };
 
 /* Types of display ports */
@@ -139,6 +145,16 @@ struct soc_intel_meteorlake_config {
 		SAGV_ENABLED,
 	} sagv;
 
+	/* System Agent dynamic frequency work points that memory will be training
+	 * at the enabled frequencies. Possible work points are:
+	 * 0x3:Points0_1, 0x7:Points0_1_2, 0xF:AllPoints0_1_2_3
+	 */
+	enum {
+		SAGV_POINTS_0_1 = 0x03,
+		SAGV_POINTS_0_1_2 = 0x07,
+		SAGV_POINTS_0_1_2_3 = 0x0f,
+	} sagv_wp_bitmap;
+
 	/* Rank Margin Tool. 1:Enable, 0:Disable */
 	uint8_t rmt;
 
@@ -179,6 +195,8 @@ struct soc_intel_meteorlake_config {
 
 	/* Audio related */
 	uint8_t pch_hda_dsp_enable;
+
+	bool pch_hda_sdi_enable[MAX_HD_AUDIO_SDI_LINKS];
 
 	/* iDisp-Link T-Mode 0: 2T, 2: 4T, 3: 8T, 4: 16T */
 	enum {
@@ -351,6 +369,16 @@ struct soc_intel_meteorlake_config {
 	uint8_t lan_clk;
 
 	/*
+	 * Enable or Disable C1 C-state Auto Demotion & un-demotion
+	 * The algorithm looks at the behavior of the wake up tracker, how
+	 * often it is waking up, and based on that it demote the c-state.
+	 * Default 0. Set this to 1 in order to disable C1-state auto demotion.
+	 * NOTE: Un-Demotion from Demoted C1 needs to be disabled when
+	 *       C1 C-state Auto Demotion is disabled.
+	 */
+	bool disable_c1_state_auto_demotion;
+
+	/*
 	 * Enable or Disable Package C-state Demotion.
 	 * Default is set to 0.
 	 * Set this to 1 in order to disable Package C-state demotion.
@@ -365,6 +393,15 @@ struct soc_intel_meteorlake_config {
 	uint8_t energy_perf_pref_value;
 
 	bool disable_vmx;
+
+	/*
+	 * SAGV Frequency per point in Mhz. 0 is Auto, otherwise holds the
+	 * frequency value expressed as an integer. For example: 1867
+	 */
+	uint16_t sagv_freq_mhz[MAX_SAGV_POINTS];
+
+	/* Gear Selection for SAGV points. 0: Auto, 1: Gear 1, 2: Gear 2, 4: Gear 4 */
+	uint8_t sagv_gear[MAX_SAGV_POINTS];
 };
 
 typedef struct soc_intel_meteorlake_config config_t;

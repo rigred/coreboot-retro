@@ -3,14 +3,17 @@
 #include <acpi/acpigen.h>
 #include <amdblocks/acpi.h>
 #include <amdblocks/alib.h>
+#include <amdblocks/data_fabric.h>
 #include <amdblocks/ioapic.h>
+#include <amdblocks/iomap.h>
 #include <amdblocks/memmap.h>
+#include <amdblocks/root_complex.h>
 #include <arch/ioapic.h>
+#include <arch/vga.h>
 #include <cbmem.h>
 #include <console/console.h>
 #include <device/device.h>
 #include <device/pci.h>
-#include <fsp/util.h>
 #include <soc/iomap.h>
 #include <stdint.h>
 #include "chip.h"
@@ -102,9 +105,6 @@ static void read_resources(struct device *dev)
 {
 	uint32_t mem_usable = (uintptr_t)cbmem_top();
 	unsigned int idx = 0;
-	const struct hob_header *hob_iterator;
-	const struct hob_resource *res;
-	struct resource *gnb_apic;
 
 	uintptr_t early_reserved_dram_start, early_reserved_dram_end;
 	const struct memmap_early_dram *e = memmap_get_early_dram_usage();
@@ -115,58 +115,35 @@ static void read_resources(struct device *dev)
 	/* The root complex has no PCI BARs implemented, so there's no need to call
 	   pci_dev_read_resources for it */
 
+	fixed_io_range_reserved(dev, idx++, PCI_IO_CONFIG_INDEX, PCI_IO_CONFIG_PORT_COUNT);
+
 	/* 0x0 - 0x9ffff */
-	ram_resource_kb(dev, idx++, 0, 0xa0000 / KiB);
+	ram_range(dev, idx++, 0, 0xa0000);
 
 	/* 0xa0000 - 0xbffff: legacy VGA */
-	mmio_resource_kb(dev, idx++, 0xa0000 / KiB, 0x20000 / KiB);
+	mmio_range(dev, idx++, VGA_MMIO_BASE, VGA_MMIO_SIZE);
 
 	/* 0xc0000 - 0xfffff: Option ROM */
-	reserved_ram_resource_kb(dev, idx++, 0xc0000 / KiB, 0x40000 / KiB);
+	reserved_ram_from_to(dev, idx++, 0xc0000, 1 * MiB);
 
 	/* 1MiB - bottom of DRAM reserved for early coreboot usage */
-	ram_resource_kb(dev, idx++, (1 * MiB) / KiB,
-		     (early_reserved_dram_start - (1 * MiB)) / KiB);
+	ram_from_to(dev, idx++, 1 * MiB, early_reserved_dram_start);
 
 	/* DRAM reserved for early coreboot usage */
-	reserved_ram_resource_kb(dev, idx++, early_reserved_dram_start / KiB,
-		(early_reserved_dram_end - early_reserved_dram_start) / KiB);
+	reserved_ram_from_to(dev, idx++, early_reserved_dram_start, early_reserved_dram_end);
 
 	/*
 	 * top of DRAM consumed early - low top usable RAM
 	 * cbmem_top() accounts for low UMA and TSEG if they are used.
 	 */
-	ram_resource_kb(dev, idx++, early_reserved_dram_end / KiB,
-		     (mem_usable - early_reserved_dram_end) / KiB);
+	ram_from_to(dev, idx++, early_reserved_dram_end, mem_usable);
 
 	mmconf_resource(dev, idx++);
 
-	/* GNB IOAPIC resource */
-	gnb_apic = new_resource(dev, idx++);
-	gnb_apic->base = GNB_IO_APIC_ADDR;
-	gnb_apic->size = 0x00001000;
-	gnb_apic->flags = IORESOURCE_MEM | IORESOURCE_ASSIGNED | IORESOURCE_FIXED;
+	/* Reserve fixed IOMMU MMIO region */
+	mmio_range(dev, idx++, IOMMU_RESERVED_MMIO_BASE, IOMMU_RESERVED_MMIO_SIZE);
 
-	if (fsp_hob_iterator_init(&hob_iterator) != CB_SUCCESS) {
-		printk(BIOS_ERR, "%s incomplete because no HOB list was found\n",
-				__func__);
-		return;
-	}
-
-	while (fsp_hob_iterator_get_next_resource(&hob_iterator, &res) == CB_SUCCESS) {
-		if (res->type == EFI_RESOURCE_SYSTEM_MEMORY && res->addr < mem_usable)
-			continue; /* 0 through low usable was set above */
-		if (res->type == EFI_RESOURCE_MEMORY_MAPPED_IO)
-			continue; /* Done separately */
-
-		if (res->type == EFI_RESOURCE_SYSTEM_MEMORY)
-			ram_resource_kb(dev, idx++, res->addr / KiB, res->length / KiB);
-		else if (res->type == EFI_RESOURCE_MEMORY_RESERVED)
-			reserved_ram_resource_kb(dev, idx++, res->addr / KiB, res->length / KiB);
-		else
-			printk(BIOS_ERR, "failed to set resources for type %d\n",
-					res->type);
-	}
+	read_fsp_resources(dev, &idx);
 }
 
 static void root_complex_init(struct device *dev)
@@ -188,7 +165,6 @@ static void acipgen_dptci(void)
 
 static void root_complex_fill_ssdt(const struct device *device)
 {
-	acpi_fill_root_complex_tom(device);
 	if (CONFIG(SOC_AMD_COMMON_BLOCK_ACPI_DPTC))
 		acipgen_dptci();
 }
@@ -206,3 +182,28 @@ struct device_operations cezanne_root_complex_operations = {
 	.acpi_name		= gnb_acpi_name,
 	.acpi_fill_ssdt		= root_complex_fill_ssdt,
 };
+
+uint32_t get_iohc_misc_smn_base(struct device *domain)
+{
+	return SMN_IOHC_MISC_BASE_13B1;
+}
+
+static const struct non_pci_mmio_reg non_pci_mmio[] = {
+	{ 0x2d8, 0xfffffff00000ull,   1 * MiB, NON_PCI_RES_IDX_AUTO },
+	{ 0x2e0, 0xfffffff00000ull,   1 * MiB, NON_PCI_RES_IDX_AUTO },
+	{ 0x2e8, 0xfffffff00000ull,   1 * MiB, NON_PCI_RES_IDX_AUTO },
+	/* The hardware has a 256 byte alignment requirement for the IOAPIC MMIO base, but we
+	   tell the FSP to configure a 4k-aligned base address and this is reported as 4 KiB
+	   resource. */
+	{ 0x2f0, 0xffffffffff00ull,   4 * KiB, IOMMU_IOAPIC_IDX },
+	{ 0x2f8, 0xfffffff00000ull,   1 * MiB, NON_PCI_RES_IDX_AUTO },
+	{ 0x300, 0xfffffff00000ull,   1 * MiB, NON_PCI_RES_IDX_AUTO },
+	{ 0x308, 0xfffffffff000ull,   4 * KiB, NON_PCI_RES_IDX_AUTO },
+	{ 0x318, 0xfffffff80000ull, 512 * KiB, NON_PCI_RES_IDX_AUTO },
+};
+
+const struct non_pci_mmio_reg *get_iohc_non_pci_mmio_regs(size_t *count)
+{
+	*count = ARRAY_SIZE(non_pci_mmio);
+	return non_pci_mmio;
+}

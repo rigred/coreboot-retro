@@ -80,8 +80,7 @@ static void soc_pmc_read_resources(struct device *dev)
 	struct resource *res;
 
 	/* Add the fixed MMIO resource */
-	mmio_resource_kb(dev, PWRMBASE, PCH_PWRM_BASE_ADDRESS / KiB,
-			PCH_PWRM_BASE_SIZE / KiB);
+	mmio_range(dev, PWRMBASE, PCH_PWRM_BASE_ADDRESS, PCH_PWRM_BASE_SIZE);
 
 	/* Add the fixed I/O resource */
 	res = new_resource(dev, 1);
@@ -157,8 +156,10 @@ static void soc_pmc_init(struct device *dev)
 	 * Disabling ACPI PM timer is necessary for XTAL OSC shutdown.
 	 * Disabling ACPI PM timer also switches off TCO
 	 */
-	if (!CONFIG(USE_PM_ACPI_TIMER))
+	if (!CONFIG(USE_PM_ACPI_TIMER)) {
 		setbits8(pmc_mmio_regs() + PCH_PWRM_ACPI_TMR_CTL, ACPI_TIM_DIS);
+		setbits8(ioe_pmc_mmio_regs() + PCH_PWRM_ACPI_TMR_CTL, ACPI_TIM_DIS);
+	}
 }
 
 static void pm1_enable_pwrbtn_smi(void *unused)

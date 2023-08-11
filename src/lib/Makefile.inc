@@ -134,6 +134,8 @@ ramstage-y += prog_ops.c
 ramstage-y += hardwaremain.c
 ramstage-y += selfboot.c
 ramstage-y += coreboot_table.c
+ramstage-$(CONFIG_GENERATE_SMBIOS_TABLES) += smbios.c
+ramstage-$(CONFIG_GENERATE_SMBIOS_TABLES) += smbios_defaults.c
 ramstage-y += bootmem.c
 ramstage-y += fmap.c
 ramstage-y += memchr.c
@@ -238,13 +240,6 @@ $(call src-to-obj,ramstage,$(dir)/version.c) : $(obj)/build.h
 $(call src-to-obj,smm,$(dir)/version.c) : $(obj)/build.h
 $(call src-to-obj,verstage,$(dir)/version.c) : $(obj)/build.h
 $(call src-to-obj,postcar,$(dir)/version.c) : $(obj)/build.h
-
-$(call src-to-obj,bootblock,$(dir)/fmap.c) : $(obj)/fmap_config.h
-$(call src-to-obj,romstage,$(dir)/fmap.c) : $(obj)/fmap_config.h
-$(call src-to-obj,ramstage,$(dir)/fmap.c) : $(obj)/fmap_config.h
-$(call src-to-obj,smm,$(dir)/fmap.c) : $(obj)/fmap_config.h
-$(call src-to-obj,verstage,$(dir)/fmap.c) : $(obj)/fmap_config.h
-$(call src-to-obj,postcar,$(dir)/fmap.c) : $(obj)/fmap_config.h
 
 bootblock-y += bootmode.c
 romstage-y += bootmode.c
@@ -410,10 +405,7 @@ cbfs_master_header-file := cbfs_master_header.c:struct
 cbfs_master_header-type := "cbfs header"
 cbfs_master_header-position := 0
 
-ifeq ($(CONFIG_ARCH_X86),y)
-$(call src-to-obj,bootblock,$(dir)/master_header_pointer.c): $(obj)/fmap_config.h
-bootblock-y += master_header_pointer.c
-endif
+bootblock-$(CONFIG_ARCH_X86) += master_header_pointer.c
 
 NEED_CBFS_POINTER=
 
@@ -428,3 +420,5 @@ cbfs-files-$(NEED_CBFS_POINTER) += header_pointer
 header_pointer-file := master_header_pointer.c:struct
 header_pointer-position := -4
 header_pointer-type := "cbfs header"
+
+romstage-y += ux_locales.c

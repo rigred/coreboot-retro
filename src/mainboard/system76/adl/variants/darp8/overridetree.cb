@@ -1,10 +1,7 @@
 chip soc/intel/alderlake
-	# HACK: Limit PL4 to PL2 to prevent power-off when system is booted on
-	# battery power. This seems to only happen with the i7 units.
 	register "power_limits_config[ADL_P_282_442_482_28W_CORE]" = "{
 		.tdp_pl1_override = 20,
 		.tdp_pl2_override = 56,
-		.tdp_pl4 = 56, // FIXME: Set to 65
 	}"
 
 	# GPE configuration
@@ -154,12 +151,13 @@ chip soc/intel/alderlake
 				.clk_req = 4,
 				.flags = PCIE_RP_LTR,
 			}"
-			chip soc/intel/common/block/pcie/rtd3
-				register "enable_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_HIGH(GPP_D16)" # SSD1_PWR_EN
-				register "reset_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_LOW(GPP_B16)" # M2_SSD1_RST#
-				register "srcclk_pin" = "4" # SSD1_CLKREQ#
-				device generic 0 on end
-			end
+			# FIXME: Drives do not exit D3cold on S3 exit
+			#chip soc/intel/common/block/pcie/rtd3
+			#	register "enable_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_HIGH(GPP_D16)" # SSD1_PWR_EN
+			#	register "reset_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_LOW(GPP_B16)" # M2_SSD1_RST#
+			#	register "srcclk_pin" = "4" # SSD1_CLKREQ#
+			#	device generic 0 on end
+			#end
 		end
 		device ref pmc hidden
 			chip drivers/intel/pmc_mux

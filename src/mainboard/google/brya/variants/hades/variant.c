@@ -61,7 +61,7 @@ static struct power_rail_sequence gpu_on_seq[] = {
 /* In GCOFF entry order (i.e., power-off order) */
 static struct power_rail_sequence gpu_off_seq[] = {
 	{ "FBVDD",		FBVDD_PWR_EN,	false,  FBVDD_PG,	0,},
-	{ "PEXVDD",		PEXVDD_PWR_EN,	false, PEXVDD_PG,	3,},
+	{ "PEXVDD",		PEXVDD_PWR_EN,	false, PEXVDD_PG,	2,},
 	{ "NVVDD+MSVDD",	NVVDD_PWR_EN,	false, NVVDD_PG,	2,},
 	{ "GPU 3.3V",		GPU_3V3_PWR_EN,	false, GPU_3V3_PG,	4,},
 	{ "GPU 1.8V",		GPU_1V8_PWR_EN,	false, GPU_1V8_PG,	0,},
@@ -83,7 +83,7 @@ static bool sequence_rail(const struct power_rail_sequence *seq, enum rail_state
 		pwr_en_state = !pwr_en_state;
 
 	gpio_output(seq->pwr_en_gpio, pwr_en_state);
-	result = wait_us(DEFAULT_PG_TIMEOUT_US, gpio_get(seq->pg_gpio) == state) >= 0;
+	result = wait_us(DEFAULT_PG_TIMEOUT_US, gpio_get(seq->pg_gpio) == state) > 0;
 	if (seq->delay_ms)
 		mdelay(seq->delay_ms);
 

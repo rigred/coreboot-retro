@@ -49,7 +49,7 @@ static const struct pad_config gpio_table[] = {
 	/* GPP_A22 : [] ==> NC */
 	PAD_NC(GPP_A22, NONE),
 	/* GPP_A23 : [] ==> HP_INT_L */
-	PAD_CFG_GPI_INT(GPP_A23, NONE, PLTRST, EDGE_BOTH),
+	PAD_CFG_GPI_INT(GPP_A23, UP_20K, PLTRST, EDGE_BOTH),
 
 	/* GPP_B0  : [] ==> SOC_VID0 */
 	PAD_CFG_NF(GPP_B0, NONE, DEEP, NF1),
@@ -403,17 +403,15 @@ static const struct pad_config early_gpio_table[] = {
 	PAD_CFG_GPO(GPP_D2, 1, DEEP),
 	/* GPP_D11 : [] ==> EN_PP3300_SSD */
 	PAD_CFG_GPO(GPP_D11, 1, PLTRST),
+	/* GPP_E12 : [] ==> PCH_WP_OD */
+	PAD_CFG_GPI_GPIO_DRIVER_LOCK(GPP_E12, NONE, LOCK_CONFIG),
 	/* GPP_E13 : [] ==> MEM_CH_SEL */
 	PAD_CFG_GPI(GPP_E13, NONE, DEEP),
-	/* GPP_E15 : [] ==> PCH_WP_OD */
-	PAD_CFG_GPI_GPIO_DRIVER(GPP_E15, NONE, DEEP),
 	/* GPP_E16 : [] ==> WWAN_RST_L
 	 * To meet timing constrains - drive reset low.
 	 * Deasserted in ramstage.
 	 */
 	PAD_CFG_GPO(GPP_E16, 0, DEEP),
-	/* GPP_E15 : [] ==> PCH_WP_OD */
-	PAD_CFG_GPI_GPIO_DRIVER_LOCK(GPP_E15, NONE, LOCK_CONFIG),
 	/* GPP_E18 : [] ==> EN_PP1800_GPU_X */
 	PAD_CFG_GPO(GPP_E18, 0, PLTRST),
 	/* GPP_F18 : [] ==> EC_IN_RW_OD */

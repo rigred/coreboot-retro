@@ -117,7 +117,7 @@ uintptr_t graphics_get_framebuffer_address(void)
 
 	memory_base = graphics_get_bar(dev, PCI_BASE_ADDRESS_2);
 	if (!memory_base)
-		die_with_post_code(POST_HW_INIT_FAILURE,
+		die_with_post_code(POSTCODE_HW_INIT_FAILURE,
 				   "Graphic memory bar2 is not programmed!");
 
 	memory_base += CONFIG_SOC_INTEL_GFX_FRAMEBUFFER_OFFSET;
@@ -140,7 +140,7 @@ static uintptr_t graphics_get_gtt_base(void)
 	if (!gtt_base) {
 		gtt_base = graphics_get_bar(dev, PCI_BASE_ADDRESS_0);
 		if (!gtt_base)
-			die_with_post_code(POST_HW_INIT_FAILURE,
+			die_with_post_code(POSTCODE_HW_INIT_FAILURE,
 					   "GTTMMADR is not programmed!");
 	}
 	return gtt_base;
@@ -312,6 +312,14 @@ static const unsigned short pci_device_ids[] = {
 	PCI_DID_INTEL_ADL_N_GT1,
 	PCI_DID_INTEL_ADL_N_GT2,
 	PCI_DID_INTEL_ADL_N_GT3,
+	PCI_DID_INTEL_RPL_S_GT0,
+	PCI_DID_INTEL_RPL_S_GT1_1,
+	PCI_DID_INTEL_RPL_S_GT1_2,
+	PCI_DID_INTEL_RPL_S_GT1_3,
+	PCI_DID_INTEL_RPL_HX_GT1,
+	PCI_DID_INTEL_RPL_HX_GT2,
+	PCI_DID_INTEL_RPL_HX_GT3,
+	PCI_DID_INTEL_RPL_HX_GT4,
 	0,
 };
 

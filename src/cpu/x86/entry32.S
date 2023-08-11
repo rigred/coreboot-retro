@@ -31,7 +31,7 @@ bootblock_protected_mode_entry:
 	/* Save the BIST value */
 	movl	%eax, %ebp
 
-	post_code(POST_ENTER_PROTECTED_MODE)
+	post_code(POSTCODE_ENTER_PROTECTED_MODE)
 
 	movw	$ROM_DATA_SEG, %ax
 	movw	%ax, %ds
@@ -54,7 +54,6 @@ debug_spinloop:
 	jz	debug_spinloop
 #endif
 
-#if !CONFIG(USE_MARCH_586)
 	/* MMX registers required here */
 
 	/* BIST result in eax */
@@ -66,7 +65,6 @@ __timestamp:
 	rdtsc
 	movd	%eax, %mm1
 	movd	%edx, %mm2
-#endif
 
 #if CONFIG(SSE)
 enable_sse:

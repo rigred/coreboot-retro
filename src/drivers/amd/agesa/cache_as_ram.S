@@ -31,7 +31,7 @@ _cache_as_ram_setup:
  */
 bootblock_pre_c_entry:
 
-	post_code(POST_BOOTBLOCK_PRE_C_ENTRY)
+	post_code(POSTCODE_BOOTBLOCK_PRE_C_ENTRY)
 
 	AMD_ENABLE_STACK
 
@@ -57,14 +57,14 @@ bootblock_pre_c_entry:
 	movd	%mm1, %eax
 	pushl	%eax		/* tsc[31:0] */
 
-	post_code(POST_BOOTBLOCK_PRE_C_DONE)
+	post_code(POSTCODE_BOOTBLOCK_PRE_C_DONE)
 
 	call	bootblock_c_entry
 
 	/* Never reached. */
 
 stop:
-	post_code(POST_DEAD_CODE)
+	post_code(POSTCODE_DEAD_CODE)
 	hlt
 	jmp	stop
 

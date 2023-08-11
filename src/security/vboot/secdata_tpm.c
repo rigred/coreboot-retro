@@ -28,14 +28,6 @@
 
 static uint32_t safe_write(uint32_t index, const void *data, uint32_t length);
 
-static uint32_t read_space_firmware(struct vb2_context *ctx)
-{
-	RETURN_ON_FAILURE(tlcl_read(FIRMWARE_NV_INDEX,
-				    ctx->secdata_firmware,
-				    VB2_SECDATA_FIRMWARE_SIZE));
-	return TPM_SUCCESS;
-}
-
 uint32_t antirollback_read_space_kernel(struct vb2_context *ctx)
 {
 	if (!CONFIG(TPM2)) {
@@ -61,7 +53,7 @@ uint32_t antirollback_read_space_kernel(struct vb2_context *ctx)
 	uint8_t size = VB2_SECDATA_KERNEL_SIZE;
 	uint32_t ret;
 
-	/* Start with the version 1.0 size used by all modern cr50-boards. */
+	/* Start with the version 1.0 size used by all modern Cr50/Ti50 boards. */
 	ret = tlcl_read(KERNEL_NV_INDEX, ctx->secdata_kernel, size);
 	if (ret == TPM_E_RANGE) {
 		/* Fallback to version 0.2(minimum) size and re-read. */
@@ -408,8 +400,8 @@ static uint32_t _factory_initialize_tpm(struct vb2_context *ctx)
 	RETURN_ON_FAILURE(setup_fwmp_space(ctx));
 
 	/*
-	 * Define and write zero-touch enrollment (ZTE) spaces.  For Cr50 devices,
-	 * these are set up elsewhere via TPM vendor commands.
+	 * Define and write zero-touch enrollment (ZTE) spaces.  For ChromeOS devices with
+	 * Google TPM, these are set up elsewhere via TPM vendor commands.
 	 */
 	if (CONFIG(CHROMEOS) && !(CONFIG(TPM_GOOGLE)))
 		RETURN_ON_FAILURE(setup_zte_spaces());
@@ -672,14 +664,13 @@ uint32_t antirollback_read_space_firmware(struct vb2_context *ctx)
 {
 	uint32_t rv;
 
-	/* Read the firmware space. */
-	rv = read_space_firmware(ctx);
+	rv = tlcl_read(FIRMWARE_NV_INDEX, ctx->secdata_firmware, VB2_SECDATA_FIRMWARE_SIZE);
 	if (rv == TPM_E_BADINDEX) {
 		/* This seems the first time we've run. Initialize the TPM. */
-		VBDEBUG("TPM: Not initialized yet.\n");
+		VBDEBUG("TPM: Not initialized yet\n");
 		RETURN_ON_FAILURE(factory_initialize_tpm(ctx));
 	} else if (rv != TPM_SUCCESS) {
-		VBDEBUG("TPM: Firmware space in a bad state; giving up.\n");
+		printk(BIOS_ERR, "TPM: Failed to read firmware space: %#x\n", rv);
 		return TPM_E_CORRUPTED_STATE;
 	}
 

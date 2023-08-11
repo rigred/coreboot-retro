@@ -31,8 +31,8 @@ config MEDIATEK_DRAM_BLOB_FAST_INIT
 	  open-source policy.
 
 config MEDIATEK_DRAM_SCRAMBLE
-	bool
-	default y
+	bool "Enable DRAM scramble feature"
+	default n
 	help
 	  This option enables DRAM data scramble, which can prevent DRAM data from
 	  being hacked.

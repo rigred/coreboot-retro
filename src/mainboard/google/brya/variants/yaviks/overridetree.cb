@@ -59,7 +59,7 @@ chip soc/intel/alderlake
 	# [22:16] steps of delay for DDR50, each 125ps, range: 0 - 78.
 	# [14:8] steps of delay for SDR25/HS50, each 125ps, range: 0 - 119.
 	# [6:0] steps of delay for SDR12, each 125ps, range: 0 - 119.
-	register "common_soc_config.emmc_dll.emmc_rx_cmd_data_cntl1" = "0x1C1B223b"
+	register "common_soc_config.emmc_dll.emmc_rx_cmd_data_cntl1" = "0x1C1B193b"
 
 	# EMMC RX CMD/DATA Delay 2
 	# Refer to EDS-Vol2-42.3.12.
@@ -70,7 +70,7 @@ chip soc/intel/alderlake
 	#         11: Reserved
 	# [14:8] steps of delay for Auto Tuning Mode, each 125ps, range: 0 - 39.
 	# [6:0] steps of delay for HS200, each 125ps, range: 0 - 79.
-	register "common_soc_config.emmc_dll.emmc_rx_cmd_data_cntl2" = "0x1004b"
+	register "common_soc_config.emmc_dll.emmc_rx_cmd_data_cntl2" = "0x10004"
 
 	# EMMC Rx Strobe Delay
 	# Refer to EDS-Vol2-42.3.11.
@@ -229,7 +229,7 @@ chip soc/intel/alderlake
 				register "generic.hid" = ""ELAN2513""
 				register "generic.desc" = ""ELAN Touchscreen""
 				register "generic.irq" = "ACPI_IRQ_LEVEL_LOW(GPP_C7_IRQ)"
-				register "generic.probed" = "1"
+				register "generic.detect" = "1"
 				register "generic.reset_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_LOW(GPP_C1)"
 				register "generic.reset_delay_ms" = "20"
 				register "generic.reset_off_delay_ms" = "2"
@@ -246,7 +246,7 @@ chip soc/intel/alderlake
 				register "generic.hid" = ""ELAN900C""
 				register "generic.desc" = ""ELAN Touchscreen""
 				register "generic.irq" = "ACPI_IRQ_LEVEL_LOW(GPP_C7_IRQ)"
-				register "generic.probed" = "1"
+				register "generic.detect" = "1"
 				register "generic.reset_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_LOW(GPP_C1)"
 				register "generic.reset_delay_ms" = "20"
 				register "generic.reset_off_delay_ms" = "2"
@@ -263,7 +263,7 @@ chip soc/intel/alderlake
 				register "generic.hid" = ""GTCH7503""
 				register "generic.desc" = ""G2TOUCH Touchscreen""
 				register "generic.irq" = "ACPI_IRQ_LEVEL_LOW(GPP_C7_IRQ)"
-				register "generic.probed" = "1"
+				register "generic.detect" = "1"
 				register "generic.reset_gpio" =
 							"ACPI_GPIO_OUTPUT_ACTIVE_LOW(GPP_C1)"
                                 register "generic.reset_delay_ms" = "50"

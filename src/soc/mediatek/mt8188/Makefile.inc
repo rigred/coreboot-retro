@@ -6,7 +6,7 @@ all-y += ../common/gpio.c ../common/gpio_op.c gpio.c
 all-y += ../common/i2c.c i2c.c
 all-y += ../common/pll.c pll.c
 all-$(CONFIG_SPI_FLASH) += ../common/spi.c spi.c
-all-y += ../common/timer.c ../common/timer_prepare.c
+all-y += timer.c ../common/timer_prepare.c
 all-y += ../common/uart.c
 
 bootblock-y += bootblock.c
@@ -55,6 +55,7 @@ ramstage-y += ../common/rtc.c ../common/rtc_osc_init.c ../common/rtc_mt6359p.c
 ramstage-y += soc.c
 ramstage-y += ../common/spm.c spm.c
 ramstage-y += ../common/sspm.c
+ramstage-y += ../common/tps65132s.c
 ramstage-y += ../common/usb.c usb.c
 
 BL31_MAKEARGS += PLAT=mt8188

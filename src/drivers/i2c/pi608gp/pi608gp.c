@@ -30,12 +30,12 @@ static uint8_t pi608gp_encode_amp_lvl(uint32_t level_mv)
 	/* Allowed drive amplitude levels are in units of mV in range 0 to 475 mV with 25 mV
 	   steps, based on Table 6-6 from the PI7C9X2G608GP datasheet. */
 	if (level_mv > 475) {
-		printk(BIOS_ERR, "PI608GP: Drive level %d mV out of range 0 to 475 mV!",
+		printk(BIOS_ERR, "PI608GP: Drive level %u mV out of range 0 to 475 mV!",
 		       level_mv);
 		return PI608GP_ENCODE_ERR;
 	}
 	if (level_mv % 25 != 0) {
-		printk(BIOS_ERR, "PI608GP: Drive level %d mV not a multiple of 25!\n",
+		printk(BIOS_ERR, "PI608GP: Drive level %u mV not a multiple of 25!\n",
 		       level_mv);
 		return PI608GP_ENCODE_ERR;
 	}
@@ -48,7 +48,7 @@ static uint8_t pi608gp_encode_deemph_lvl(struct deemph_lvl level_mv)
 {
 	/* Table of allowed fixed-point millivolt values, based on Table 6-8 from the
 	   PI7C9X2G608GP datasheet. */
-	struct deemph_lvl allowed[] = {
+	const struct deemph_lvl allowed[] = {
 		{  0, 0}, {  6, 0}, { 12, 5}, { 19, 0}, { 25, 0}, { 31, 0}, { 37, 5}, { 44, 0},
 		{ 50, 0}, { 56, 0}, { 62, 5}, { 69, 0}, { 75, 0}, { 81, 0}, { 87, 0}, { 94, 0},
 		{100, 0}, {106, 0}, {112, 5}, {119, 0}, {125, 0}, {131, 0}, {137, 5}, {144, 0},
@@ -59,10 +59,10 @@ static uint8_t pi608gp_encode_deemph_lvl(struct deemph_lvl level_mv)
 		if (allowed[i].lvl == level_mv.lvl && allowed[i].lvl_10 == level_mv.lvl_10)
 			/* When found, the encoded value is a 5-bit number that corresponds to
 			   the index in the table of allowed values above. */
-			return (uint8_t) (i & 0x1f);
+			return i & 0x1f;
 	}
 
-	printk(BIOS_ERR, "PI608GP: Requested unsupported de-emphasis level value: %d.%d mV!\n",
+	printk(BIOS_ERR, "PI608GP: Requested unsupported de-emphasis level value: %u.%u mV!\n",
 			level_mv.lvl, level_mv.lvl_10);
 	return PI608GP_ENCODE_ERR;
 }
@@ -102,7 +102,7 @@ pi608gp_reg_read(struct device *dev, uint8_t port, uint32_t reg_addr, uint32_t *
 	}
 
 	/* Retrieve back the value from the received SMBus packet in big endian order. */
-	*val = read_be32((void *) buf);
+	*val = read_be32((void *)buf);
 
 	return CB_SUCCESS;
 }
@@ -122,7 +122,7 @@ pi608gp_reg_write(struct device *dev, uint8_t port, uint32_t reg_addr, uint32_t 
 	};
 
 	/* Insert register value to write in BE order after the header. */
-	write_be32((void *) &buf[4], val);
+	write_be32((void *)&buf[4], val);
 
 	/* Perform the register write */
 	ret = smbus_block_write(dev, PI608GP_CMD_BLK_WR, sizeof(buf), buf);
@@ -134,8 +134,9 @@ pi608gp_reg_write(struct device *dev, uint8_t port, uint32_t reg_addr, uint32_t 
 	return CB_SUCCESS;
 }
 
-static enum cb_err pi608gp_reg_update(struct device *dev, uint8_t port, uint32_t reg_addr,
-		uint32_t and_mask, uint32_t or_mask)
+static enum cb_err
+pi608gp_reg_update(struct device *dev, uint8_t port, uint32_t reg_addr, uint32_t and_mask,
+		   uint32_t or_mask)
 {
 	uint32_t val;
 
@@ -153,7 +154,7 @@ static enum cb_err pi608gp_reg_update(struct device *dev, uint8_t port, uint32_t
 
 static void pi608gp_init(struct device *dev)
 {
-	const uint8_t port = 0; /* Only port 0 is being configured */
+	const uint8_t port = 0; /* Only the upstream port is being configured */
 	struct drivers_i2c_pi608gp_config *config = dev->chip_info;
 	uint8_t amp_lvl, deemph_lvl;
 

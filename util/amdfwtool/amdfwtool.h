@@ -126,6 +126,7 @@ typedef enum _amd_bios_type {
 	AMD_BIOS_PMUD = 0x65,
 	AMD_BIOS_UCODE = 0x66,
 	AMD_BIOS_APCB_BK = 0x68,
+	AMD_BIOS_EARLY_VGA = 0x69,
 	AMD_BIOS_MP2_CFG = 0x6a,
 	AMD_BIOS_PSP_SHARED_MEM = 0x6b,
 	AMD_BIOS_L2_PTR =  0x70,
@@ -329,8 +330,18 @@ typedef struct _ish_directory_table {
 #define PSP_BOTH (PSP_LVL1 | PSP_LVL2)
 #define PSP_BOTH_AB (PSP_LVL1_AB | PSP_LVL2_AB)
 
+typedef enum _fwid_type {
+	FWID_TYPE_FWID = 0,
+	FWID_TYPE_UUID,
+} fwid_type_t;
+
+#define UUID_LEN_BYTES 16
 typedef struct _amd_fw_entry_hash {
-	uint16_t fw_id;
+	fwid_type_t fwid_type;
+	union {
+		uint16_t fw_id;
+		uint8_t uuid[UUID_LEN_BYTES];
+	};
 	uint16_t subtype;
 	uint32_t sha_len;
 	uint8_t sha[SHA384_DIGEST_LENGTH];
@@ -338,9 +349,6 @@ typedef struct _amd_fw_entry_hash {
 
 typedef struct _amd_fw_entry {
 	amd_fw_type type;
-	/* Mendocino and later SoCs use fw_id instead of fw_type. fw_type is still around
-	   for backwards compatibility. fw_id can be populated from the PSP binary file. */
-	uint16_t fw_id;
 	char *filename;
 	uint8_t subprog;
 	uint8_t inst;
@@ -356,8 +364,11 @@ typedef struct _amd_fw_entry {
 	/* Some files that don't have amd_fw_header have to be skipped from hashing. These files
 	   include but not limited to: *iKek*, *.tkn, *.stkn */
 	bool skip_hashing;
+	uint8_t hash_tbl_id;
+	fwid_type_t fwid_type;
 	uint32_t num_hash_entries;
 	amd_fw_entry_hash *hash_entries;
+	bool generate_manifest;
 } amd_fw_entry;
 
 /* Most PSP binaries, if not all, have the following header format. */
@@ -375,7 +386,9 @@ struct amd_fw_header {
 	uint32_t comp_size;
 	/* Starting MDN fw_id is populated instead of fw_type. */
 	uint16_t fw_id;
-	uint8_t reserved_5a[18];
+	uint8_t reserved_5a[6];
+	uint8_t version[4];
+	uint8_t reserved_64[8];
 	uint32_t size_total;
 	uint8_t reserved_70[12];
 	/* Starting MDN fw_id is populated instead of fw_type. fw_type will still be around
@@ -387,6 +400,9 @@ struct amd_fw_header {
 	uint8_t reserved_80[128];
 } __packed;
 
+/* Based on the available PSP resources and increasing number of signed PSP binaries,
+   AMD recommends to split the hash table into 3 parts for now. */
+#define MAX_NUM_HASH_TABLES 3
 struct psp_fw_hash_table {
 	uint16_t version;
 	uint16_t no_of_entries_256;

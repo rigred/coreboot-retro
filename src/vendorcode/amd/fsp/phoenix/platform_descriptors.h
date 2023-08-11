@@ -72,6 +72,16 @@ enum dxio_aspm_type {
 	ASPM_MAX		// Not valid value, used to verify input
 };
 
+/* PCIe link hotplug */
+enum dxio_link_hotplug_type {
+	HOTPLUG_DISABLED = 0,
+	HOTPLUG_BASIC,
+	HOTPLUG_SERVER,
+	HOTPLUG_ENHANCED,
+	HOTPLUG_INBOARD,
+	HOTPLUG_SERVER_SSD,
+};
+
 enum dxio_port_param_type {
 	PP_DEVICE = 1,
 	PP_FUNCTION,
@@ -88,29 +98,70 @@ enum dxio_port_param_type {
 	PP_CLOCK_PM,
 	PP_CHANNELTYPE,
 	PP_TURN_OFF_UNUSED_LANES,
-	PP_APIC_GROUPMAP,
-	PP_APIC_SWIZZLE,
-	PP_APIC_BRIDGEINT,
 	PP_MASTER_PLL,
 	PP_SLOT_NUM,
 	PP_PHY_PARAM,
 	PP_ESM,
 	PP_CCIX,
+	PP_CXL,
 	PP_GEN3_DS_TX_PRESET,
 	PP_GEN3_DS_RX_PRESET_HINT,
 	PP_GEN3_US_TX_PRESET,
 	PP_GEN3_US_RX_PRESET_HINT,
 	PP_GEN4_DS_TX_PRESET,
 	PP_GEN4_US_TX_PRESET,
+	PP_GEN5_DS_TX_PRESET,
+	PP_GEN5_US_TX_PRESET,
 	PP_GEN3_FIXED_PRESET,
 	PP_GEN4_FIXED_PRESET,
+	PP_GEN5_FIXED_PRESET,
+	PP_GEN3_PRESET_MASK,
+	PP_GEN4_PRESET_MASK,
+	PP_GEN5_PRESET_MASK,
 	PP_PSPP_DC,
 	PP_PSPP_AC,
 	PP_GEN2_DEEMPHASIS,
 	PP_INVERT_POLARITY,
 	PP_TARGET_LINK_SPEED,
 	PP_GEN4_DLF_CAP_DISABLE,
-	PP_GEN4_DLF_EXCHG_DISABLE
+	PP_GEN4_DLF_EXCHG_DISABLE,
+	PP_I2C_EXPANDER_ADDRESS,
+	PP_I2C_EXPANDER_TYPE,
+	PP_I2C_CLEAR_ALL_INTS,
+	PP_UBM_SWITCH0_ADDR,
+	PP_UBM_SWITCH0_SELECT,
+	PP_UBM_SWITCH0_TYPE,
+	PP_UBM_SWITCH1_ADDR,
+	PP_UBM_SWITCH1_SELECT,
+	PP_UBM_SWITCH1_TYPE,
+	PP_UBM_HFC_INDEX,
+	PP_UBM_DFC_INDEX,
+	PP_DFC_EVENT,
+	PP_GPIOx_I2C_RESET,
+	PP_GPIOx_BP_TYPE,
+	PP_START_LANE,
+	PP_OCP_PRESENT_START,
+	PP_OCP_DEF_VALID,
+	PP_OCP_DEF_PRSNTB_PRIMARY,
+	PP_OCP_DEF_PRSNTB_SECONDARY,
+	PP_OCP_BIF_PRIMARY,
+	PP_OCP_BIF_SECONDARY,
+	PP_OCP_NUM_HOSTS,
+	PP_OCP_NUM_SOCKETS,
+	PP_OCP_FORM_FACTOR,
+	PP_ALWAYS_EXPOSE,
+	PP_SRIS_ENABLED,
+	PP_SRIS_SKIP_INTERVAL,
+	PP_SRIS_LOWER_OS_GEN_SUP,
+	PP_SRIS_LOWER_OS_RCV_SUP,
+	PP_SRIS_AUTODETECT_MODE,
+	PP_SRIS_SKP_INTERVAL_SEL,
+	PP_SRIS_AUTODETECT_FACTOR,
+	PP_LEGACY_SWITCH0_ADDR,
+	PP_LEGACY_SWITCH0_SELECT,
+	PP_NPEM_ENABLE,
+	PP_NPEM_CAPABILITES, 
+	PP_BMC_LOCATION,
 };
 
 /* DDI Aux channel */
@@ -155,7 +206,7 @@ enum ddi_connector_type {
 	DDI_MAX_CONNECTOR_TYPE	// Not valid value, used to verify input
 };
 
-/* Cezanne DDI Descriptor: used for configuring display outputs */
+/* DDI Descriptor: used for configuring display outputs */
 typedef struct __packed {
 	uint8_t		connector_type;	// see ddi_connector_type
 	uint8_t		aux_index;	// see ddi_aux_type
@@ -165,16 +216,7 @@ typedef struct __packed {
 
 /*
  * Phoenix DXIO Descriptor: Used for assigning lanes to PCIe engines, configure
- * bifurcation and other settings. Beware that the lane numbers in here are the
- * logical and not the physical lane numbers!
- *
- * Phoenix DXIO logical lane to physical PCIe lane mapping:
- *
- *   logical | physical
- * ----------|------------
- * PA[00:03] | GPP[03:00]
- * PA[04:05] | GPP[08:09]
- * PB[00:07] | GPP[12:19]
+ * bifurcation and other settings.
  *
  * Different ports mustn't overlap or be assigned to the same lane(s). Within
  * ports with the same width the one with a higher start logical lane number
@@ -183,8 +225,8 @@ typedef struct __packed {
  */
 typedef struct __packed {
 	uint8_t		engine_type;			// See dxio_engine_type
-	uint8_t		start_logical_lane;		// Start lane of the pci device
-	uint8_t		end_logical_lane;		// End lane of the pci device
+	uint8_t		start_lane;			// Start lane of the pci device
+	uint8_t		end_lane;			// End lane of the pci device
 	uint8_t		gpio_group_id;			// GPIO number used as reset
 	uint32_t	port_present		:1;	// Should be TRUE if train link
 	uint32_t				:7;
@@ -197,11 +239,11 @@ typedef struct __packed {
 	uint32_t	link_aspm_L1_1		:1;	// En/Dis root port capabilities for L1.1
 	uint32_t	link_aspm_L1_2		:1;	// En/Dis root port capabilities for L1.2
 	uint32_t	clk_req			:4;	// See cpm_clk_req
-	uint8_t		link_hotplug;			// Hotplug control
+	uint8_t		link_hotplug;			// See dxio_link_hotplug_type
 	uint8_t		slot_power_limit;		// PCIe slot power limit
 	uint32_t	slot_power_limit_scale	:2;	// PCIe slot power limit scale
 	uint32_t				:6;
-	uint32_t	link_compliance_mode	:1;	// Force port into compliance mode
+	uint32_t	link_compliance_mode	:1;	// Force port into compliance testing mode
 	uint32_t	link_safe_mode		:1;	// Safe mode capability
 	uint32_t	sb_link			:1;	// Link type
 	uint32_t	clk_pm_support		:1;	// Clock power management support

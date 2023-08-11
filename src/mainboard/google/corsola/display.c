@@ -1,89 +1,44 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 
-#include <assert.h>
 #include <boardid.h>
 #include <cbfs.h>
 #include <console/console.h>
-#include <delay.h>
 #include <device/i2c_simple.h>
 #include <edid.h>
 #include <gpio.h>
 #include <soc/ddp.h>
 #include <soc/dsi.h>
 #include <soc/gpio_common.h>
-#include <soc/i2c.h>
 #include <soc/mtcmos.h>
 
 #include "display.h"
 #include "gpio.h"
+
+void aw37503_init(unsigned int bus)
+{
+	i2c_write_field(bus, PMIC_AW37503_SLAVE, 0x00, 0x14, 0x1F, 0);
+	i2c_write_field(bus, PMIC_AW37503_SLAVE, 0x01, 0x14, 0x1F, 0);
+	i2c_write_field(bus, PMIC_AW37503_SLAVE, 0x21, 0x4C, 0xFF, 0);
+	i2c_write_field(bus, PMIC_AW37503_SLAVE, 0x03, 0x43, 0xFF, 0);
+	i2c_write_field(bus, PMIC_AW37503_SLAVE, 0x21, 0x00, 0xFF, 0);
+}
+
+bool is_pmic_aw37503(unsigned int bus)
+{
+	u8 vendor_id;
+	return (!i2c_read_field(bus, PMIC_AW37503_SLAVE,
+				0x04, &vendor_id, 0x0F, 0) && vendor_id == 0x01);
+}
 
 static void backlight_control(void)
 {
 	/* Disable backlight before turning on bridge */
 	gpio_output(GPIO_AP_EDP_BKLTEN, 0);
 	gpio_output(GPIO_BL_PWM_1V8, 0);
-	gpio_output(GPIO_EN_PP3300_DISP_X, 1);
-}
-
-int panel_pmic_reg_mask(unsigned int bus, uint8_t chip, uint8_t addr,
-			uint8_t val, uint8_t mask)
-{
-	uint8_t msg = 0;
-
-	if (i2c_read_field(bus, chip, addr, &msg, 0xFF, 0) < 0) {
-		printk(BIOS_ERR, "%s: Failed to read i2c(%u): addr(%u)\n",
-			__func__, bus, addr);
-		return -1;
-	}
-
-	msg &= ~mask;
-	msg |= val;
-
-	return i2c_write_field(bus, chip, addr, msg, 0xFF, 0);
-}
-
-void tps65132s_program_eeprom(void)
-{
-	u8 value = 0;
-	u8 value1 = 0;
-
-	/* Initialize I2C6 for PMIC TPS65132 */
-	mtk_i2c_bus_init(PMIC_TPS65132_I2C, I2C_SPEED_FAST);
-	mdelay(10);
-
-	/* EN_PP6000_MIPI_DISP */
-	gpio_output(GPIO_EN_PP3300_DISP_X, 1);
-	/* EN_PP6000_MIPI_DISP_150MA */
-	gpio_output(GPIO_EN_PP3300_SDBRDG_X, 1);
-	mdelay(10);
-
-	i2c_read_field(PMIC_TPS65132_I2C, PMIC_TPS65132_SLAVE, 0x00, &value, 0xFF, 0);
-	i2c_read_field(PMIC_TPS65132_I2C, PMIC_TPS65132_SLAVE, 0x01, &value1, 0xFF, 0);
-
-	if (value != 0x14 || value1 != 0x14) {
-		printk(BIOS_INFO, "Set AVDD AVEE 6.0V to EEPROM Data in first time\n");
-
-		/* Set AVDD = 6.0V */
-		if (panel_pmic_reg_mask(PMIC_TPS65132_I2C, PMIC_TPS65132_SLAVE, 0x00, 0x14,
-					0x1F) < 0)
-			return;
-
-		/* Set AVEE = -6.0V */
-		if (panel_pmic_reg_mask(PMIC_TPS65132_I2C, PMIC_TPS65132_SLAVE, 0x01, 0x14,
-					0x1F) < 0)
-			return;
-
-		/* Set EEPROM Data */
-		if (panel_pmic_reg_mask(PMIC_TPS65132_I2C, PMIC_TPS65132_SLAVE, 0xFF, 0x80,
-					0xFC) < 0)
-			return;
-		mdelay(50);
-	}
-	/* EN_PP6000_MIPI_DISP */
-	gpio_output(GPIO_EN_PP3300_DISP_X, 0);
-	/* EN_PP6000_MIPI_DISP_150MA */
-	gpio_output(GPIO_EN_PP3300_SDBRDG_X, 0);
-	mdelay(5);
+	/* For staryu variants, GPIO_EN_PP3300_DISP_X is controlled in
+	   mipi_panel_power_on() */
+	if (!CONFIG(BOARD_GOOGLE_STARYU_COMMON))
+		gpio_output(GPIO_EN_PP3300_DISP_X, 1);
 }
 
 struct panel_description *get_panel_from_cbfs(struct panel_description *desc)
@@ -123,15 +78,15 @@ static struct panel_description *get_active_panel(void)
 
 int configure_display(void)
 {
+	/* Set up backlight control pins as output pin and power-off by default */
+	backlight_control();
+
 	const struct panel_description *panel = get_active_panel();
 
 	if (!panel)
 		return -1;
 
 	printk(BIOS_INFO, "%s: Starting display init\n", __func__);
-
-	/* Set up backlight control pins as output pin and power-off by default */
-	backlight_control();
 
 	if (panel->power_on)
 		panel->power_on();

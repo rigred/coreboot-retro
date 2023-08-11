@@ -29,6 +29,7 @@ enum cb_err fill_pds(void)
 {
 	uint8_t num_sockets = soc_get_num_cpus();
 	uint8_t num_cxlnodes = get_cxl_node_count();
+	const IIO_UDS *hob = get_iio_uds();
 
 	/*
 	 * Rules/assumptions:
@@ -44,19 +45,21 @@ enum cb_err fill_pds(void)
 	pds.num_pds = num_cxlnodes + num_sockets;
 	pds.pds = xmalloc(sizeof(struct proximity_domain) * pds.num_pds);
 	if (!pds.pds)
-		die("%s %s out of memory.", __FILE__, __LINE__);
+		die("%s %d out of memory.", __FILE__, __LINE__);
 
 	memset(pds.pds, 0, sizeof(struct proximity_domain) * pds.num_pds);
 
 	/* Fill in processor domains */
-	uint8_t i, j;
+	uint8_t i, j, socket;
 	struct device *dev;
-	for (i = 0; i < num_sockets; i++) {
+	for (socket = 0, i = 0; i < num_sockets; socket++) {
+		if (!soc_cpu_is_enabled(socket))
+			continue;
 		pds.pds[i].pd_type = PD_TYPE_PROCESSOR;
-		pds.pds[i].socket_bitmap = 1 << i;
+		pds.pds[i].socket_bitmap = 1 << hob->PlatformData.IIO_resource[socket].SocketID;
 		pds.pds[i].distances = malloc(sizeof(uint8_t) * pds.num_pds);
 		if (!pds.pds[i].distances)
-			die("%s %s out of memory.", __FILE__, __LINE__);
+			die("%s %d out of memory.", __FILE__, __LINE__);
 		/* hard code the distances for now, till we know how to calculate them. */
 		for (j = 0; j < pds.num_pds; j++) {
 			if (j == i)
@@ -64,6 +67,7 @@ enum cb_err fill_pds(void)
 			else
 				pds.pds[i].distances[j] = 0x0e;
 		}
+		i++;
 	}
 
 	/* If there are no CXL nodes, we are done */
@@ -84,7 +88,7 @@ enum cb_err fill_pds(void)
 			pds.pds[i].device_handle = PCI_BDF(dev);
 			pds.pds[i].distances = malloc(sizeof(uint8_t) * pds.num_pds);
 			if (!pds.pds[i].distances)
-				die("%s %s out of memory.", __FILE__, __LINE__);
+				die("%s %d out of memory.", __FILE__, __LINE__);
 			/* hard code the distances until we know how to calculate them */
 			for (j = 0; j < pds.num_pds; j++) {
 				if (j == i)

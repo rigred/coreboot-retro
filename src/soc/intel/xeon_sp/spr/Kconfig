@@ -27,10 +27,6 @@ config ACPI_CPU_STRING
 	string
 	default "C%03X"
 
-config SIPI_FINAL_TIMEOUT
-	int
-	default 400000
-
 config PCR_BASE_ADDRESS
 	hex
 	default 0xfd000000
@@ -131,10 +127,6 @@ config MAX_IMC
 	int
 	default 4
 
-config MAX_MC_CHN
-	int
-	default 2
-
 config DIMM_MAX
 	int
 	default 32
@@ -173,4 +165,19 @@ config INTEL_TXT_HEAP_SIZE
 
 endif # INTEL_TXT
 
+config ENABLE_IO_MARGINING
+	bool "Enable IO Margining"
+	default n
+	depends on !PCIEXP_ASPM
+	help
+	  Enable support for I/O margining. This is mutually exclusive with
+	  ASPM. This option is intended for debugging and validation and
+	  should normally be disabled.
+
+config ENABLE_RMT
+	bool "Enable RMT"
+	default n
+	help
+	  Enable Rank Margining Tool. This option is intended for debugging and
+	  validation and should normally be disabled.
 endif

@@ -31,6 +31,7 @@ ramstage-y	+= fsp_s_params.c
 ramstage-y	+= mca.c
 ramstage-y	+= root_complex.c
 ramstage-y	+= xhci.c
+ramstage-y	+= manifest.c
 
 smm-y		+= gpio.c
 smm-y		+= smihandler.c
@@ -39,6 +40,7 @@ smm-$(CONFIG_DEBUG_SMI) += uart.c
 CPPFLAGS_common += -I$(src)/soc/amd/mendocino/include
 CPPFLAGS_common += -I$(src)/soc/amd/mendocino/acpi
 CPPFLAGS_common += -I$(src)/vendorcode/amd/fsp/mendocino
+CPPFLAGS_common += -I$(src)/vendorcode/amd/fsp/common
 
 # ROMSIG Normally At ROMBASE + 0x20000
 # Overridden by CONFIG_AMD_FWM_POSITION_INDEX
@@ -61,12 +63,10 @@ MENDOCINO_FWM_POSITION=$(call int-add, \
 AMD_FW_AB_POSITION := 0x80
 
 MENDOCINO_FW_A_POSITION=$(call int-add, \
-	$(shell awk '$$2 == "FMAP_SECTION_FW_MAIN_A_START" {print $$3}' $(obj)/fmap_config.h) \
-	$(AMD_FW_AB_POSITION))
+	$(call get_fmap_value,FMAP_SECTION_FW_MAIN_A_START) $(AMD_FW_AB_POSITION))
 
 MENDOCINO_FW_B_POSITION=$(call int-add, \
-	$(shell awk '$$2 == "FMAP_SECTION_FW_MAIN_B_START" {print $$3}' $(obj)/fmap_config.h) \
-	$(AMD_FW_AB_POSITION))
+	$(call get_fmap_value,FMAP_SECTION_FW_MAIN_B_START) $(AMD_FW_AB_POSITION))
 
 MENDOCINO_FW_BODY_OFFSET := 0x100
 
@@ -129,20 +129,22 @@ PSP_ELF_FILE=$(objcbfs)/bootblock.elf
 PSP_BIOSBIN_SIZE=$(shell $(READELF_bootblock) -Wl $(PSP_ELF_FILE) | grep LOAD | awk '{print $$5}')
 PSP_BIOSBIN_DEST=$(shell $(READELF_bootblock) -Wl $(PSP_ELF_FILE) | grep LOAD | awk '{print $$3}')
 
+ifneq ($(CONFIG_SOC_AMD_COMMON_BLOCK_APOB_NV_DISABLE),y)
 # type = 0x63 - construct APOB NV base/size from flash map
 # The flashmap section used for this is expected to be named RW_MRC_CACHE
-APOB_NV_SIZE=$(shell awk '$$2 == "FMAP_SECTION_RW_MRC_CACHE_SIZE" {print $$3}' $(obj)/fmap_config.h)
-APOB_NV_BASE=$(shell awk '$$2 == "FMAP_SECTION_RW_MRC_CACHE_START" {print $$3}' $(obj)/fmap_config.h)
+APOB_NV_SIZE=$(call get_fmap_value,FMAP_SECTION_RW_MRC_CACHE_SIZE)
+APOB_NV_BASE=$(call get_fmap_value,FMAP_SECTION_RW_MRC_CACHE_START)
 
 ifeq ($(CONFIG_HAS_RECOVERY_MRC_CACHE),y)
 # On boards with recovery MRC cache, point type 0x63 entry to RECOVERY_MRC_CACHE.
 # Else use RW_MRC_CACHE. This entry will be added in the RO section.
-APOB_NV_RO_SIZE=$(shell awk '$$2 == "FMAP_SECTION_RECOVERY_MRC_CACHE_SIZE" {print $$3}' $(obj)/fmap_config.h)
-APOB_NV_RO_BASE=$(shell awk '$$2 == "FMAP_SECTION_RECOVERY_MRC_CACHE_START" {print $$3}' $(obj)/fmap_config.h)
+APOB_NV_RO_SIZE=$(call get_fmap_value,FMAP_SECTION_RECOVERY_MRC_CACHE_SIZE)
+APOB_NV_RO_BASE=$(call get_fmap_value,FMAP_SECTION_RECOVERY_MRC_CACHE_START)
 else
 APOB_NV_RO_SIZE=$(APOB_NV_SIZE)
 APOB_NV_RO_BASE=$(APOB_NV_BASE)
 endif
+endif # !CONFIG_SOC_AMD_COMMON_BLOCK_APOB_NV_DISABLE
 
 ifeq ($(CONFIG_VBOOT_STARTS_BEFORE_BOOTBLOCK),y)
 # type = 0x6B - PSP Shared memory location
@@ -158,11 +160,11 @@ endif # CONFIG_VBOOT_STARTS_BEFORE_BOOTBLOCK
 
 ifeq ($(CONFIG_SEPARATE_SIGNED_PSPFW),y)
 SIGNED_AMDFW_A_POSITION=$(call int-subtract, \
-	$(shell awk '$$2 == "FMAP_SECTION_SIGNED_AMDFW_A_START" {print $$3}' $(obj)/fmap_config.h) \
-	$(shell awk '$$2 == "FMAP_SECTION_FLASH_START" {print $$3}' $(obj)/fmap_config.h))
+	$(call get_fmap_value,FMAP_SECTION_SIGNED_AMDFW_A_START) \
+	$(call get_fmap_value,FMAP_SECTION_FLASH_START))
 SIGNED_AMDFW_B_POSITION=$(call int-subtract, \
-	$(shell awk '$$2 == "FMAP_SECTION_SIGNED_AMDFW_B_START" {print $$3}' $(obj)/fmap_config.h) \
-	$(shell awk '$$2 == "FMAP_SECTION_FLASH_START" {print $$3}' $(obj)/fmap_config.h))
+	$(call get_fmap_value,FMAP_SECTION_SIGNED_AMDFW_B_START) \
+	$(call get_fmap_value,FMAP_SECTION_FLASH_START))
 SIGNED_AMDFW_A_FILE=$(obj)/amdfw_a.rom.body.signed
 SIGNED_AMDFW_B_FILE=$(obj)/amdfw_b.rom.body.signed
 endif # CONFIG_SEPARATE_SIGNED_PSPFW
@@ -216,6 +218,9 @@ OPT_SPL_RW_AB_TABLE_FILE=$(call add_opt_prefix, $(SPL_RW_AB_TABLE_FILE), --spl-t
 # If vboot uses 2 RW slots, then 2 copies of PSP binaries are redundant
 OPT_RECOVERY_AB_SINGLE_COPY=$(if $(CONFIG_VBOOT_SLOTS_RW_AB), --recovery-ab-single-copy)
 
+MANIFEST_FILE=$(obj)/amdfw_manifest
+OPT_MANIFEST=$(call add_opt_prefix, $(MANIFEST_FILE), --output-manifest)
+
 AMDFW_COMMON_ARGS=$(OPT_PSP_APCB_FILES) \
 		$(OPT_APOB_ADDR) \
 		$(OPT_DEBUG_AMDFWTOOL) \
@@ -259,7 +264,8 @@ $(obj)/amdfw.rom:	$(call strip_quotes, $(PSP_BIOSBIN_FILE)) \
 		$(OPT_VERSTAGE_FILE) \
 		$(OPT_VERSTAGE_SIG_FILE) \
 		$(OPT_SPL_TABLE_FILE) \
-		--location $(shell printf "%#x" $(MENDOCINO_FWM_POSITION)) \
+		$(OPT_MANIFEST) \
+		--location $(call _tohex,$(MENDOCINO_FWM_POSITION)) \
 		--output $@
 
 ifeq ($(CONFIG_CBFS_VERIFICATION)$(CONFIG_VBOOT_STARTS_IN_BOOTBLOCK),yy)
@@ -285,8 +291,8 @@ $(obj)/amdfw_a.rom: $(obj)/amdfw.rom
 		$(OPT_SIGNED_AMDFW_A_POSITION) \
 		$(OPT_SIGNED_AMDFW_A_FILE) \
 		$(OPT_PSP_LOAD_MP2_FW) \
-		--location $(shell printf "%#x" $(MENDOCINO_FW_A_POSITION)) \
-		--body-location $(shell printf "%#x" $$(($(MENDOCINO_FW_A_POSITION) + $(MENDOCINO_FW_BODY_OFFSET)))) \
+		--location $(call _tohex,$(MENDOCINO_FW_A_POSITION)) \
+		--body-location $(call _tohex,$$(($(MENDOCINO_FW_A_POSITION) + $(MENDOCINO_FW_BODY_OFFSET)))) \
 		--anywhere \
 		--output $@
 
@@ -301,13 +307,18 @@ $(obj)/amdfw_b.rom: $(obj)/amdfw.rom
 		$(OPT_SIGNED_AMDFW_B_POSITION) \
 		$(OPT_SIGNED_AMDFW_B_FILE) \
 		$(OPT_PSP_LOAD_MP2_FW) \
-		--location $(shell printf "%#x" $(MENDOCINO_FW_B_POSITION)) \
-		--body-location $(shell printf "%#x" $$(($(MENDOCINO_FW_B_POSITION) + $(MENDOCINO_FW_BODY_OFFSET)))) \
+		--location $(call _tohex,$(MENDOCINO_FW_B_POSITION)) \
+		--body-location $(call _tohex,$$(($(MENDOCINO_FW_B_POSITION) + $(MENDOCINO_FW_BODY_OFFSET)))) \
 		--anywhere \
 		--output $@
 
 $(obj)/amdfw_a.rom.body: $(obj)/amdfw_a.rom
 $(obj)/amdfw_b.rom.body: $(obj)/amdfw_b.rom
+
+$(MANIFEST_FILE): $(obj)/amdfw.rom
+cbfs-files-y += amdfw_manifest
+amdfw_manifest-file := $(MANIFEST_FILE)
+amdfw_manifest-type := raw
 
 ifeq ($(CONFIG_VBOOT_SLOTS_RW_A)$(CONFIG_VBOOT_STARTS_BEFORE_BOOTBLOCK),yy)
 cbfs-files-y += apu/amdfw_a

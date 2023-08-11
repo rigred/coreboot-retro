@@ -363,6 +363,30 @@
                 "ranksPerChannel": 2,
                 "speedMbps": 4267
             }
-        }
+        },
+	{
+            "name": "K4UCE3Q4AB-MGCL",
+            "attribs": {
+                "densityPerChannelGb": 8,
+                "banks": 8,
+                "channelsPerDie": 4,
+                "diesPerPackage": 2,
+                "bitWidthPerChannel": 8,
+                "ranksPerChannel": 2,
+                "speedMbps": 4267
+            }
+	},
+	{
+            "name": "CXDB4ABAM-ML",
+            "attribs": {
+                "densityPerChannelGb": 8,
+                "banks": 8,
+                "channelsPerDie": 1,
+                "diesPerPackage": 2,
+                "bitWidthPerChannel": 16,
+                "ranksPerChannel": 1,
+                "speedMbps": 4267
+            }
+	}
     ]
 }

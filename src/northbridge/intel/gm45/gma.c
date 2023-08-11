@@ -29,6 +29,33 @@ void gtt_write(u32 reg, u32 data)
 	write32(res2mmio(gtt_res, reg, 0), data);
 }
 
+static const char *gm45_get_lvds_edid_str(void)
+{
+	u8 *mmio;
+	u8 edid_data_lvds[128];
+	struct edid edid_lvds;
+	static char edid_str[EDID_ASCII_STRING_LENGTH + 1];
+
+	if (edid_str[0])
+		return edid_str;
+	if (!gtt_res) {
+		printk(BIOS_ERR, "Never call %s() outside dev.init() context.\n", __func__);
+		return NULL;
+	}
+	mmio = res2mmio(gtt_res, 0, 0);
+
+	printk(BIOS_DEBUG, "LVDS EDID\n");
+	intel_gmbus_read_edid(mmio + GMBUS0, GMBUS_PORT_PANEL, 0x50,
+			edid_data_lvds, sizeof(edid_data_lvds));
+	intel_gmbus_stop(mmio + GMBUS0);
+
+	if (decode_edid(edid_data_lvds, sizeof(edid_data_lvds), &edid_lvds)
+	    != EDID_CONFORMANT)
+		return NULL;
+	memcpy(edid_str, edid_lvds.ascii_string, sizeof(edid_str));
+	return edid_str;
+}
+
 static u32 get_cdclk(struct device *const dev)
 {
 	const u16 cdclk_sel = pci_read_config16(dev, GCFGC_OFFSET) & GCFGC_CD_MASK;
@@ -60,16 +87,21 @@ static u32 freq_to_blc_pwm_ctl(struct device *const dev,
 		return (blc_mod << 16) | blc_mod;
 }
 
-u16 get_blc_pwm_freq_value(const char *edid_ascii_string)
+u16 get_blc_pwm_freq_value(void)
 {
 	static u16 blc_pwm_freq;
 	const struct blc_pwm_t *blc_pwm;
 	int i;
 	int blc_array_len;
 
-	/* Prevent null-deref on strcmp() below */
-	if (blc_pwm_freq > 0 || !edid_ascii_string)
+	if (blc_pwm_freq > 0)
 		return blc_pwm_freq;
+
+	const char *const edid_ascii_string = gm45_get_lvds_edid_str();
+	if (!edid_ascii_string) {
+		printk(BIOS_ERR, "Need LVDS EDID string to derive backlight PWM frequency!\n");
+		return 0;
+	}
 
 	blc_array_len = get_blc_values(&blc_pwm);
 	/* Find EDID string and pwm freq in lookup table */
@@ -83,19 +115,17 @@ u16 get_blc_pwm_freq_value(const char *edid_ascii_string)
 	}
 
 	if (i == blc_array_len)
-		printk(BIOS_NOTICE, "Your panels EDID `%s` wasn't found in the"
-		       "lookup table.\n You may have issues with your panels"
-		       "backlight.\n If you want to help improving coreboot"
-		       "please report: this EDID string\n and the result"
-		       "of `intel_read read BLC_PWM_CTL`"
-		       "(from intel-gpu-tools)\n while running vendor BIOS\n",
+		printk(BIOS_NOTICE, "Your panel's EDID `%s` wasn't found in the lookup table.\n"
+		       "You may have issues with your panel's backlight.\n"
+		       "If you want to help improving coreboot please report: this EDID string\n"
+		       "and the result of `intel_reg read BLC_PWM_CTL` (from intel-gpu-tools)\n"
+		       "while running vendor BIOS\n",
 		       edid_ascii_string);
 
 	return blc_pwm_freq;
 }
 
-static void gma_pm_init_post_vbios(struct device *const dev,
-				const char *edid_ascii_string)
+static void gma_pm_init_post_vbios(struct device *const dev)
 {
 	const struct northbridge_intel_gm45_config *const conf = dev->chip_info;
 
@@ -132,7 +162,7 @@ static void gma_pm_init_post_vbios(struct device *const dev,
 	reg8 = 100;
 	if (conf->duty_cycle != 0)
 		reg8 = conf->duty_cycle;
-	pwm_freq = get_blc_pwm_freq_value(edid_ascii_string);
+	pwm_freq = get_blc_pwm_freq_value();
 	if (pwm_freq == 0 && conf->default_pwm_freq != 0)
 		pwm_freq = conf->default_pwm_freq;
 
@@ -143,56 +173,24 @@ static void gma_pm_init_post_vbios(struct device *const dev,
 								reg8));
 }
 
-const char *gm45_get_lvds_edid_str(struct device *dev)
-{
-	u8 *mmio;
-	u8 edid_data_lvds[128];
-	struct edid edid_lvds;
-	static char edid_str[EDID_ASCII_STRING_LENGTH + 1];
-
-	if (edid_str[0])
-		return edid_str;
-	if (!gtt_res)
-		gtt_res = probe_resource(dev, PCI_BASE_ADDRESS_0);
-	if (!gtt_res)
-		return NULL;
-	mmio = res2mmio(gtt_res, 0, 0);
-
-	printk(BIOS_DEBUG, "LVDS EDID\n");
-	intel_gmbus_read_edid(mmio + GMBUS0, GMBUS_PORT_PANEL, 0x50,
-			edid_data_lvds, sizeof(edid_data_lvds));
-	intel_gmbus_stop(mmio + GMBUS0);
-
-	if (decode_edid(edid_data_lvds, sizeof(edid_data_lvds), &edid_lvds)
-	    != EDID_CONFORMANT)
-		return NULL;
-	memcpy(edid_str, edid_lvds.ascii_string, sizeof(edid_str));
-	return edid_str;
-}
-
 static void gma_func0_init(struct device *dev)
 {
-	u8 *mmio;
 	const struct northbridge_intel_gm45_config *const conf = dev->chip_info;
-	const char *edid_str;
 
-	intel_gma_init_igd_opregion();
-
-	edid_str = gm45_get_lvds_edid_str(dev);
-	if (!edid_str)
-		printk(BIOS_ERR, "Failed to obtain LVDS EDID string!\n");
-
-	/* gtt_res should have been inited in gm45_get_lvds_edid_str() */
+	/* Probe MMIO resource first. It's needed even for
+	   intel_gma_init_igd_opregion() which may call back. */
+	gtt_res = probe_resource(dev, PCI_BASE_ADDRESS_0);
 	if (!gtt_res)
 		return;
-	mmio = res2mmio(gtt_res, 0, 0);
+
+	intel_gma_init_igd_opregion();
 
 	/*
 	 * GTT base is at a 2M offset and is 2M big. If GTT is smaller than 2M
 	 * cycles are simply not decoded which is fine.
 	 */
 	pci_or_config16(dev, PCI_COMMAND, PCI_COMMAND_MASTER);
-	memset(mmio + 2 * MiB, 0, 2 * MiB);
+	memset(res2mmio(gtt_res, 2*MiB, 0), 0, 2*MiB);
 
 	if (CONFIG(NO_GFX_INIT))
 		pci_and_config16(dev, PCI_COMMAND, ~PCI_COMMAND_MASTER);
@@ -204,7 +202,7 @@ static void gma_func0_init(struct device *dev)
 	}
 
 	/* Post VBIOS init */
-	gma_pm_init_post_vbios(dev, edid_str);
+	gma_pm_init_post_vbios(dev);
 
 	if (CONFIG(MAINBOARD_USE_LIBGFXINIT) && !acpi_is_wakeup_s3()) {
 		int vga_disable = (pci_read_config16(dev, D0F0_GGC) & 2) >> 1;

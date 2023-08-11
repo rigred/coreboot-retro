@@ -80,20 +80,16 @@ static inline void noop_set_resources(struct device *dev) {}
 struct bus {
 	DEVTREE_CONST struct device *dev;	/* This bridge device */
 	DEVTREE_CONST struct device *children;	/* devices behind this bridge */
-	DEVTREE_CONST struct bus *next;    /* The next bridge on this device */
-	unsigned int	bridge_ctrl;	/* Bridge control register */
+	DEVTREE_CONST struct bus *next;		/* The next bridge on this device */
+	unsigned int	bridge_ctrl;		/* Bridge control register */
 	uint16_t	bridge_cmd;		/* Bridge command register */
-	unsigned char	link_num;	/* The index of this link */
-	uint16_t	secondary;	/* secondary bus number */
-	uint16_t	subordinate;	/* subordinate bus number */
+	unsigned char	link_num;		/* The index of this link */
+	uint16_t	secondary;		/* secondary bus number */
+	uint16_t	subordinate;		/* subordinate bus number */
 	uint16_t	max_subordinate;	/* max subordinate bus number */
-	unsigned char   cap;		/* PCi capability offset */
-	uint32_t	hcdn_reg;		/* For HyperTransport link  */
 
 	unsigned int	reset_needed : 1;
-	unsigned int	disable_relaxed_ordering : 1;
-	unsigned int	ht_link_up : 1;
-	unsigned int	no_vga16 : 1;	/* No support for 16-bit VGA decoding */
+	unsigned int	no_vga16 : 1;		/* No support for 16-bit VGA decoding */
 };
 
 /*
@@ -207,7 +203,7 @@ bool is_enabled_pci(const struct device *pci);
 bool is_pci_dev_on_bus(const struct device *pci, unsigned int bus);
 
 /* Returns whether there is a hotplug port on the path to the given device. */
-extern bool dev_path_hotplug(const struct device *);
+bool dev_path_hotplug(const struct device *);
 
 /* Option ROM helper functions */
 void run_bios(struct device *dev, unsigned long addr);

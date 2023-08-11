@@ -1,3 +1,11 @@
+fw_config
+	field AUDIO_CODEC_SOURCE 41 43
+		option AUDIO_CODEC_ALC5682I_VS  0
+		option AUDIO_CODEC_ALC5682_VD   1
+	end
+end
+
+
 chip soc/intel/jasperlake
 
 	# Intel Common SoC Config
@@ -23,6 +31,19 @@ chip soc/intel/jasperlake
 				.sda_hold = 40,
 			}
 		},
+	}"
+
+	# Power limit config
+	register "power_limits_config[JSL_N4500_6W_CORE]" = "{
+		.tdp_pl1_override = 6,
+		.tdp_pl2_override = 20,
+		.tdp_pl4 = 60,
+	}"
+
+	register "power_limits_config[JSL_N5100_6W_CORE]" = "{
+		.tdp_pl1_override = 6,
+		.tdp_pl2_override = 20,
+		.tdp_pl4 = 60,
 	}"
 
 	# Enable Root Port 3 (index 2) for LAN
@@ -173,6 +194,19 @@ chip soc/intel/jasperlake
 		device pci 15.3 off end # I2C 3
 		device pci 19.0 on
 			chip drivers/i2c/generic
+				register "hid" = ""10EC5682""
+				register "name" = ""RT58""
+				register "desc" = ""Realtek RT5682""
+				register "irq_gpio" = "ACPI_GPIO_IRQ_EDGE_BOTH(GPP_D16)"
+				register "property_count" = "1"
+				register "property_list[0].type" = "ACPI_DP_TYPE_INTEGER"
+				register "property_list[0].name" = ""realtek,jd-src""
+				register "property_list[0].integer" = "1"
+				device i2c 1a on
+					probe AUDIO_CODEC_SOURCE AUDIO_CODEC_ALC5682_VD
+				end
+			end
+			chip drivers/i2c/generic
 				register "hid" = ""RTL5682""
 				register "name" = ""RT58""
 				register "desc" = ""Realtek RT5682""
@@ -181,7 +215,9 @@ chip soc/intel/jasperlake
 				register "property_list[0].type" = "ACPI_DP_TYPE_INTEGER"
 				register "property_list[0].name" = ""realtek,jd-src""
 				register "property_list[0].integer" = "1"
-				device i2c 1a on end
+				device i2c 1a on
+					probe AUDIO_CODEC_SOURCE AUDIO_CODEC_ALC5682I_VS
+				end
 			end
 		end # I2C 4
 		device pci 1c.2 on

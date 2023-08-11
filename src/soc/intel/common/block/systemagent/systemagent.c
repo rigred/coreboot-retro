@@ -109,7 +109,7 @@ void sa_add_fixed_mmio_resources(struct device *dev, int *resource_cnt,
 			sa_fixed_resources[i].description, sa_fixed_resources[i].base,
 			sa_fixed_resources[i].size);
 
-		mmio_resource_kb(dev, index++, base / KiB, size / KiB);
+		mmio_range(dev, index++, base, size);
 	}
 
 	*resource_cnt = index;
@@ -240,7 +240,7 @@ static void imr_resource(struct device *dev, int idx, uint32_t base,
 	 * out of MTRRs. Memory reserved by IMRs is not usable for host
 	 * so mark it reserved.
 	 */
-	reserved_ram_resource_kb(dev, idx, base_k, size_k);
+	reserved_ram_range(dev, idx, base_k * KiB, size_k * KiB);
 }
 
 /*
@@ -436,6 +436,19 @@ static const unsigned short systemagent_ids[] = {
 	PCI_DID_INTEL_ADL_N_ID_2,
 	PCI_DID_INTEL_ADL_N_ID_3,
 	PCI_DID_INTEL_ADL_N_ID_4,
+	PCI_DID_INTEL_RPL_HX_ID_1,
+	PCI_DID_INTEL_RPL_HX_ID_2,
+	PCI_DID_INTEL_RPL_HX_ID_3,
+	PCI_DID_INTEL_RPL_HX_ID_4,
+	PCI_DID_INTEL_RPL_HX_ID_5,
+	PCI_DID_INTEL_RPL_HX_ID_6,
+	PCI_DID_INTEL_RPL_HX_ID_7,
+	PCI_DID_INTEL_RPL_HX_ID_8,
+	PCI_DID_INTEL_RPL_S_ID_1,
+	PCI_DID_INTEL_RPL_S_ID_2,
+	PCI_DID_INTEL_RPL_S_ID_3,
+	PCI_DID_INTEL_RPL_S_ID_4,
+	PCI_DID_INTEL_RPL_S_ID_5,
 	PCI_DID_INTEL_RPL_P_ID_1,
 	PCI_DID_INTEL_RPL_P_ID_2,
 	PCI_DID_INTEL_RPL_P_ID_3,

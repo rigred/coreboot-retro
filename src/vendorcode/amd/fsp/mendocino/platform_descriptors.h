@@ -68,6 +68,16 @@ enum dxio_aspm_type {
 	ASPM_MAX		// Not valid value, used to verify input
 };
 
+/* PCIe link hotplug */
+enum dxio_link_hotplug_type {
+	HOTPLUG_DISABLED = 0,
+	HOTPLUG_BASIC,
+	HOTPLUG_SERVER,
+	HOTPLUG_ENHANCED,
+	HOTPLUG_INBOARD,
+	HOTPLUG_SERVER_SSD,
+};
+
 enum dxio_port_param_type {
 	PP_DEVICE = 1,
 	PP_FUNCTION,
@@ -92,6 +102,7 @@ enum dxio_port_param_type {
 	PP_PHY_PARAM,
 	PP_ESM,
 	PP_CCIX,
+	PP_CXL,
 	PP_GEN3_DS_TX_PRESET,
 	PP_GEN3_DS_RX_PRESET_HINT,
 	PP_GEN3_US_TX_PRESET,
@@ -106,7 +117,37 @@ enum dxio_port_param_type {
 	PP_INVERT_POLARITY,
 	PP_TARGET_LINK_SPEED,
 	PP_GEN4_DLF_CAP_DISABLE,
-	PP_GEN4_DLF_EXCHG_DISABLE
+	PP_GEN4_DLF_EXCHG_DISABLE,
+	PP_I2C_EXPANDER_ADDRESS,
+	PP_I2C_EXPANDER_TYPE,
+	PP_UBM_SWITCH0_ADDR,
+	PP_UBM_SWITCH0_SELECT,
+	PP_UBM_SWITCH0_TYPE,
+	PP_UBM_SWITCH1_ADDR,
+	PP_UBM_SWITCH1_SELECT,
+	PP_UBM_SWITCH1_TYPE,
+	PP_UBM_HFC_INDEX,
+	PP_UBM_DFC_INDEX,
+	PP_GPIOx_I2C_RESET,
+	PP_GPIOx_BP_TYPE,
+	PP_START_LANE,
+	PP_OCP_PRESENT_START,
+	PP_OCP_PRESENT_COUNT,
+	PP_U3_PRESENT_PIN,
+	PP_U3_IFDET_PIN,
+	PP_U3_IFDET2_PIN,
+	PP_ALWAYS_EXPOSE,
+	PP_SRIS_ENABLED,
+	PP_SRIS_SKIP_INTERVAL,
+	PP_SRIS_LOWER_OS_GEN_SUP,
+	PP_SRIS_LOWER_OS_RCV_SUP,
+	PP_SRIS_AUTODETECT_MODE,
+	PP_SRIS_SKP_INTERVAL_SEL,
+	PP_SRIS_AUTODETECT_FACTOR,
+	PP_LEGACY_SWITCH0_ADDR,
+	PP_LEGACY_SWITCH0_SELECT,
+	PP_NPEM_ENABLE,
+	PP_NPEM_CAPABILITES,
 };
 
 /* DDI Aux channel */
@@ -151,7 +192,7 @@ enum ddi_connector_type {
 	DDI_MAX_CONNECTOR_TYPE	// Not valid value, used to verify input
 };
 
-/* Cezanne DDI Descriptor: used for configuring display outputs */
+/* DDI Descriptor: used for configuring display outputs */
 typedef struct __packed {
 	uint8_t		connector_type;	// see ddi_connector_type
 	uint8_t		aux_index;	// see ddi_aux_type
@@ -191,7 +232,7 @@ typedef struct __packed {
 	uint32_t	link_aspm_L1_1		:1;	// En/Dis root port capabilities for L1.1
 	uint32_t	link_aspm_L1_2		:1;	// En/Dis root port capabilities for L1.2
 	uint32_t	clk_req			:4;	// See cpm_clk_req
-	uint8_t		link_hotplug;			// Currently unused by FSP
+	uint8_t		link_hotplug;			// See dxio_link_hotplug_type
 	uint8_t		slot_power_limit;		// Currently unused by FSP
 	uint32_t	slot_power_limit_scale	:2;	// Currently unused by FSP
 	uint32_t	reserved_4		:6;

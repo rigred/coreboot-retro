@@ -37,6 +37,7 @@ smm-$(CONFIG_DEBUG_SMI) += uart.c
 CPPFLAGS_common += -I$(src)/soc/amd/cezanne/include
 CPPFLAGS_common += -I$(src)/soc/amd/cezanne/acpi
 CPPFLAGS_common += -I$(src)/vendorcode/amd/fsp/cezanne
+CPPFLAGS_common += -I$(src)/vendorcode/amd/fsp/common
 
 # ROMSIG Normally At ROMBASE + 0x20000
 # Overridden by CONFIG_AMD_FWM_POSITION_INDEX
@@ -59,12 +60,10 @@ CEZANNE_FWM_POSITION=$(call int-add, \
 AMD_FW_AB_POSITION := 0x40
 
 CEZANNE_FW_A_POSITION=$(call int-add, \
-	$(shell awk '$$2 == "FMAP_SECTION_FW_MAIN_A_START" {print $$3}' $(obj)/fmap_config.h) \
-	$(AMD_FW_AB_POSITION))
+	$(call get_fmap_value,FMAP_SECTION_FW_MAIN_A_START) $(AMD_FW_AB_POSITION))
 
 CEZANNE_FW_B_POSITION=$(call int-add, \
-	$(shell awk '$$2 == "FMAP_SECTION_FW_MAIN_B_START" {print $$3}' $(obj)/fmap_config.h) \
-	$(AMD_FW_AB_POSITION))
+	$(call get_fmap_value,FMAP_SECTION_FW_MAIN_B_START) $(AMD_FW_AB_POSITION))
 #
 # PSP Directory Table items
 #
@@ -128,10 +127,12 @@ PSP_ELF_FILE=$(objcbfs)/bootblock.elf
 PSP_BIOSBIN_SIZE=$(shell $(READELF_bootblock) -Wl $(PSP_ELF_FILE) | grep LOAD | awk '{print $$5}')
 PSP_BIOSBIN_DEST=$(shell $(READELF_bootblock) -Wl $(PSP_ELF_FILE) | grep LOAD | awk '{print $$3}')
 
+ifneq ($(CONFIG_SOC_AMD_COMMON_BLOCK_APOB_NV_DISABLE),y)
 # type = 0x63 - construct APOB NV base/size from flash map
 # The flashmap section used for this is expected to be named RW_MRC_CACHE
-APOB_NV_SIZE=$(shell awk '$$2 == "FMAP_SECTION_RW_MRC_CACHE_SIZE" {print $$3}' $(obj)/fmap_config.h)
-APOB_NV_BASE=$(shell awk '$$2 == "FMAP_SECTION_RW_MRC_CACHE_START" {print $$3}' $(obj)/fmap_config.h)
+APOB_NV_SIZE=$(call get_fmap_value,FMAP_SECTION_RW_MRC_CACHE_SIZE)
+APOB_NV_BASE=$(call get_fmap_value,FMAP_SECTION_RW_MRC_CACHE_START)
+endif # !CONFIG_SOC_AMD_COMMON_BLOCK_APOB_NV_DISABLE
 
 ifeq ($(CONFIG_VBOOT_STARTS_BEFORE_BOOTBLOCK),y)
 # type = 0x6B - PSP Shared memory location
@@ -221,7 +222,7 @@ $(obj)/amdfw.rom:	$(call strip_quotes, $(PSP_BIOSBIN_FILE)) \
 		$(OPT_APOB_NV_BASE) \
 		$(OPT_VERSTAGE_FILE) \
 		$(OPT_VERSTAGE_SIG_FILE) \
-		--location $(shell printf "%#x" $(CEZANNE_FWM_POSITION)) \
+		--location $(call _tohex,$(CEZANNE_FWM_POSITION)) \
 		--multilevel \
 		--output $@
 
@@ -238,7 +239,7 @@ $(obj)/amdfw_a.rom: $(obj)/amdfw.rom
 		$(AMDFW_COMMON_ARGS) \
 		$(OPT_APOB_NV_SIZE) \
 		$(OPT_APOB_NV_BASE) \
-		--location $(shell printf "%#x" $(CEZANNE_FW_A_POSITION)) \
+		--location $(call _tohex,$(CEZANNE_FW_A_POSITION)) \
 		--anywhere \
 		--multilevel \
 		--output $@
@@ -250,7 +251,7 @@ $(obj)/amdfw_b.rom: $(obj)/amdfw.rom
 		$(AMDFW_COMMON_ARGS) \
 		$(OPT_APOB_NV_SIZE) \
 		$(OPT_APOB_NV_BASE) \
-		--location $(shell printf "%#x" $(CEZANNE_FW_B_POSITION)) \
+		--location $(call _tohex,$(CEZANNE_FW_B_POSITION)) \
 		--anywhere \
 		--multilevel \
 		--output $@

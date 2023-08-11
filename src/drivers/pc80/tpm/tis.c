@@ -114,6 +114,7 @@ static const struct device_name infineon_devices[] = {
 #if CONFIG(TPM2)
 	{0x001a, "SLB9665 TT 2.0"},
 	{0x001b, "SLB9670 TT 2.0"},
+	{0x001d, "SLB9672 TT 2.0"},
 #else
 	{0x001a, "SLB9660 TT 1.2"},
 	{0x001b, "SLB9670 TT 1.2"},
@@ -711,7 +712,7 @@ static int tis_setup_interrupt(int vector, int polarity)
 static void lpc_tpm_read_resources(struct device *dev)
 {
 	/* Static 5K memory region specified in Kconfig */
-	mmio_resource_kb(dev, 0, CONFIG_TPM_TIS_BASE_ADDRESS >> 10, 0x5000 >> 10);
+	mmio_range(dev, 0, CONFIG_TPM_TIS_BASE_ADDRESS, 0x5000);
 }
 
 static void lpc_tpm_set_resources(struct device *dev)

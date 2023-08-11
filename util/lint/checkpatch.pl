@@ -4214,11 +4214,40 @@ sub process {
 			     "type '$tmp' should be specified in [[un]signed] [short|int|long|long long] order\n" . $herecurr);
 		}
 
+# check for unnecessary <signed> int declarations of short/long/long long
+		while ($sline =~ m{\b($TypeMisordered(\s*\*)*|$C90_int_types)\b}g) {
+			my $type = trim($1);
+			next if ($type !~ /\bint\b/);
+			next if ($type !~ /\b(?:short|long\s+long|long)\b/);
+			my $new_type = $type;
+			$new_type =~ s/\b\s*int\s*\b/ /;
+			$new_type =~ s/\b\s*(?:un)?signed\b\s*/ /;
+			$new_type =~ s/^const\s+//;
+			$new_type = "unsigned $new_type" if ($type =~ /\bunsigned\b/);
+			$new_type = "const $new_type" if ($type =~ /^const\b/);
+			$new_type =~ s/\s+/ /g;
+			$new_type = trim($new_type);
+			if (WARN("UNNECESSARY_INT",
+				 "Prefer '$new_type' over '$type' as the int is unnecessary\n" . $herecurr) &&
+			    $fix) {
+				$fixed[$fixlinenr] =~ s/\b\Q$type\E\b/$new_type/;
+			}
+		}
+
 # check for static const char * arrays.
 		if ($line =~ /\bstatic\s+const\s+char\s*\*\s*(\w+)\s*\[\s*\]\s*=\s*/) {
 			WARN("STATIC_CONST_CHAR_ARRAY",
 			     "static const char * array should probably be static const char * const\n" .
 				$herecurr);
+		}
+
+# check for initialized const char arrays that should be static const
+		if ($line =~ /^\+\s*const\s+(char|unsigned\s+char|_*u8|(?:[us]_)?int8_t)\s+\w+\s*\[\s*(?:\w+\s*)?\]\s*=\s*"/) {
+			if (WARN("STATIC_CONST_CHAR_ARRAY",
+				 "const array should probably be static const\n" . $herecurr) &&
+			    $fix) {
+				$fixed[$fixlinenr] =~ s/(^.\s*)const\b/${1}static const/;
+			}
 		}
 
 # check for static char foo[] = "bar" declarations.
@@ -4237,6 +4266,18 @@ sub process {
 			} elsif ($sline !~ /\bconst\s+\Q$found\E\s+const\s+\w+\s*\[/) {
 				WARN("CONST_CONST",
 				     "'const $found const' should probably be 'const $found'\n" . $herecurr);
+			}
+		}
+
+# check for const static or static <non ptr type> const declarations
+# prefer 'static const <foo>' over 'const static <foo>' and 'static <foo> const'
+		if ($sline =~ /^\+\s*const\s+static\s+($Type)\b/ ||
+		    $sline =~ /^\+\s*static\s+($BasicType)\s+const\b/) {
+			if (WARN("STATIC_CONST",
+				 "Move const after static - use 'static const $1'\n" . $herecurr) &&
+			    $fix) {
+				$fixed[$fixlinenr] =~ s/\bconst\s+static\b/static const/;
+				$fixed[$fixlinenr] =~ s/\bstatic\s+($BasicType)\s+const\b/static const $1/;
 			}
 		}
 
@@ -5180,10 +5221,34 @@ sub process {
 		    defined($stat) && defined($cond) &&
 		    $line =~ /\b(?:if|while|for)\s*\(/ && $line !~ /^.\s*#/) {
 			my ($s, $c) = ($stat, $cond);
+			my $fixed_assign_in_if = 0;
 
 			if ($c =~ /\bif\s*\(.*[^<>!=]=[^=].*/s) {
-				ERROR("ASSIGN_IN_IF",
-				      "do not use assignment in if condition\n" . $herecurr);
+				if (ERROR("ASSIGN_IN_IF",
+					  "do not use assignment in if condition\n" . $herecurr) &&
+				    $fix && $perl_version_ok) {
+					if ($rawline =~ /^\+(\s+)if\s*\(\s*(\!)?\s*\(\s*(($Lval)\s*=\s*$LvalOrFunc)\s*\)\s*(?:($Compare)\s*($FuncArg))?\s*\)\s*(\{)?\s*$/) {
+						my $space = $1;
+						my $not = $2;
+						my $statement = $3;
+						my $assigned = $4;
+						my $test = $8;
+						my $against = $9;
+						my $brace = $15;
+						fix_delete_line($fixlinenr, $rawline);
+						fix_insert_line($fixlinenr, "$space$statement;");
+						my $newline = "${space}if (";
+						$newline .= '!' if defined($not);
+						$newline .= '(' if (defined $not && defined($test) && defined($against));
+						$newline .= "$assigned";
+						$newline .= " $test $against" if (defined($test) && defined($against));
+						$newline .= ')' if (defined $not && defined($test) && defined($against));
+						$newline .= ')';
+						$newline .= " {" if (defined($brace));
+						fix_insert_line($fixlinenr + 1, $newline);
+						$fixed_assign_in_if = 1;
+					}
+				}
 			}
 
 			# Find out what is on the end of the line after the
@@ -5205,8 +5270,20 @@ sub process {
 					$stat_real = "[...]\n$stat_real";
 				}
 
-				ERROR("TRAILING_STATEMENTS",
-				      "trailing statements should be on next line\n" . $herecurr . $stat_real);
+				if (ERROR("TRAILING_STATEMENTS",
+					  "trailing statements should be on next line\n" . $herecurr . $stat_real) &&
+				    !$fixed_assign_in_if &&
+				    $cond_lines == 0 &&
+				    $fix && $perl_version_ok &&
+				    $fixed[$fixlinenr] =~ /^\+(\s*)((?:if|while|for)\s*$balanced_parens)\s*(.*)$/) {
+					my $indent = $1;
+					my $test = $2;
+					my $rest = rtrim($4);
+					if ($rest =~ /;$/) {
+						$fixed[$fixlinenr] = "\+$indent$test";
+						fix_insert_line($fixlinenr + 1, "$indent\t$rest");
+					}
+				}
 			}
 		}
 
@@ -6818,6 +6895,16 @@ sub process {
 		    $line =~ /\b((?:un)?likely)\s*\(\s*$FuncArg\s*\)\s*$Compare/) {
 			WARN("LIKELY_MISUSE",
 			     "Using $1 should generally have parentheses around the comparison\n" . $herecurr);
+		}
+
+# check for array definition/declarations that should use flexible arrays instead
+		if ($sline =~ /^[\+ ]\s*\}(?:\s*__packed)?\s*;\s*$/ &&
+		    $prevline =~ /^\+\s*(?:\}(?:\s*__packed\s*)?|$Type)\s*$Ident\s*\[\s*(0|1)\s*\]\s*;\s*$/) {
+			if (ERROR("FLEXIBLE_ARRAY",
+				  "Use C99 flexible arrays - see https://docs.kernel.org/process/deprecated.html#zero-length-and-one-element-arrays\n" . $hereprev) &&
+			    $1 == '0' && $fix) {
+				$fixed[$fixlinenr - 1] =~ s/\[\s*0\s*\]/[]/;
+			}
 		}
 
 # whine mightly about in_atomic

@@ -190,16 +190,16 @@ endif
 # are reproducible
 export LANG LC_ALL TZ SOURCE_DATE_EPOCH
 
-ifneq ($(CONFIG_MMX),y)
-CFLAGS_x86_32 += -mno-mmx
-endif
-
 ifneq ($(UNIT_TEST),1)
 include toolchain.inc
 endif
 
 strip_quotes = $(strip $(subst ",,$(subst \",,$(1))))
 # fix makefile syntax highlighting after strip macro \" "))
+
+ifneq ($(NOCOMPILE),1)
+$(shell rm -f $(CCACHE_STATSLOG))
+endif
 
 # The primary target needs to be here before we include the
 # other files
@@ -273,17 +273,18 @@ src-to-ali=\
 # Add paths to files in X-y to X-srcs
 # Add subdirs-y to subdirs
 includemakefiles= \
-	$(foreach class,classes subdirs $(classes) $(special-classes), $(eval $(class)-y:=)) \
-	$(eval -include $(1)) \
-	$(foreach class,$(classes-y), $(call add-class,$(class))) \
-	$(foreach special,$(special-classes), \
-		$(foreach item,$($(special)-y), $(call $(special)-handler,$(dir $(1)),$(item)))) \
-	$(foreach class,$(classes), \
-		$(eval $(class)-srcs+= \
-			$$(subst $(absobj)/,$(obj)/, \
-			$$(subst $(top)/,, \
-			$$(abspath $$(subst $(dir $(1))/,/,$$(addprefix $(dir $(1)),$$($(class)-y)))))))) \
-	$(eval subdirs+=$$(subst $(CURDIR)/,,$$(wildcard $$(abspath $$(addprefix $(dir $(1)),$$(subdirs-y))))))
+	$(if $(wildcard $(1)), \
+		$(foreach class,classes subdirs $(classes) $(special-classes), $(eval $(class)-y:=)) \
+		$(eval -include $(1)) \
+		$(foreach class,$(classes-y), $(call add-class,$(class))) \
+		$(foreach special,$(special-classes), \
+			$(foreach item,$($(special)-y), $(call $(special)-handler,$(dir $(1)),$(item)))) \
+		$(foreach class,$(classes), \
+			$(eval $(class)-srcs+= \
+				$$(subst $(absobj)/,$(obj)/, \
+				$$(subst $(top)/,, \
+				$$(abspath $$(subst $(dir $(1))/,/,$$(addprefix $(dir $(1)),$$($(class)-y)))))))) \
+		$(eval subdirs+=$$(subst $(CURDIR)/,,$$(wildcard $$(abspath $$(addprefix $(dir $(1)),$$(subdirs-y)))))))
 
 # For each path in $(subdirs) call includemakefiles
 # Repeat until subdirs is empty

@@ -128,18 +128,23 @@ Method (GC6I, 0, Serialized)
 	/* Deassert PG_GPU_ALLRAILS */
 	CTXS (GPIO_GPU_ALLRAILS_PG)
 
+	/* Ramp down FBVDD - TODO: Remove Agah when board is dropped */
+#if CONFIG(BOARD_GOOGLE_AGAH)
+	STXS (GPIO_FBVDD_PWR_EN)
+#else
+	CTXS (GPIO_FBVDD_PWR_EN)
+#endif
+
 	/* Ramp down PEXVDD */
 	CTXS (GPIO_PEXVDD_PWR_EN)
-	GPPL (GPIO_PEXVDD_PG, 0, 20)
 #if CONFIG(BOARD_GOOGLE_AGAH)
 	Sleep (10)
 #else
-	Sleep (3)
+	Sleep (2)
 #endif
 
 	/* Deassert EN_PPVAR_GPU_NVVDD */
 	CTXS (GPIO_NVVDD_PWR_EN)
-	GPPL (NVPG, 0, 20)
 	Sleep (2)
 
 	/* Assert GPU_PERST_L */
@@ -172,6 +177,14 @@ Method (GC6O, 0, Serialized)
 	/* Ramp up PEXVDD */
 	STXS (GPIO_PEXVDD_PWR_EN)
 	GPPL (GPIO_PEXVDD_PG, 1, 4)
+
+	/* Ramp up FBVDD - TODO: Remove Agah when board is dropped */
+#if CONFIG(BOARD_GOOGLE_AGAH)
+	CTXS (GPIO_FBVDD_PWR_EN)
+#else
+	STXS (GPIO_FBVDD_PWR_EN)
+#endif
+
 
 	/* Assert PG_GPU_ALLRAILS */
 	STXS (GPIO_GPU_ALLRAILS_PG)
@@ -265,40 +278,34 @@ Method (PGOF, 0, Serialized)
 	CTXS (GPIO_GPU_ALLRAILS_PG)
 	Sleep (1)
 
-	/* Ramp down FBVDD and let rail discharge to <10% */
+	/* Ramp down FBVDD */
 #if CONFIG(BOARD_GOOGLE_AGAH)
 	STXS (GPIO_FBVDD_PWR_EN)
 #else
 	CTXS (GPIO_FBVDD_PWR_EN)
 #endif
-	GPPL (GPIO_FBVDD_PG, 0, 20)
 
 	/* Ramp down PEXVDD and let rail discharge to <10% */
 	CTXS (GPIO_PEXVDD_PWR_EN)
-	GPPL (GPIO_PEXVDD_PG, 0, 20)
 #if CONFIG(BOARD_GOOGLE_AGAH)
 	Sleep (10)
 #else
-	Sleep (3)
+	Sleep (2)
 #endif
 
-	/* Ramp down NVVDD and let rail discharge to <10% */
+	/* Ramp down NVVDD */
 	CTXS (GPIO_NVVDD_PWR_EN)
-	GPPL (NVPG, 0, 20)
 	Sleep (2)
 
-	/* Ramp down NV33 and let rail discharge to <10% */
+	/* Ramp down NV33 */
 	CTXS (GPIO_NV33_PWR_EN)
-	GPPL (GPIO_NV33_PG, 0, 20)
 	Sleep (4)
 
 	/* Ramp down 1.8V */
 	CTXS (GPEN)
-	GPPL (GPIO_1V8_PG, 0, 20)
 
 	/* Ramp down 1.2V rail on boards with support */
-	STXS (GPIO_NV12_PWR_EN)
-	GPPL (GPIO_NV12_PG, 0, 5)
+	CTXS (GPIO_NV12_PWR_EN)
 
 	GCOT = Timer
 

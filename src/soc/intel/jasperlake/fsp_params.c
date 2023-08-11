@@ -131,6 +131,27 @@ void platform_fsp_silicon_init_params_cb(FSPS_UPD *supd)
 			params->Usb3HsioTxDownscaleAmp[i] =
 				config->usb3_ports[i].tx_downscale_amp;
 		}
+		/* Enable USB3 Gen2 */
+		if (config->usb3_ports[i].gen2_tx_rate0_uniq_tran_enable) {
+			params->Usb3HsioTxRate0UniqTranEnable[i] = 1;
+			params->Usb3HsioTxRate0UniqTran[i] =
+				config->usb3_ports[i].gen2_tx_rate0_uniq_tran;
+		}
+		if (config->usb3_ports[i].gen2_tx_rate1_uniq_tran_enable) {
+			params->Usb3HsioTxRate1UniqTranEnable[i] = 1;
+			params->Usb3HsioTxRate1UniqTran[i] =
+				config->usb3_ports[i].gen2_tx_rate1_uniq_tran;
+		}
+		if (config->usb3_ports[i].gen2_tx_rate2_uniq_tran_enable) {
+			params->Usb3HsioTxRate2UniqTranEnable[i] = 1;
+			params->Usb3HsioTxRate2UniqTran[i] =
+				config->usb3_ports[i].gen2_tx_rate2_uniq_tran;
+		}
+		if (config->usb3_ports[i].gen2_tx_rate3_uniq_tran_enable) {
+			params->Usb3HsioTxRate3UniqTranEnable[i] = 1;
+			params->Usb3HsioTxRate3UniqTran[i] =
+				config->usb3_ports[i].gen2_tx_rate3_uniq_tran;
+		}
 	}
 
 	/* SATA */
@@ -187,6 +208,13 @@ void platform_fsp_silicon_init_params_cb(FSPS_UPD *supd)
 		params->PchPmPwrCycDur = get_pm_pwr_cyc_dur(config->PchPmSlpS4MinAssert,
 				config->PchPmSlpS3MinAssert, config->PchPmSlpAMinAssert,
 				config->PchPmPwrCycDur);
+
+	/* Set PsysPmax */
+	if (config->PsysPmax) {
+		printk(BIOS_DEBUG, "PsysPmax = %dW\n", config->PsysPmax);
+		/* PsysPmax is in unit of 1/8 Watt */
+		params->PsysPmax = config->PsysPmax * 8;
+	}
 
 	/*
 	 * Fill Acoustic noise mitigation related configuration

@@ -71,6 +71,10 @@ endif
 ifeq ($(CONFIG_EDK2_FOLLOW_BGRT_SPEC),y)
 BUILD_STR += -D FOLLOW_BGRT_SPEC=TRUE
 endif
+# MAX_VARIABLE_SIZE		= 0x10000
+ifeq ($(CONFIG_SMMSTORE_V2),y)
+BUILD_STR += --pcd gEfiMdeModulePkgTokenSpaceGuid.PcdMaxVariableSize=0x8000
+endif
 # PCIE_BASE_ADDRESS		= 0
 ifneq ($(CONFIG_ECAM_MMCONF_LENGTH),)
 BUILD_STR += --pcd gEfiMdePkgTokenSpaceGuid.PcdPciExpressBaseAddress=$(CONFIG_ECAM_MMCONF_BASE_ADDRESS)
@@ -110,6 +114,10 @@ endif
 # EDK2_SECURE_BOOT_SUPPORT      = FALSE
 ifeq ($(CONFIG_EDK2_SECURE_BOOT_SUPPORT), y)
 BUILD_STR += -D SECURE_BOOT_ENABLE=TRUE
+endif
+# PCIEXP_SUPPORT_RESIZABLE_BARS = FALSE
+ifeq ($(CONFIG_PCIEXP_SUPPORT_RESIZABLE_BARS), y)
+BUILD_STR += --pcd gEfiMdeModulePkgTokenSpaceGuid.PcdPcieResizableBarSupport=TRUE
 endif
 
 #
@@ -247,7 +255,7 @@ $(WORKSPACE)/Build/UefiPayloadPkgX64/UniversalPayload.elf: \
 	cd $(WORKSPACE); \
 		source $(EDK2_PATH)/edksetup.sh; \
 		echo -n "EDK2: Building... "; \
-		$(EDK2_PATH)/UefiPayloadPkg/UniversalPayloadBuild.sh -a IA32 -a X64 -b $(RELEASE_STR) $(BUILD_STR)
+		$(EDK2_PATH)/UefiPayloadPkg/UniversalPayloadBuild.sh -a IA32 -b $(RELEASE_STR) $(BUILD_STR)
 		if [ ! -f $@ ]; then \
 			echo "Failed!"; \
 			exit 1; \

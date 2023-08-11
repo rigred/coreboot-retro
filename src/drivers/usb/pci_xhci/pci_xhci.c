@@ -12,7 +12,7 @@
 #define PCI_XHCI_CLASSCODE	0x0c0330 /* USB3.0 xHCI controller */
 
 static unsigned int controller_count;
-static const struct device_operations xhci_pci_ops;
+const struct device_operations xhci_pci_ops;
 
 struct port_counts {
 	unsigned int high_speed;
@@ -240,7 +240,7 @@ static void xhci_enable(struct device *dev)
 	dev->name = name;
 }
 
-static const struct device_operations xhci_pci_ops = {
+const struct device_operations xhci_pci_ops = {
 	.read_resources		= pci_dev_read_resources,
 	.set_resources		= pci_dev_set_resources,
 	.enable_resources	= pci_dev_enable_resources,
@@ -250,21 +250,4 @@ static const struct device_operations xhci_pci_ops = {
 	.ops_pci		= &pci_dev_ops_pci,
 	.acpi_fill_ssdt		= xhci_fill_ssdt,
 	.acpi_name		= xhci_acpi_name,
-};
-
-static const unsigned short amd_pci_device_ids[] = {
-	PCI_DID_AMD_FAM17H_MODEL18H_XHCI0,
-	PCI_DID_AMD_FAM17H_MODEL18H_XHCI1,
-	PCI_DID_AMD_FAM17H_MODEL20H_XHCI0,
-	PCI_DID_AMD_FAM17H_MODEL60H_XHCI,
-	PCI_DID_AMD_FAM17H_MODELA0H_XHCI0,
-	PCI_DID_AMD_FAM17H_MODELA0H_XHCI1,
-	PCI_DID_AMD_FAM17H_MODELA0H_XHCI2,
-	0
-};
-
-static const struct pci_driver xhci_pci_driver __pci_driver = {
-	.ops = &xhci_pci_ops,
-	.vendor = PCI_VID_AMD,
-	.devices = amd_pci_device_ids,
 };

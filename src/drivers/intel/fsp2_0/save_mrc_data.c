@@ -11,14 +11,17 @@ static void save_mrc_data(void *unused)
 {
 	size_t mrc_data_size;
 	const void *mrc_data;
-	uint32_t *fspm_version;
+	uint32_t cbmem_id = CONFIG(MRC_CACHE_USING_MRC_VERSION) ? CBMEM_ID_MRC_VERSION :
+					 CBMEM_ID_FSPM_VERSION;
+	uint32_t *version;
 
 	if (acpi_is_wakeup_s3())
 		return;
 
-	fspm_version = cbmem_find(CBMEM_ID_FSPM_VERSION);
-	if (!fspm_version) {
-		printk(BIOS_ERR, "Failed to read FSP-M version from cbmem.\n");
+	version = cbmem_find(cbmem_id);
+	if (!version) {
+		printk(BIOS_ERR, "Failed to read %s version from cbmem.\n",
+				CONFIG(MRC_CACHE_USING_MRC_VERSION) ? "MRC" : "FSP-M");
 		return;
 	}
 
@@ -34,7 +37,7 @@ static void save_mrc_data(void *unused)
 	 * code which saves the data to flash doesn't write if the latest
 	 * training data matches this one.
 	 */
-	if (mrc_cache_stash_data(MRC_TRAINING_DATA, *fspm_version, mrc_data,
+	if (mrc_cache_stash_data(MRC_TRAINING_DATA, *version, mrc_data,
 				 mrc_data_size) < 0)
 		printk(BIOS_ERR, "Failed to stash MRC data\n");
 }

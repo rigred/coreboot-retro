@@ -187,7 +187,7 @@ void acpigen_write_name_unicode(const char *name, const char *string)
 	acpigen_write_len_f();
 	acpigen_write_integer(len);
 	for (size_t i = 0; i < len; i++) {
-		const char c = string[i];
+		const signed char c = string[i];
 		/* Simple ASCII to UTF-16 conversion, replace non ASCII characters */
 		acpigen_emit_word(c >= 0 ? c : '?');
 	}
@@ -1448,24 +1448,6 @@ void acpigen_write_not(uint8_t arg, uint8_t res)
 	acpigen_emit_byte(res);
 }
 
-/* Concatenate (str1, str2, res) */
-void acpigen_concatenate_string_string(const char *str1, const char *str2, uint8_t res)
-{
-	acpigen_emit_byte(CONCATENATE_OP);
-	acpigen_write_string(str1);
-	acpigen_write_string(str2);
-	acpigen_emit_byte(res);
-}
-
-/* Concatenate (str, val, tmp_res) */
-void acpigen_concatenate_string_int(const char *str, uint64_t val, uint8_t res)
-{
-	acpigen_emit_byte(CONCATENATE_OP);
-	acpigen_write_string(str);
-	acpigen_write_integer(val);
-	acpigen_emit_byte(res);
-}
-
 /* Concatenate (str, src_res, dest_res) */
 void acpigen_concatenate_string_op(const char *str, uint8_t src_res, uint8_t dest_res)
 {
@@ -1507,24 +1489,6 @@ void acpigen_write_debug_namestr(const char *str)
 	acpigen_emit_ext_op(DEBUG_OP);
 }
 
-/* Concatenate (str1, str2, tmp_res)
-   Store(tmp_res, DEBUG) */
-void acpigen_write_debug_concatenate_string_string(const char *str1, const char *str2,
-	uint8_t tmp_res)
-{
-	acpigen_concatenate_string_string(str1, str2, tmp_res);
-	acpigen_write_debug_op(tmp_res);
-}
-
-/* Concatenate (str1, val, tmp_res)
-   Store(tmp_res, DEBUG) */
-void acpigen_write_debug_concatenate_string_int(const char *str, uint64_t val,
-	uint8_t tmp_res)
-{
-	acpigen_concatenate_string_int(str, val, tmp_res);
-	acpigen_write_debug_op(tmp_res);
-}
-
 /* Concatenate (str1, res, tmp_res)
    Store(tmp_res, DEBUG) */
 void acpigen_write_debug_concatenate_string_op(const char *str, uint8_t res,
@@ -1532,6 +1496,27 @@ void acpigen_write_debug_concatenate_string_op(const char *str, uint8_t res,
 {
 	acpigen_concatenate_string_op(str, res, tmp_res);
 	acpigen_write_debug_op(tmp_res);
+}
+
+static void acpigen_tx_byte(unsigned char byte, void *data)
+{
+	acpigen_emit_byte(byte);
+}
+
+/* Store("formatted string", DEBUG) */
+void acpigen_write_debug_sprintf(const char *fmt, ...)
+{
+	va_list args;
+
+	acpigen_write_store();
+
+	acpigen_emit_byte(STRING_PREFIX);
+	va_start(args, fmt);
+	vtxprintf(acpigen_tx_byte, fmt, args, NULL);
+	va_end(args);
+	acpigen_emit_byte('\0');
+
+	acpigen_emit_ext_op(DEBUG_OP);
 }
 
 void acpigen_write_if(void)
@@ -1779,6 +1764,10 @@ void acpigen_write_dsm(const char *uuid, void (**callbacks)(void *), size_t coun
  * bit 0:    other functions than 0 are supported
  * bits 1-x: function x supported
  */
+/* On GCC aarch64 the compiler is worried about alloca() having unbounded stack usage. */
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic ignored "-Wstack-usage="
+#endif
 static void acpigen_dsm_uuid_enum_functions(const struct dsm_uuid *id)
 {
 	const size_t bytes = DIV_ROUND_UP(id->count, BITS_PER_BYTE);
@@ -2241,12 +2230,13 @@ void acpigen_resource_qword(u16 res_type, u16 gen_flags, u16 type_flags, u64 gra
 	acpigen_emit_qword(length);
 }
 
-void acpigen_resource_bus_number(u16 bus_base, u16 bus_limit)
+void acpigen_resource_producer_bus_number(u16 bus_base, u16 bus_limit)
 {
 	acpigen_resource_word(RSRC_TYPE_BUS, /* res_type */
 			      ADDR_SPACE_GENERAL_FLAG_MAX_FIXED
 			      | ADDR_SPACE_GENERAL_FLAG_MIN_FIXED
-			      | ADDR_SPACE_GENERAL_FLAG_DEC_POS, /* gen_flags */
+			      | ADDR_SPACE_GENERAL_FLAG_DEC_POS
+			      | ADDR_SPACE_GENERAL_FLAG_PRODUCER, /* gen_flags */
 			      BUS_NUM_RANGE_RESOURCE_FLAG, /* type_flags */
 			      0, /* gran */
 			      bus_base, /* range_min */
@@ -2255,18 +2245,57 @@ void acpigen_resource_bus_number(u16 bus_base, u16 bus_limit)
 			      bus_limit - bus_base + 1); /* length */
 }
 
-void acpigen_resource_io(u16 io_base, u16 io_limit)
+void acpigen_resource_producer_io(u16 io_base, u16 io_limit)
 {
-	acpigen_resource_word(RSRC_TYPE_IO, /* res_type */
+	acpigen_resource_dword(RSRC_TYPE_IO, /* res_type */
 			      ADDR_SPACE_GENERAL_FLAG_MAX_FIXED
 			      | ADDR_SPACE_GENERAL_FLAG_MIN_FIXED
-			      | ADDR_SPACE_GENERAL_FLAG_DEC_POS, /* gen_flags */
+			      | ADDR_SPACE_GENERAL_FLAG_DEC_POS
+			      | ADDR_SPACE_GENERAL_FLAG_PRODUCER, /* gen_flags */
 			      IO_RSRC_FLAG_ENTIRE_RANGE, /* type_flags */
 			      0, /* gran */
 			      io_base, /* range_min */
 			      io_limit, /* range_max */
 			      0x0, /* translation */
 			      io_limit - io_base + 1); /* length */
+}
+
+static void acpigen_resource_producer_mmio32(u32 mmio_base, u32 mmio_limit, u16 type_flags)
+{
+	acpigen_resource_dword(RSRC_TYPE_MEM, /* res_type */
+			      ADDR_SPACE_GENERAL_FLAG_MAX_FIXED
+			      | ADDR_SPACE_GENERAL_FLAG_MIN_FIXED
+			      | ADDR_SPACE_GENERAL_FLAG_DEC_POS
+			      | ADDR_SPACE_GENERAL_FLAG_PRODUCER, /* gen_flags */
+			      type_flags, /* type_flags */
+			      0, /* gran */
+			      mmio_base, /* range_min */
+			      mmio_limit, /* range_max */
+			      0x0, /* translation */
+			      mmio_limit - mmio_base + 1); /* length */
+}
+
+static void acpigen_resource_producer_mmio64(u64 mmio_base, u64 mmio_limit, u16 type_flags)
+{
+	acpigen_resource_qword(RSRC_TYPE_MEM, /* res_type */
+			      ADDR_SPACE_GENERAL_FLAG_MAX_FIXED
+			      | ADDR_SPACE_GENERAL_FLAG_MIN_FIXED
+			      | ADDR_SPACE_GENERAL_FLAG_DEC_POS
+			      | ADDR_SPACE_GENERAL_FLAG_PRODUCER, /* gen_flags */
+			      type_flags, /* type_flags */
+			      0, /* gran */
+			      mmio_base, /* range_min */
+			      mmio_limit, /* range_max */
+			      0x0, /* translation */
+			      mmio_limit - mmio_base + 1); /* length */
+}
+
+void acpigen_resource_producer_mmio(u64 mmio_base, u64 mmio_limit, u16 type_flags)
+{
+	if (mmio_base < 4ULL * GiB && mmio_limit < 4ULL * GiB)
+		acpigen_resource_producer_mmio32(mmio_base, mmio_limit, type_flags);
+	else
+		acpigen_resource_producer_mmio64(mmio_base, mmio_limit, type_flags);
 }
 
 void acpigen_write_ADR(uint64_t adr)
@@ -2406,6 +2435,13 @@ void acpigen_write_delay_until_namestr_int(uint32_t wait_ms, const char *name, u
 	acpigen_emit_byte(DECREMENT_OP);
 	acpigen_emit_byte(LOCAL7_OP);
 	acpigen_pop_len(); /* While */
+
+	if (name) {
+		acpigen_write_if_lequal_op_op(LOCAL7_OP, ZERO_OP);
+		acpigen_write_debug_sprintf("WARN: Wait loop timeout for variable %s",
+					    name);
+		acpigen_pop_len(); /* If */
+	}
 }
 
 void acpigen_ssdt_override_sleep_states(bool enable_s1, bool enable_s2, bool enable_s3,

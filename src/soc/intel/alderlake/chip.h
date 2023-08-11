@@ -23,6 +23,8 @@
 /* Define config parameters for In-Band ECC (IBECC). */
 #define MAX_IBECC_REGIONS	8
 
+#define MAX_HD_AUDIO_SDI_LINKS	2
+
 /* In-Band ECC Operation Mode */
 enum ibecc_mode {
 	IBECC_MODE_PER_REGION,
@@ -72,6 +74,34 @@ enum soc_intel_alderlake_power_limits {
 	RPL_P_682_642_482_45W_CORE,
 	RPL_P_682_482_282_28W_CORE,
 	RPL_P_282_242_142_15W_CORE,
+	RPL_S_8161_35W_CORE,
+	RPL_S_8161_65W_CORE,
+	RPL_S_8161_95W_CORE,
+	RPL_S_8161_125W_CORE,
+	RPL_S_8161_150W_CORE,
+	RPL_S_881_35W_CORE,
+	RPL_S_881_65W_CORE,
+	RPL_S_881_125W_CORE,
+	RPL_S_681_35W_CORE,
+	RPL_S_681_65W_CORE,
+	RPL_S_681_125W_CORE,
+	RPL_S_641_35W_CORE,
+	RPL_S_641_65W_CORE,
+	RPL_S_641_125W_CORE,
+	RPL_S_801_80W_CORE,
+	RPL_S_801_95W_CORE,
+	RPL_S_401_35W_CORE,
+	RPL_S_401_58W_CORE,
+	RPL_S_401_60W_CORE,
+	RPL_S_401_65W_CORE,
+	RPL_S_201_35W_CORE,
+	RPL_S_201_46W_CORE,
+	RPL_S_201_65W_CORE,
+	RPL_HX_8_16_55W_CORE,
+	RPL_HX_8_12_55W_CORE,
+	RPL_HX_8_8_55W_CORE,
+	RPL_HX_6_8_55W_CORE,
+	RPL_HX_6_4_55W_CORE,
 	ADL_POWER_LIMITS_COUNT
 };
 
@@ -86,9 +116,13 @@ enum soc_intel_alderlake_cpu_tdps {
 	TDP_35W = 35,
 	TDP_45W = 45,
 	TDP_46W = 46,
+	TDP_55W = 55,
 	TDP_58W = 58,
 	TDP_60W = 60,
 	TDP_65W = 65,
+	TDP_80W = 80,
+	TDP_90W = 90,
+	TDP_95W = 95,
 	TDP_125W = 125,
 	TDP_150W = 150
 };
@@ -136,9 +170,41 @@ static const struct {
 	{ PCI_DID_INTEL_RPL_P_ID_1, RPL_P_682_642_482_45W_CORE, TDP_45W },
 	{ PCI_DID_INTEL_RPL_P_ID_1, RPL_P_682_482_282_28W_CORE, TDP_28W },
 	{ PCI_DID_INTEL_RPL_P_ID_2, RPL_P_682_482_282_28W_CORE, TDP_28W },
+	{ PCI_DID_INTEL_RPL_P_ID_2, RPL_P_682_642_482_45W_CORE, TDP_45W },
 	{ PCI_DID_INTEL_RPL_P_ID_3, RPL_P_282_242_142_15W_CORE, TDP_15W },
 	{ PCI_DID_INTEL_RPL_P_ID_4, RPL_P_282_242_142_15W_CORE, TDP_15W },
 	{ PCI_DID_INTEL_RPL_P_ID_5, RPL_P_282_242_142_15W_CORE, TDP_15W },
+	{ PCI_DID_INTEL_RPL_S_ID_1, RPL_S_8161_35W_CORE, TDP_35W },
+	{ PCI_DID_INTEL_RPL_S_ID_1, RPL_S_8161_65W_CORE, TDP_65W },
+	{ PCI_DID_INTEL_RPL_S_ID_1, RPL_S_8161_95W_CORE, TDP_95W },
+	{ PCI_DID_INTEL_RPL_S_ID_1, RPL_S_8161_125W_CORE, TDP_125W },
+	{ PCI_DID_INTEL_RPL_S_ID_1, RPL_S_8161_150W_CORE, TDP_150W },
+	{ PCI_DID_INTEL_RPL_S_ID_3, RPL_S_881_35W_CORE, TDP_35W },
+	{ PCI_DID_INTEL_RPL_S_ID_3, RPL_S_881_65W_CORE, TDP_65W },
+	{ PCI_DID_INTEL_RPL_S_ID_3, RPL_S_881_125W_CORE, TDP_125W },
+	{ PCI_DID_INTEL_RPL_S_ID_4, RPL_S_681_35W_CORE, TDP_35W },
+	{ PCI_DID_INTEL_RPL_S_ID_4, RPL_S_681_65W_CORE, TDP_65W },
+	{ PCI_DID_INTEL_RPL_S_ID_4, RPL_S_681_125W_CORE, TDP_125W },
+	{ PCI_DID_INTEL_RPL_S_ID_5, RPL_S_641_35W_CORE, TDP_35W },
+	{ PCI_DID_INTEL_RPL_S_ID_5, RPL_S_641_65W_CORE, TDP_65W },
+	{ PCI_DID_INTEL_RPL_S_ID_5, RPL_S_641_125W_CORE, TDP_125W },
+	{ PCI_DID_INTEL_RPL_S_ID_2, RPL_S_801_80W_CORE, TDP_80W },
+	{ PCI_DID_INTEL_RPL_S_ID_2, RPL_S_801_95W_CORE, TDP_90W },
+	{ PCI_DID_INTEL_ADL_S_ID_11, RPL_S_401_35W_CORE, TDP_35W },
+	{ PCI_DID_INTEL_ADL_S_ID_11, RPL_S_401_58W_CORE, TDP_58W },
+	{ PCI_DID_INTEL_ADL_S_ID_11, RPL_S_401_60W_CORE, TDP_60W },
+	{ PCI_DID_INTEL_ADL_S_ID_11, RPL_S_401_65W_CORE, TDP_65W },
+	{ PCI_DID_INTEL_ADL_S_ID_12, RPL_S_201_35W_CORE, TDP_35W },
+	{ PCI_DID_INTEL_ADL_S_ID_12, RPL_S_201_46W_CORE, TDP_46W },
+	{ PCI_DID_INTEL_ADL_S_ID_12, RPL_S_201_65W_CORE, TDP_65W },
+	{ PCI_DID_INTEL_RPL_HX_ID_1, RPL_HX_8_16_55W_CORE, TDP_55W },
+	{ PCI_DID_INTEL_RPL_HX_ID_2, RPL_HX_8_12_55W_CORE, TDP_55W },
+	{ PCI_DID_INTEL_RPL_HX_ID_3, RPL_HX_8_8_55W_CORE, TDP_55W },
+	{ PCI_DID_INTEL_RPL_HX_ID_4, RPL_HX_6_8_55W_CORE, TDP_55W },
+	{ PCI_DID_INTEL_RPL_HX_ID_5, RPL_HX_6_4_55W_CORE, TDP_55W },
+	{ PCI_DID_INTEL_RPL_HX_ID_6, RPL_HX_8_8_55W_CORE, TDP_55W },
+	{ PCI_DID_INTEL_RPL_HX_ID_7, RPL_HX_6_8_55W_CORE, TDP_55W },
+	{ PCI_DID_INTEL_RPL_HX_ID_8, RPL_HX_6_4_55W_CORE, TDP_55W },
 };
 
 /* Types of display ports */
@@ -349,6 +415,7 @@ struct soc_intel_alderlake_config {
 	/* Audio related */
 	uint8_t pch_hda_audio_link_hda_enable;
 	uint8_t pch_hda_dsp_enable;
+	bool pch_hda_sdi_enable[MAX_HD_AUDIO_SDI_LINKS];
 
 	/* iDisp-Link T-Mode 0: 2T, 2: 4T, 3: 8T, 4: 16T */
 	enum {
@@ -681,6 +748,27 @@ struct soc_intel_alderlake_config {
 	 * Set this to 1 in order to disable Tccold Handshake
 	 */
 	bool disable_dynamic_tccold_handshake;
+
+	/*
+	 * Enable or Disable Reduced BasicMemoryTest size.
+	 * Default is set to 0.
+	 * Set this to 1 in order to reduce BasicMemoryTest size
+	 */
+	bool lower_basic_mem_test_size;
+
+	/*
+	 * Enable or Disable SaGV reordering operation.
+	 * Default is set to 0, SaGV reordering enabled.
+	 * Set this to 1 in order to disable SaGV reordering.
+	 */
+	bool disable_sagv_reorder;
+
+	/*
+	 * Enable or Disable hwp scalability tracking.
+	 * Default is set to 1.
+	 * Set this to 0 in order to disable hwp scalability tracking.
+	 */
+	bool enable_hwp_scalability_tracking;
 };
 
 typedef struct soc_intel_alderlake_config config_t;

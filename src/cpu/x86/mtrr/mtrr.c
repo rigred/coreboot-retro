@@ -346,13 +346,13 @@ static void commit_fixed_mtrrs(void)
 	fixed_mtrrs_hide_amd_rwdram();
 }
 
-void x86_setup_fixed_mtrrs_no_enable(void)
+static void x86_setup_fixed_mtrrs_no_enable(void)
 {
 	calc_fixed_mtrrs();
 	commit_fixed_mtrrs();
 }
 
-void x86_setup_fixed_mtrrs(void)
+static void x86_setup_fixed_mtrrs(void)
 {
 	x86_setup_fixed_mtrrs_no_enable();
 
@@ -805,6 +805,8 @@ void x86_setup_var_mtrrs(unsigned int address_bits, unsigned int above4gb)
 static void _x86_setup_mtrrs(unsigned int above4gb)
 {
 	int address_size;
+
+	enable_lapic();
 
 	x86_setup_fixed_mtrrs();
 	address_size = cpu_phys_address_size();

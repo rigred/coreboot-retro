@@ -72,6 +72,17 @@ enum dxio_aspm_type {
 	ASPM_MAX		// Not valid value, used to verify input
 };
 
+/* PCIe link hotplug */
+enum dxio_link_hotplug_type {
+	HOTPLUG_DISABLED = 0,
+	HOTPLUG_BASIC,
+	HOTPLUG_SERVER,
+	HOTPLUG_ENHANCED,
+	HOTPLUG_INBOARD,
+	HOTPLUG_SERVER_SSD,
+};
+
+/* TODO: update dxio_port_param_type to match the AGESA/FSP code */
 enum dxio_port_param_type {
 	PP_DEVICE = 1,
 	PP_FUNCTION,
@@ -155,7 +166,7 @@ enum ddi_connector_type {
 	DDI_MAX_CONNECTOR_TYPE	// Not valid value, used to verify input
 };
 
-/* Glinda DDI Descriptor: used for configuring display outputs */
+/* DDI Descriptor: used for configuring display outputs */
 typedef struct __packed {
 	uint8_t		connector_type;	// see ddi_connector_type
 	uint8_t		aux_index;	// see ddi_aux_type
@@ -195,7 +206,7 @@ typedef struct __packed {
 	uint32_t	link_aspm_L1_1		:1;	// En/Dis root port capabilities for L1.1
 	uint32_t	link_aspm_L1_2		:1;	// En/Dis root port capabilities for L1.2
 	uint32_t	clk_req			:4;	// See cpm_clk_req
-	uint8_t		link_hotplug;			// Currently unused by FSP
+	uint8_t		link_hotplug;			// See dxio_link_hotplug_type
 	uint8_t		slot_power_limit;		// Currently unused by FSP
 	uint32_t	slot_power_limit_scale	:2;	// Currently unused by FSP
 	uint32_t	reserved_4		:6;

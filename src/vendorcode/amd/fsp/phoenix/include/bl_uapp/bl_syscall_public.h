@@ -57,6 +57,12 @@ enum verstage_cmd_id {
 	CMD_CCP_DMA,
 	CMD_SET_PLATFORM_BOOT_MODE,
 	CMD_SET_FW_HASH_TABLE,
+	CMD_GET_PREV_BOOT_STATUS,
+	CMD_GET_HSP_SECURE_STATE,
+	CMD_WRITE_POSTCODE,
+	CMD_SET_FW_HASH_TABLE_STAGE1,
+	CMD_SET_FW_HASH_TABLE_STAGE2,
+	CMD_SET_FW_HASH_TABLE_TOS,
 };
 
 struct mod_exp_params {
@@ -94,6 +100,7 @@ enum fch_io_device {
 	FCH_IO_DEVICE_MISC,
 	FCH_IO_DEVICE_AOAC,
 	FCH_IO_DEVICE_IOPORT,
+	FCH_IO_DEVICE_UART,
 	FCH_IO_DEVICE_END,
 };
 
@@ -103,6 +110,12 @@ enum fch_i2c_controller_id {
 	FCH_I2C_CONTROLLER_ID_2 = 2,
 	FCH_I2C_CONTROLLER_ID_3 = 3,
 	FCH_I2C_CONTROLLER_ID_MAX,
+};
+
+enum fch_uart_id {
+	FCH_UART_ID_0 = 0,
+	FCH_UART_ID_1 = 1,
+	FCH_UART_ID_MAX,
 };
 
 struct spirom_info {
@@ -168,11 +181,30 @@ struct psp_fw_entry_hash_384 {
 } __packed;
 
 struct psp_fw_hash_table {
-	uint16_t version;			// Version of psp_fw_hash_table, Start with 0.
+	uint16_t version;			// Version 1 of psp_fw_hash_table.
 	uint16_t no_of_entries_256;
 	uint16_t no_of_entries_384;
 	struct psp_fw_entry_hash_256 *fw_hash_256;
 	struct psp_fw_entry_hash_384 *fw_hash_384;
+} __packed;
+
+struct psp_fw_entry_hash_256_v2 {
+	uint8_t uuid[16];
+	uint8_t sha[32];
+} __packed;
+
+struct psp_fw_entry_hash_384_v2 {
+	uint8_t uuid[16];
+	uint8_t sha[48];
+} __packed;
+
+struct psp_fw_hash_table_v2 {
+	uint16_t version;			// Version 2 of psp_fw_hash_table.
+	uint16_t no_of_entries_256;
+	uint16_t no_of_entries_384;
+	uint16_t reserved;			// For alignment purposes.
+	struct psp_fw_entry_hash_256_v2 *fw_hash_256;
+	struct psp_fw_entry_hash_384_v2 *fw_hash_384;
 } __packed;
 
 /*
@@ -362,14 +394,33 @@ uint32_t svc_ccp_dma(uint32_t spi_rom_offset, void *dest, uint32_t size);
 uint32_t svc_set_platform_boot_mode(enum chrome_platform_boot_mode boot_mode);
 
 /*
- * Set the PSP FW hash table.
+ * Set PSP FW hash table.
  *
  * Parameters:
  *       - hash_table - Table of hash for each PSP binary signed against SoC chain of trust
+ *       - cmd        - Cmd to indicate the PSP stage using the hash table
  *
  * Return value: BL_OK or error code
  */
-uint32_t svc_set_fw_hash_table(struct psp_fw_hash_table *hash_table);
+uint32_t svc_set_fw_hash_table(enum verstage_cmd_id cmd, void *hash_table);
+
+/* Get the previous boot status.
+ *
+ * Parameters:
+ * 	- boot_status - Address where the boot status is read into
+ *
+ * Return value: BL_OK or error code
+ */
+uint32_t svc_get_prev_boot_status(uint32_t *boot_status);
+
+/* Get HSP Secure state
+ *
+ * Parameters:
+ *      - hsp_secure_state - Address where the state info is read into
+ *
+ * Return value: BL_OK or error code
+ */
+uint32_t svc_get_hsp_secure_state(uint32_t *hsp_secure_state);
 
 /* C entry point for the Bootloader Userspace Application */
 void Main(void);

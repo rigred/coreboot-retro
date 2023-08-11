@@ -10,9 +10,11 @@ config BOARD_SPECIFIC_OPTIONS
 	select AMD_SOC_CONSOLE_UART
 	select BOARD_ROMSIZE_KB_16384
 	select DISABLE_KEYBOARD_RESET_PIN
+	select DRIVERS_GENERIC_GPIO_KEYS
 	select DRIVERS_I2C_GENERIC
 	select DRIVERS_I2C_HID
 	select DRIVERS_WIFI_GENERIC
+	select DRIVERS_UART_ACPI
 	select EC_GOOGLE_CHROMEEC
 	select EC_GOOGLE_CHROMEEC_ESPI
 	select EC_GOOGLE_CHROMEEC_SKUID
@@ -25,6 +27,8 @@ config BOARD_SPECIFIC_OPTIONS
 	select I2C_TPM
 	select MAINBOARD_HAS_CHROMEOS
 	select MAINBOARD_HAS_TPM2
+	# TODO (b/290763369): Enable APOB after resolving data_abort in ABL
+	select SOC_AMD_COMMON_BLOCK_APOB_NV_DISABLE
 	select SOC_AMD_COMMON_BLOCK_USE_ESPI
 	select SOC_AMD_PHOENIX
 	select SPI_FLASH_EXIT_4_BYTE_ADDR_MODE
@@ -41,6 +45,10 @@ config DRIVER_TPM_I2C_BUS
 config DRIVER_TPM_I2C_ADDR
 	hex
 	default 0x50
+
+config GSC_IRQ_GPIO
+	int
+	default 84
 
 config FMDFILE
 	default "src/mainboard/\$(CONFIG_MAINBOARD_DIR)/chromeos.fmd"
@@ -67,11 +75,25 @@ config VBOOT
 	select EC_GOOGLE_CHROMEEC_SWITCHES
 	select VBOOT_LID_SWITCH
 	select VBOOT_SEPARATE_VERSTAGE
-	select VBOOT_STARTS_IN_BOOTBLOCK
+
+config VBOOT_STARTS_BEFORE_BOOTBLOCK
+	bool "Enable PSP_verstage"
+	default y if VBOOT
+	select SEPARATE_SIGNED_PSPFW
+
+config VBOOT_STARTS_IN_BOOTBLOCK
+	bool
+	default y if VBOOT && !VBOOT_STARTS_BEFORE_BOOTBLOCK
 
 # TODO(b/277087492): Enable GSC CBFS verification
 config VBOOT_GSCVD
 	bool
 	default n
+
+# Override PSP_SOFTFUSE_BITS from soc/amd/phoenix.
+# The documentation of PSP_SOFTFUSE_BITS is available in #55758 doc (NDA).
+config PSP_SOFTFUSE_BITS
+	string
+	default "36 34 28 6"
 
 endif # BOARD_GOOGLE_BASEBOARD_MYST

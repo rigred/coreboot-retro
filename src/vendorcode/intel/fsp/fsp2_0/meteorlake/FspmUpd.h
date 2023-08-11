@@ -498,9 +498,12 @@ typedef struct {
 **/
   UINT8                       SaGv;
 
-/** Offset 0x018F - Reserved
+/** Offset 0x018F - SAGV WP Mask
+  System Agent dynamic frequency workpoints that memory will be training at the enabled
+  frequencies.
+  0x3:Points0_1, 0x7:Points0_1_2, 0xF:AllPoints0_1_2_3
 **/
-  UINT8                       Reserved7;
+  UINT8                       SaGvWpMask;
 
 /** Offset 0x0190 - Memory Test on Warm Boot
   Run Base Memory Test on Warm Boot
@@ -579,7 +582,7 @@ typedef struct {
 
 /** Offset 0x019C - Reserved
 **/
-  UINT8                       Reserved8[102];
+  UINT8                       Reserved7[102];
 
 /** Offset 0x0202 - Memory Reference Clock
   100MHz, 133MHz.
@@ -589,7 +592,7 @@ typedef struct {
 
 /** Offset 0x0203 - Reserved
 **/
-  UINT8                       Reserved9[9];
+  UINT8                       Reserved8[9];
 
 /** Offset 0x020C - Memory Vdd Voltage
   DRAM voltage (Vdd) (supply voltage for input buffers and core logic of the DRAM
@@ -601,7 +604,7 @@ typedef struct {
 
 /** Offset 0x020E - Reserved
 **/
-  UINT8                      Reserved10[4];
+  UINT8                      Reserved9[4];
 
 /** Offset 0x0212 - Memory Ratio
   Automatic or the frequency will equal ratio times reference clock. Set to Auto to
@@ -642,7 +645,7 @@ typedef struct {
 
 /** Offset 0x021B - Reserved
 **/
-  UINT8                       Reserved11;
+  UINT8                       Reserved10;
 
 /** Offset 0x021C - tREFI
   Refresh Interval, 0: AUTO, max: 65535. Only used if FspmUpd->FspmConfig.SpdProfileSelected
@@ -684,7 +687,7 @@ typedef struct {
 
 /** Offset 0x0224 - Reserved
 **/
-  UINT8                      Reserved12[12];
+  UINT8                      Reserved11[12];
 
 /** Offset 0x0230 - NMode
   System command rate, range 0-2, 0 means auto, 1 = 1N, 2 = 2N
@@ -705,7 +708,7 @@ typedef struct {
 
 /** Offset 0x0233 - Reserved
 **/
-  UINT8                       Reserved13[7];
+  UINT8                       Reserved12[7];
 
 /** Offset 0x023A - SAGV Gear Ratio
   Gear Selection for SAGV points. 0 - Auto, 2-Gear 2, 4-Gear 4
@@ -724,7 +727,7 @@ typedef struct {
 
 /** Offset 0x0247 - Reserved
 **/
-  UINT8                       Reserved14[69];
+  UINT8                       Reserved13[69];
 
 /** Offset 0x028C - MMIO size adjustment for AUTO mode
   Positive number means increasing MMIO size, Negative value means decreasing MMIO
@@ -740,7 +743,7 @@ typedef struct {
 
 /** Offset 0x028F - Reserved
 **/
-  UINT8                       Reserved15;
+  UINT8                       Reserved14;
 
 /** Offset 0x0290 - Temporary MMIO address for GMADR
   Obsolete field now and it has been extended to 64 bit address, used LMemBar
@@ -813,7 +816,7 @@ typedef struct {
 
 /** Offset 0x02A6 - Reserved
 **/
-  UINT8                       Reserved16;
+  UINT8                       Reserved15;
 
 /** Offset 0x02A7 - Enable/Disable SA IPU
   Enable(Default): Enable SA IPU, Disable: Disable SA IPU
@@ -925,7 +928,7 @@ typedef struct {
 
 /** Offset 0x02BE - Reserved
 **/
-  UINT8                       Reserved17[18];
+  UINT8                       Reserved16[18];
 
 /** Offset 0x02D0 - Per-core HT Disable
   Defines the per-core HT disable mask where: 1 - Disable selected logical core HT,
@@ -937,7 +940,7 @@ typedef struct {
 
 /** Offset 0x02D2 - Reserved
 **/
-  UINT8                       Reserved18[6];
+  UINT8                       Reserved17[6];
 
 /** Offset 0x02D8 - Thermal Velocity Boost Ratio clipping
   0: Disabled, 1(Default): Enabled. This service controls Core frequency reduction
@@ -956,7 +959,7 @@ typedef struct {
 
 /** Offset 0x02DA - Reserved
 **/
-  UINT8                       Reserved19[45];
+  UINT8                       Reserved18[45];
 
 /** Offset 0x0307 - DMI Max Link Speed
   Auto (Default)(0x0): Maximum possible link speed, Gen1(0x1): Limit Link to Gen1
@@ -1012,7 +1015,7 @@ typedef struct {
 
 /** Offset 0x0324 - Reserved
 **/
-  UINT8                       Reserved20;
+  UINT8                       Reserved19;
 
 /** Offset 0x0325 - Enable/Disable DMI GEN3 Hardware Eq
   Enable/Disable DMI GEN3 Hardware Eq. Disabled(0x0): Disable Hardware Eq, Enabled(0x1)(Default):
@@ -1065,7 +1068,7 @@ typedef struct {
 
 /** Offset 0x033A - Reserved
 **/
-  UINT8                       Reserved21[34];
+  UINT8                       Reserved20[34];
 
 /** Offset 0x035C - Enable/Disable DMI GEN3 DmiGen3DsPresetEnable
   Enable/Disable DMI GEN3 DmiGen3DsPreset. Auto(0x0)(Default): DmiGen3DsPresetEnable,
@@ -1107,7 +1110,7 @@ typedef struct {
 
 /** Offset 0x037E - Reserved
 **/
-  UINT8                       Reserved22[54];
+  UINT8                       Reserved21[54];
 
 /** Offset 0x03B4 - DMI ASPM L1 exit Latency
   Range: 0-7, 4 is default L1 exit Latency
@@ -1116,7 +1119,7 @@ typedef struct {
 
 /** Offset 0x03B5 - Reserved
 **/
-  UINT8                       Reserved23[63];
+  UINT8                       Reserved22[63];
 
 /** Offset 0x03F4 - BIST on Reset
   Enable/Disable BIST (Built-In Self Test) on reset. <b>0: Disable</b>; 1: Enable.
@@ -1181,7 +1184,7 @@ typedef struct {
 
 /** Offset 0x03FE - Reserved
 **/
-  UINT8                       Reserved24;
+  UINT8                       Reserved23;
 
 /** Offset 0x03FF - Number of active big cores
   Number of P-cores to enable in each processor package. Note: Number of P-Cores and
@@ -1225,7 +1228,7 @@ typedef struct {
 
 /** Offset 0x0405 - Reserved
 **/
-  UINT8                       Reserved25;
+  UINT8                       Reserved24;
 
 /** Offset 0x0406 - core voltage override
   The core voltage override which is applied to the entire range of cpu core frequencies.
@@ -1313,7 +1316,7 @@ typedef struct {
 
 /** Offset 0x041A - Reserved
 **/
-  UINT8                       Reserved26[67];
+  UINT8                       Reserved25[67];
 
 /** Offset 0x045D - Core VF Point Offset Mode
   Selects Core Voltage & Frequency Offset mode between Legacy and Selection modes.
@@ -1348,7 +1351,7 @@ typedef struct {
 
 /** Offset 0x049B - Reserved
 **/
-  UINT8                       Reserved27[25];
+  UINT8                       Reserved26[25];
 
 /** Offset 0x04B4 - Per Core Max Ratio override
   Enable or disable Per Core PState OC supported by writing OCMB 0x1D to program new
@@ -1359,7 +1362,7 @@ typedef struct {
 
 /** Offset 0x04B5 - Reserved
 **/
-  UINT8                       Reserved28[41];
+  UINT8                       Reserved27[41];
 
 /** Offset 0x04DE - Per Core Current Max Ratio
   Array for the Per Core Max Ratio
@@ -1368,7 +1371,7 @@ typedef struct {
 
 /** Offset 0x04E6 - Reserved
 **/
-  UINT8                       Reserved29[69];
+  UINT8                       Reserved28[69];
 
 /** Offset 0x052B - Pvd Ratio Threshold for SOC/CPU die
   Array of Pvd Ratio Threshold for SOC/CPU die is the threshold value for input ratio
@@ -1381,7 +1384,7 @@ typedef struct {
 
 /** Offset 0x052D - Reserved
 **/
-  UINT8                       Reserved30[68];
+  UINT8                       Reserved29[68];
 
 /** Offset 0x0571 - GPIO Override
   Gpio Override Level - FSP will not configure any GPIOs and rely on GPIO setings
@@ -1392,7 +1395,7 @@ typedef struct {
 
 /** Offset 0x0572 - Reserved
 **/
-  UINT8                       Reserved31[10];
+  UINT8                       Reserved30[10];
 
 /** Offset 0x057C - CPU BCLK OC Frequency
   CPU BCLK OC Frequency in KHz units. 98000000Hz = 98MHz <b>0 - Auto</b>. Range is
@@ -1402,7 +1405,7 @@ typedef struct {
 
 /** Offset 0x0580 - Reserved
 **/
-  UINT8                      Reserved32[4];
+  UINT8                      Reserved31[4];
 
 /** Offset 0x0584 - Enable CPU CrashLog GPRs dump
   Enable or Disable CPU CrashLog GPRs dump; <b>0: Disable</b>; 1: Enable; 2: Only
@@ -1413,7 +1416,7 @@ typedef struct {
 
 /** Offset 0x0585 - Reserved
 **/
-  UINT8                       Reserved33[273];
+  UINT8                       Reserved32[273];
 
 /** Offset 0x0696 - Thermal Design Current enable/disable
   Thermal Design Current enable/disable; <b>0: Disable</b>; 1: Enable. [0] for IA,
@@ -1430,7 +1433,35 @@ typedef struct {
 
 /** Offset 0x06B4 - Reserved
 **/
-  UINT8                       Reserved34[336];
+  UINT8                       Reserved33[166];
+
+/** Offset 0x075A - VR Fast Vmode ICC Limit support
+  Voltage Regulator Fast Vmode ICC Limit. A value of 400 = 100A. A value of 0 corresponds
+  to feature disabled (no reactive protection). This value represents the current
+  threshold where the VR would initiate reactive protection if Fast Vmode is enabled.
+  The value is represented in 1/4 A increments. Range 0-2040. [0] for IA, [1] for
+  GT, [2] for SA, [3] through [5] are Reserved.
+**/
+  UINT16                      IccLimit[6];
+
+/** Offset 0x0766 - Enable/Disable VR FastVmode. The VR will initiate reactive protection if Fast Vmode is enabled.
+  Enable/Disable VR FastVmode; [0] for IA, [1] for GT, 0: Disable; <b>1: Enable</b>.
+  [2] for SA, <b>0: Disable</b>; 1: Enable.
+  0: Disable, 1: Enable
+**/
+  UINT8                       EnableFastVmode[6];
+
+/** Offset 0x076C - Enable CEP
+  Enable/Disable CEP (Current Excursion Protection) Support. [0] for IA, [1] for GT,
+  0: Disable; <b>1: Enable</b>. [2] for SA, <b>0: Disable</b>; 1: Enable. [3] through
+  [5] are Reserved.
+  $EN_DIS
+**/
+  UINT8                       CepEnable[6];
+
+/** Offset 0x0772 - Reserved
+**/
+  UINT8                       Reserved34[146];
 
 /** Offset 0x0804 - BiosGuard
   Enable/Disable. 0: Disable, Enable/Disable BIOS Guard feature, 1: enable
@@ -1737,7 +1768,13 @@ typedef struct {
 
 /** Offset 0x0AB9 - Reserved
 **/
-  UINT8                       Reserved40[59];
+  UINT8                       Reserved40[55];
+
+/** Offset 0x0AF0 - Enable PCH PCIE RP Mask
+  Enable/disable PCH PCIE Root Ports. 0: disable, 1: enable. One bit for each port,
+  bit0 for port1, bit1 for port2, and so on.
+**/
+  UINT32                      PchPcieRpEnableMask;
 
 /** Offset 0x0AF4 - Enable SOC/IOE PCIE RP Mask
   Enable/disable SOC/IOE PCIE Root Ports. 0: disable, 1: enable. One bit for each
@@ -2160,9 +2197,11 @@ typedef struct {
 **/
   UINT8                       RMC;
 
-/** Offset 0x0B82 - Reserved
+/** Offset 0x0B82 - Row Hammering Prevention
+  Enables/Disable Row Hammering Prevention
+  $EN_DIS
 **/
-  UINT8                       Reserved55;
+  UINT8                       ROWHAMMER;
 
 /** Offset 0x0B83 - Dimm ODT Training
   Enables/Disable Dimm ODT Training
@@ -2196,7 +2235,7 @@ typedef struct {
 
 /** Offset 0x0B88 - Reserved
 **/
-  UINT8                       Reserved56[2];
+  UINT8                       Reserved55[2];
 
 /** Offset 0x0B8A - DIMM CA ODT Training
   Enable/Disable DIMM CA ODT Training
@@ -2206,7 +2245,7 @@ typedef struct {
 
 /** Offset 0x0B8B - Reserved
 **/
-  UINT8                       Reserved57[3];
+  UINT8                       Reserved56[3];
 
 /** Offset 0x0B8E - Read Vref Decap Training
   Enable/Disable Read Vref Decap Training
@@ -2228,7 +2267,7 @@ typedef struct {
 
 /** Offset 0x0B91 - Reserved
 **/
-  UINT8                       Reserved58[4];
+  UINT8                       Reserved57[4];
 
 /** Offset 0x0B95 - Duty Cycle Correction Training
   Enable/Disable Duty Cycle Correction Training
@@ -2238,7 +2277,7 @@ typedef struct {
 
 /** Offset 0x0B96 - Reserved
 **/
-  UINT8                       Reserved59[17];
+  UINT8                       Reserved58[17];
 
 /** Offset 0x0BA7 - ECC Support
   Enables/Disable ECC Support
@@ -2272,7 +2311,7 @@ typedef struct {
 
 /** Offset 0x0BB3 - Reserved
 **/
-  UINT8                       Reserved60;
+  UINT8                       Reserved59;
 
 /** Offset 0x0BB4 - IbeccProtectedRegionBases
   IBECC Protected Region Bases per IBECC instance
@@ -2350,9 +2389,11 @@ typedef struct {
 **/
   UINT8                       ThrtCkeMinDefeat;
 
-/** Offset 0x0BEE - Reserved
+/** Offset 0x0BEE - Row Hammer Select
+  Row Hammer Select
+  0:Disable, 1:RFM, 2:pTRR
 **/
-  UINT8                       Reserved61;
+  UINT8                       RhSelect;
 
 /** Offset 0x0BEF - Exit On Failure (MRC)
   Enables/Disable Exit On Failure (MRC)
@@ -2362,7 +2403,7 @@ typedef struct {
 
 /** Offset 0x0BF0 - Reserved
 **/
-  UINT8                       Reserved62[4];
+  UINT8                       Reserved60[4];
 
 /** Offset 0x0BF4 - Select if ZQ pin is shared between Rank0 and Rank1 in DDR4 DDP
   ESelect if ZQ pin is shared between Rank0 and Rank1 in DDR4 DDP
@@ -2621,7 +2662,7 @@ typedef struct {
 
 /** Offset 0x0C2B - Reserved
 **/
-  UINT8                       Reserved63[2];
+  UINT8                       Reserved61[2];
 
 /** Offset 0x0C2D - Rapl Power Floor Ch0
   Power budget ,range[255;0],(0= 5.3W Def)
@@ -2639,9 +2680,11 @@ typedef struct {
 **/
   UINT8                       EnCmdRate;
 
-/** Offset 0x0C30 - Reserved
+/** Offset 0x0C30 - MC_REFRESH_RATE
+  Type of Refresh Rate used to prevent Row Hammer. Default is NORMAL Refresh
+  0:NORMAL Refresh, 1:1x Refresh, 2:2x Refresh, 3:4x Refresh
 **/
-  UINT8                       Reserved64;
+  UINT8                       McRefreshRate;
 
 /** Offset 0x0C31 - Energy Performance Gain
   Enable/disable Energy Performance Gain. <b>0: Disable</b>; 1: Enable
@@ -2649,9 +2692,10 @@ typedef struct {
 **/
   UINT8                       EpgEnable;
 
-/** Offset 0x0C32 - Reserved
+/** Offset 0x0C32 - RH pTRR LFSR0 Mask
+  Row Hammer pTRR LFSR0 Mask, 1/2^(value)
 **/
-  UINT8                       Reserved65;
+  UINT8                       Lfsr0Mask;
 
 /** Offset 0x0C33 - User Manual Threshold
   Disabled: Predefined threshold will be used.\n
@@ -2669,7 +2713,7 @@ typedef struct {
 
 /** Offset 0x0C35 - Reserved
 **/
-  UINT8                       Reserved66;
+  UINT8                       Reserved62;
 
 /** Offset 0x0C36 - Power Down Mode
   This option controls command bus tristating during idle periods
@@ -2706,7 +2750,7 @@ typedef struct {
 
 /** Offset 0x0C3B - Reserved
 **/
-  UINT8                       Reserved67[8];
+  UINT8                       Reserved63[8];
 
 /** Offset 0x0C43 - Ask MRC to clear memory content
   Ask MRC to clear memory content <b>0: Do not Clear Memory;</b> 1: Clear Memory.
@@ -2721,7 +2765,7 @@ typedef struct {
 
 /** Offset 0x0C45 - Reserved
 **/
-  UINT8                       Reserved68;
+  UINT8                       Reserved64;
 
 /** Offset 0x0C46 - Post Code Output Port
   This option configures Post Code Output Port
@@ -2741,7 +2785,7 @@ typedef struct {
 
 /** Offset 0x0C4A - Reserved
 **/
-  UINT8                       Reserved69[2];
+  UINT8                       Reserved65[2];
 
 /** Offset 0x0C4C - BCLK RFI Frequency
   Bclk RFI Frequency for each SAGV point in Hz units. 98000000Hz = 98MHz <b>0 - No
@@ -2784,7 +2828,16 @@ typedef struct {
 
 /** Offset 0x0C62 - Reserved
 **/
-  UINT8                       Reserved70[13];
+  UINT8                       Reserved66[11];
+
+/** Offset 0x0C6D - RH pTRR LFSR1 Mask
+  Row Hammer pTRR LFSR1 Mask, 1/2^(value)
+**/
+  UINT8                       Lfsr1Mask;
+
+/** Offset 0x0C6E - Reserved
+**/
+  UINT8                       Reserved67;
 
 /** Offset 0x0C6F - Command Pins Mapping
   BitMask where bits [3:0] are Controller 0 Channel [3:0] and bits [7:4] are Controller
@@ -2800,7 +2853,7 @@ typedef struct {
 
 /** Offset 0x0C71 - Reserved
 **/
-  UINT8                       Reserved71[24];
+  UINT8                       Reserved68[24];
 
 /** Offset 0x0C89 - Skip external display device scanning
   Enable: Do not scan for external display device, Disable (Default): Scan external
@@ -2836,7 +2889,7 @@ typedef struct {
 
 /** Offset 0x0C8E - Reserved
 **/
-  UINT8                       Reserved72[2];
+  UINT8                       Reserved69[2];
 
 /** Offset 0x0C90 - PMR Size
   Size of PMR memory buffer. 0x400000 for normal boot and 0x200000 for S3 boot
@@ -2850,7 +2903,7 @@ typedef struct {
 
 /** Offset 0x0C95 - Reserved
 **/
-  UINT8                       Reserved73[143];
+  UINT8                       Reserved70[143];
 
 /** Offset 0x0D24 - TotalFlashSize
   Enable/Disable. 0: Disable, define default value of TotalFlashSize , 1: enable
@@ -2866,7 +2919,7 @@ typedef struct {
 
 /** Offset 0x0D28 - Reserved
 **/
-  UINT8                       Reserved74[28];
+  UINT8                       Reserved71[28];
 
 /** Offset 0x0D44 - Smbus dynamic power gating
   Disable or Enable Smbus dynamic power gating.
@@ -2882,7 +2935,7 @@ typedef struct {
 
 /** Offset 0x0D46 - Reserved
 **/
-  UINT8                       Reserved75[2];
+  UINT8                       Reserved72[2];
 
 /** Offset 0x0D48 - SMBUS SPD Write Disable
   Set/Clear Smbus SPD Write Disable. 0: leave SPD Write Disable bit; 1: set SPD Write
@@ -2893,7 +2946,7 @@ typedef struct {
 
 /** Offset 0x0D49 - Reserved
 **/
-  UINT8                       Reserved76[34];
+  UINT8                       Reserved73[34];
 
 /** Offset 0x0D6B - HECI Timeouts
   0: Disable, 1: Enable (Default) timeout check for HECI
@@ -2946,7 +2999,7 @@ typedef struct {
 
 /** Offset 0x0D73 - Reserved
 **/
-  UINT8                       Reserved77[100];
+  UINT8                       Reserved74[100];
 
 /** Offset 0x0DD7 - Avx2 Voltage Guardband Scaling Factor
   AVX2 Voltage Guardband Scale factor applied to AVX2 workloads. Range is 0-200 in
@@ -2969,7 +3022,7 @@ typedef struct {
 
 /** Offset 0x0DDA - Reserved
 **/
-  UINT8                      Reserved78[2];
+  UINT8                      Reserved75[2];
 
 /** Offset 0x0DDC - SerialIoUartDebugRxPinMux - FSPM
   Select RX pin muxing for SerialIo UART used for debug
@@ -2995,7 +3048,27 @@ typedef struct {
 
 /** Offset 0x0DEC - Reserved
 **/
-  UINT8                      Reserved79[172];
+  UINT8                      Reserved76[164];
+
+/** Offset 0x0E90 - TME Exclude Base Address
+  TME Exclude Base Address.
+**/
+  UINT64                      TmeExcludeBase;
+
+/** Offset 0x0E98 - TME Exclude Size Value
+  TME Exclude Size Value.
+**/
+  UINT64                      TmeExcludeSize;
+
+/** Offset 0x0EA0 - Generate New TME Key
+  Enable: Generate New TME Key, Disable(Default): TME key determine by type of reset
+  $EN_DIS
+**/
+  UINT8                       GenerateNewTmeKey;
+
+/** Offset 0x0EA1 - Reserved
+**/
+  UINT8                       Reserved77[7];
 } FSP_M_CONFIG;
 
 /** Fsp M UPD Configuration
@@ -3014,11 +3087,11 @@ typedef struct {
 **/
   FSP_M_CONFIG                FspmConfig;
 
-/** Offset 0x0E98
+/** Offset 0x0EA8
 **/
   UINT8                       Rsvd500[6];
 
-/** Offset 0x0E9E
+/** Offset 0x0EAE
 **/
   UINT16                      UpdTerminator;
 } FSPM_UPD;
