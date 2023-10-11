@@ -4,7 +4,7 @@ chip northbridge/intel/i440bx		# Northbridge
     device pci 0.0 on end		# Host bridge
     device pci 1.0 on end		# PCI/AGP bridge
     chip southbridge/intel/i82371eb	# Southbridge
-      device pci 4.0 on			# ISA bridge
+      device pci 7.0 on			# ISA bridge
         chip superio/winbond/w83977tf	# Super I/O
           device pnp 3f0.0 on		# Floppy
             io 0x60 = 0x3f0
@@ -39,9 +39,9 @@ chip northbridge/intel/i440bx		# Northbridge
           end
         end
       end
-      device pci 4.1 on	end		# IDE
-      device pci 4.2 on	end		# USB
-      device pci 4.3 on end		# ACPI
+      device pci 7.1 on	end		# IDE
+      device pci 7.2 on	end		# USB
+      device pci 7.3 on end		# ACPI
       register "ide0_enable" = "true"
       register "ide1_enable" = "true"
       register "ide_legacy_enable" = "true"
