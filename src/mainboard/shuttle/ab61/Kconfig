@@ -49,10 +49,10 @@ config IRQ_SLOT_COUNT
 
 config PAYLOAD_CONFIGFILE
 	string
-	default "$(top)/src/mainboard/$(MAINBOARDDIR)/config_seabios" if PAYLOAD_SEABIOS
+	default "\$(top)/src/mainboard/\$(MAINBOARDDIR)/config_seabios" if PAYLOAD_SEABIOS
 
 config SEABIOS_BOOTORDER_FILE
 	string
-	default "$(top)/src/mainboard/$(MAINBOARDDIR)/bootorder" if PAYLOAD_SEABIOS
+	default "\$(top)/src/mainboard/\$(MAINBOARDDIR)/bootorder" if PAYLOAD_SEABIOS
 
 endif
