@@ -46,4 +46,12 @@ config IRQ_SLOT_COUNT
 	default 7 if BOARD_SHUTTLE_AB61
 	default 6
 
+config PAYLOAD_CONFIGFILE
+	string
+	default "$(top)/src/mainboard/$(MAINBOARDDIR)/config_seabios" if PAYLOAD_SEABIOS
+
+config SEABIOS_BOOTORDER_FILE
+	string
+	default "$(top)/src/mainboard/$(MAINBOARDDIR)/bootorder" if PAYLOAD_SEABIOS
+
 endif

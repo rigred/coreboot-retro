@@ -1,0 +1,5 @@
+/pci@i0cf8/*@7,1/drive@0/disk@0
+/pci@i0cf8/*@7,1/drive@0/disk@1
+/pci@i0cf8/*@7,1/drive@1/disk@0
+/pci@i0cf8/*@7,1/drive@1/disk@1
+/pci@i0cf8/usb@7,2/storage@1/*@0/*@0,0
