@@ -2,15 +2,12 @@
 
 config CPU_INTEL_SLOT_1
 	bool
-<<<<<<< HEAD
 
 if CPU_INTEL_SLOT_1
 
 config SLOT_SPECIFIC_OPTIONS
 	def_bool y
 	select CPU_INTEL_MODEL_61X
-=======
->>>>>>> origin/master
 	select CPU_INTEL_MODEL_65X
 	select CPU_INTEL_MODEL_67X
 	select CPU_INTEL_MODEL_68X
