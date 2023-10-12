@@ -6,6 +6,7 @@
 #include <cpu/x86/mtrr.h>
 #include <cpu/intel/microcode.h>
 #include <cpu/x86/cache.h>
+#include <cpu/intel/l2_cache.h>
 #include <cpu/x86/name.h>
 
 static void model_6xx_init(struct device *dev)
