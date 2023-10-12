@@ -11,6 +11,12 @@
 static void model_6xx_init(struct device *dev)
 {
 	char processor_name[49];
+
+	/* Update the microcode */
+	intel_update_microcode_from_cbfs();
+
+	/* Initialize L2 cache */
+	p6_configure_l2_cache();
 	
 	/* Print processor name */
 	fill_processor_name(processor_name);
@@ -18,11 +24,9 @@ static void model_6xx_init(struct device *dev)
 
 	/* Turn on caching if we haven't already */
 	enable_cache();
+
 	x86_setup_mtrrs();
 	x86_mtrr_check();
-
-	/* Update the microcode */
-	intel_update_microcode_from_cbfs();
 };
 
 static struct device_operations cpu_dev_ops = {
