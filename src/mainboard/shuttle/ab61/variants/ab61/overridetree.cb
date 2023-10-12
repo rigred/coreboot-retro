@@ -7,7 +7,6 @@ chip northbridge/intel/i440bx		# Northbridge
       register "gpo24_enable" = "1"
       register "gpo25_enable" = "1"
       register "gpo26_enable" = "1"
-      register "gpo
         chip superio/winbond/w83977tf	# Super I/O (FIXME: It's W83977EF!)
           device pnp 3f0.a on		# ACPI
           end
