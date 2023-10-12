@@ -17,7 +17,7 @@
 static void mainboard_init(void *chip_info)
 {
 	
-	const pci_devfn_t px73 = PCI_DEV(0, 7, 3);
+	/* const pci_devfn_t px73 = PCI_DEV(0, 7, 3); */
 	
 	
 }
