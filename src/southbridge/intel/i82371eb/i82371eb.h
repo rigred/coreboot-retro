@@ -23,6 +23,9 @@ void i82371eb_early_init(void);
 #define XBCS		0x4e	/* X-Bus chip select register */
 #define GENCFG		0xb0	/* General configuration register */
 #define   GPO2223	(1<<28) /* GPO22/23 */
+#define   GPO24     (1<<29) /* RTCCS/GPO24 */
+#define   GPO25     (1<<30) /* RTCALE/GPO25 */
+#define   GPO26     (1<<31) /* KBCCS/GPO26 */
 #define RTCCFG		0xcb	/* Real time clock configuration register */
 #define   RTC_POS_DECODE (1<<5)
 #define   UPPER_RAM_EN	(1<<2)

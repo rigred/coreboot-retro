@@ -38,6 +38,12 @@ static void isa_init(struct device *dev)
 
 	/* Some boards use GPO22/23. Select it if configured. */
 	reg32 = ONOFF(sb->gpo22_enable, reg32, GPO2223);
+
+	/* Set GPO24, GPO25, GPO26 based on enable variables */
+    reg32 = ONOFF(sb->gpo24_enable, reg32, GPO24);
+    reg32 = ONOFF(sb->gpo25_enable, reg32, GPO25);
+    reg32 = ONOFF(sb->gpo26_enable, reg32, GPO26);
+	
 	pci_write_config32(dev, GENCFG, reg32);
 
 	/* Initialize ISA DMA. */
