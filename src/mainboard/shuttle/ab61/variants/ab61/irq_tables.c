@@ -49,7 +49,7 @@ unsigned long write_pirq_routing_table(unsigned long addr)
 	pirq->exclusive_irqs = 0x0c80;
 
 	pirq->rtr_vendor = 0x8086;
-	pirq->rtr_device = 0x7110;
+	pirq->rtr_device = 0x122e;
 
 	pirq->miniport_data = 0;
 
@@ -113,7 +113,7 @@ unsigned long write_pirq_routing_table(unsigned long addr)
 	if (sum != pirq->checksum)
 		pirq->checksum = sum;
 
-	printk(BIOS_INFO, "%s PIRQ tables written.\n", __func__);
+	printk(BIOS_INFO, "%s DONE.\n", __func__);
 
 	return (unsigned long)pirq_info;
 }
