@@ -37,13 +37,13 @@ static struct device_operations cpu_dev_ops = {
  * http://download.intel.com/design/archives/processors/pro/docs/24268935.pdf
  */
 static const struct cpu_device_id cpu_table[] = {
-	{ X86_VENDOR_INTEL, 0x0610 }, /* Pentium Pro ES, A0 Stepping 0, Abandon Ship */
-	{ X86_VENDOR_INTEL, 0x0611 }, /* Pentium Pro, B0 Stepping 1 */
-	{ X86_VENDOR_INTEL, 0x0612 }, /* Pentium Pro, C0 Stepping 2 */
-	{ X86_VENDOR_INTEL, 0x0616 }, /* Pentium Pro, sA0 Stepping 6 */
-	{ X86_VENDOR_INTEL, 0x0617 }, /* Pentium Pro, sA1 Stepping 7 */
-	{ X86_VENDOR_INTEL, 0x0619 }, /* Pentium Pro, sB1 Stepping 9 */
-	{ 0, 0 },
+	{ X86_VENDOR_INTEL, 0x0610, CPUID_EXACT_MATCH_MASK }, /* Pentium Pro ES, A0 Stepping 0, Abandon Ship */
+	{ X86_VENDOR_INTEL, 0x0611, CPUID_EXACT_MATCH_MASK }, /* Pentium Pro, B0 Stepping 1 */
+	{ X86_VENDOR_INTEL, 0x0612, CPUID_EXACT_MATCH_MASK }, /* Pentium Pro, C0 Stepping 2 */
+	{ X86_VENDOR_INTEL, 0x0616, CPUID_EXACT_MATCH_MASK }, /* Pentium Pro, sA0 Stepping 6 */
+	{ X86_VENDOR_INTEL, 0x0617, CPUID_EXACT_MATCH_MASK }, /* Pentium Pro, sA1 Stepping 7 */
+	{ X86_VENDOR_INTEL, 0x0619, CPUID_EXACT_MATCH_MASK }, /* Pentium Pro, sB1 Stepping 9 */
+	CPU_TABLE_END
 };
 
 static const struct cpu_driver driver __cpu_driver = {
