@@ -5,6 +5,8 @@ subdirs-y += fsp
 subdirs-y += pi
 subdirs-y += vboot
 
+CPPFLAGS_common += -I$(src)/soc/amd/common/vboot/include
+
 ifneq ($(V),)
 OPT_DEBUG_AMDFWTOOL = --debug
 endif
@@ -21,14 +23,14 @@ REMOVE_MP2 = /MP2/d
 endif
 
 # Steps below to generate the dependency list
-# 1a: Delete any line that starts with #, FIRMWARE_LOCATION, or SOC_NAME
+# 1a: Delete any line that starts with #, FIRMWARE_LOCATION, SOC_NAME, or AMD_FUSE_CHAIN
 # 1b: Filter out lines containing MP2 or not, decided above.
 # 1c: Use awk to return only field 2, the filename
 # 2: Gather filenames with no path to add the firmware location later
 # 3: Gather filenames with a path
 # 4a: Add the firmware location to any files without a path to the dependencies
 # 4b: add the lines containing a path to the dependencies
-AMDFW_CFG_FILES = $(shell sed "/^$(POUND_SIGN)\|^FIRMWARE_LOCATION\|^SOC_NAME/d; \
+AMDFW_CFG_FILES = $(shell sed "/^$(POUND_SIGN)\|^FIRMWARE_LOCATION\|^AMD_FUSE_CHAIN\|^SOC_NAME/d; \
 	$(REMOVE_MP2)" $(CONFIG_AMDFW_CONFIG_FILE) | \
 	awk '{print $$2}')
 AMDFW_CFG_IN_FW_LOC = $(shell echo "$(AMDFW_CFG_FILES)" | tr ' ' '\n' | grep -v "/")
@@ -39,15 +41,21 @@ DEP_FILES = $(patsubst %,$(FIRMWARE_LOCATION)/%, $(AMDFW_CFG_IN_FW_LOC)) \
 amd_microcode_bins += $(wildcard ${FIRMWARE_LOCATION}/*UcodePatch_*.bin)
 
 ifeq ($(CONFIG_RESET_VECTOR_IN_RAM),y)
-$(objcbfs)/bootblock.bin: $(obj)/amdfw.rom
+$(objcbfs)/bootblock.bin: $(obj)/amdfw.rom $(obj)/fmap_config.h
 	cp $< $@
+
+amdfw_region_start=$(subst $(spc),,FMAP_SECTION_$(call regions-for-file,apu/amdfw)_START)
+amdfw_offset=$(call int-subtract, \
+	$(CONFIG_AMD_FWM_POSITION) \
+	$(call int-subtract, \
+	$(call get_fmap_value,$(amdfw_region_start)) \
+	$(call get_fmap_value,FMAP_SECTION_FLASH_START)))
 
 add_bootblock = \
 	$(CBFSTOOL) $(1) add -f $(2) -n apu/amdfw -t amdfw \
-	-b $(call int-add, \
-	$(call int-subtract, 0xffffffff \
-	$(call int-shift-left, \
-	0x80000 $(CONFIG_AMD_FWM_POSITION_INDEX))) 0x20000 1)
+        -b $(amdfw_offset) -r $(call regions-for-file,apu/amdfw) \
+	$(CBFSTOOL_ADD_CMD_OPTIONS)
+
 endif # ifeq ($(CONFIG_RESET_VECTOR_IN_RAM),y)
 
 ifeq ($(CONFIG_VBOOT_GSCVD),y)

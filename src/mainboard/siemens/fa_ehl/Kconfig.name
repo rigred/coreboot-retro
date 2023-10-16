@@ -1,0 +1,4 @@
+comment "FA EHL"
+
+config BOARD_SIEMENS_FA_EHL
+	bool "-> FA EHL"

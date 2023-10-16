@@ -78,8 +78,9 @@ lint lint-stable lint-extended:
 
 ABUILD_OPTIONS=--blobs --junit --cpus $(CPUS) --payloads $(JENKINS_PAYLOAD)
 ABUILD_OPTIONS+=$(if $(V),--verbose,)
-ABUILD_OPTIONS+=$(if $(JENKINS_NOCCACHE),,--ccache)
 ABUILD_OPTIONS+=$(JENKINS_ABUILD_OPT)
+
+CCACHE_OPTIONS=$(if $(JENKINS_NOCCACHE),,--ccache)
 
 COREBOOT_BUILD_DIR?=coreboot-builds
 
@@ -116,15 +117,27 @@ test-lint:
 
 test-abuild:
 ifneq ($(JENKINS_SKIP_SCANBUILD_TEST),y)
-	NAME=scanbuild; SCANBUILD_ARGS='-k -plist-html -maxloop 10' util/abuild/abuild -o $(COREBOOT_BUILD_DIR)/$${NAME} $(ABUILD_OPTIONS) -scan-build --target EMULATION_QEMU_X86_Q35 --exitcode --name $${NAME}
+	NAME=scanbuild; SCANBUILD_ARGS='-k -plist-html -maxloop 10' util/abuild/abuild -o $(COREBOOT_BUILD_DIR)/$${NAME} $(ABUILD_OPTIONS) --scan-build --target EMULATION_QEMU_X86_Q35 --exitcode --name $${NAME}
 endif
 ifneq ($(JENKINS_SKIP_GCC_TESTS),y)
-	NAME=gcc-chromeos; util/abuild/abuild -o $(COREBOOT_BUILD_DIR)/$${NAME} $(ABUILD_OPTIONS) -x --name $${NAME} --clean
-	NAME=gcc; util/abuild/abuild -o $(COREBOOT_BUILD_DIR)/$${NAME} $(ABUILD_OPTIONS) --name $${NAME} --clean-somewhat
+ifneq ($(JENKINS_SKIP_ALLTHREAD_TEST),y)
+	NAME=emu_gcc_allthreads; util/abuild/abuild -o $(COREBOOT_BUILD_DIR)/$${NAME} $(ABUILD_OPTIONS) $(CCACHE_OPTIONS) --name $${NAME} --target EMULATION_QEMU_X86_Q35 -b EMULATION_QEMU_X86_Q35 --exitcode --clean
+	NAME=amd_gcc_allthreads; util/abuild/abuild -o $(COREBOOT_BUILD_DIR)/$${NAME} $(ABUILD_OPTIONS) $(CCACHE_OPTIONS) --name $${NAME} --target GOOGLE_SKYRIM -b GOOGLE_SKYRIM --exitcode --clean
+	NAME=intel_gcc_allthreads; util/abuild/abuild -o $(COREBOOT_BUILD_DIR)/$${NAME} $(ABUILD_OPTIONS) $(CCACHE_OPTIONS) --name $${NAME} --target GOOGLE_REX0 -b GOOGLE_REX0 --exitcode --clean
+	NAME=mediatek_gcc_allthreads; util/abuild/abuild -o $(COREBOOT_BUILD_DIR)/$${NAME} $(ABUILD_OPTIONS) $(CCACHE_OPTIONS) --name $${NAME} --target GOOGLE_CHERRY -b GOOGLE_CHERRY --exitcode --clean
+endif
+	NAME=gcc-chromeos; util/abuild/abuild -o $(COREBOOT_BUILD_DIR)/$${NAME} $(ABUILD_OPTIONS) $(CCACHE_OPTIONS) -x --name $${NAME} --clean
+	NAME=gcc; util/abuild/abuild -o $(COREBOOT_BUILD_DIR)/$${NAME} $(ABUILD_OPTIONS) $(CCACHE_OPTIONS) --name $${NAME} --clean-somewhat
 endif
 ifneq ($(JENKINS_SKIP_CLANG_TESTS),y)
-	NAME=clang-chromeos; util/abuild/abuild -o $(COREBOOT_BUILD_DIR)/$${NAME} $(ABUILD_OPTIONS) -L -x --name $${NAME} --clean
-	NAME=clang; util/abuild/abuild -o $(COREBOOT_BUILD_DIR)/$${NAME} $(ABUILD_OPTIONS) -L --name $${NAME} --clean
+ifneq ($(JENKINS_SKIP_ALLTHREAD_TEST),y)
+	NAME=emu_clang_allthreads; util/abuild/abuild -o $(COREBOOT_BUILD_DIR)/$${NAME} $(ABUILD_OPTIONS) $(CCACHE_OPTIONS) --clang --name $${NAME} --target EMULATION_QEMU_X86_Q35 -b EMULATION_QEMU_X86_Q35 --exitcode --clean
+	NAME=amd_clang_allthreads; util/abuild/abuild -o $(COREBOOT_BUILD_DIR)/$${NAME} $(ABUILD_OPTIONS) $(CCACHE_OPTIONS) --clang --name $${NAME} --target GOOGLE_SKYRIM -b GOOGLE_SKYRIM --exitcode --clean
+	NAME=intel_clang_allthreads; util/abuild/abuild -o $(COREBOOT_BUILD_DIR)/$${NAME} $(ABUILD_OPTIONS) $(CCACHE_OPTIONS) --clang --name $${NAME} --target GOOGLE_REX0 -b GOOGLE_REX0 --exitcode --clean
+	NAME=mediatek_clang_allthreads; util/abuild/abuild -o $(COREBOOT_BUILD_DIR)/$${NAME} $(ABUILD_OPTIONS) $(CCACHE_OPTIONS) --clang --name $${NAME} --target GOOGLE_CHERRY -b GOOGLE_CHERRY --exitcode --clean
+endif
+	NAME=clang-chromeos; util/abuild/abuild -o $(COREBOOT_BUILD_DIR)/$${NAME} $(ABUILD_OPTIONS) $(CCACHE_OPTIONS) -L -x --name $${NAME} --clean
+	NAME=clang; util/abuild/abuild -o $(COREBOOT_BUILD_DIR)/$${NAME} $(ABUILD_OPTIONS) $(CCACHE_OPTIONS) -L --name $${NAME} --clean
 endif
 
 test-payloads:

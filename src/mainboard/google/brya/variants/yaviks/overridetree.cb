@@ -1,12 +1,15 @@
 fw_config
 	field DB_USB 0 1
-		option DB_NONE			0
+		option DB_1A			0
 		option DB_1C_1A			1
 		option DB_1C			2
 		option DB_1C_LTE		3
 	end
 	field WIFI_SAR_ID 2 3
 		option SAR_ID_0			0
+		option SAR_ID_1			1
+		option SAR_ID_2			2
+		option SAR_ID_3			3
 	end
 	field STYLUS 9
 		option STYLUS_ABSENT		0
@@ -27,6 +30,10 @@ fw_config
 	field MB_USB 15
 		option MB_1C			0
 		option MB_1C_2A			1
+	end
+	field TOUCH_PANEL 40 41
+		option TOUCH_HID_I2C		0
+		option TOUCH_I2C		1
 	end
 end
 
@@ -225,11 +232,27 @@ chip soc/intel/alderlake
 			probe WFC WFC_MIPI_OVTI8856
 		end
 		device ref i2c1 on
+			chip drivers/i2c/generic
+				register "hid" = ""ELAN0001""
+				register "desc" = ""ELAN Touchscreen""
+				register "irq" = "ACPI_IRQ_LEVEL_LOW(GPP_C7_IRQ)"
+				register "reset_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_LOW(GPP_C1)"
+				register "reset_delay_ms" = "20"
+				register "reset_off_delay_ms" = "2"
+				register "stop_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_LOW(GPP_C6)"
+				register "stop_delay_ms" = "20"
+				register "stop_off_delay_ms" = "2"
+				register "enable_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_HIGH(GPP_C0)"
+				register "enable_delay_ms" = "5"
+				register "has_power_resource" = "1"
+				device i2c 10 on
+					probe TOUCH_PANEL TOUCH_I2C
+				end
+			end
 			chip drivers/i2c/hid
 				register "generic.hid" = ""ELAN2513""
 				register "generic.desc" = ""ELAN Touchscreen""
 				register "generic.irq" = "ACPI_IRQ_LEVEL_LOW(GPP_C7_IRQ)"
-				register "generic.detect" = "1"
 				register "generic.reset_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_LOW(GPP_C1)"
 				register "generic.reset_delay_ms" = "20"
 				register "generic.reset_off_delay_ms" = "2"
@@ -240,7 +263,9 @@ chip soc/intel/alderlake
 				register "generic.enable_delay_ms" = "1"
 				register "generic.has_power_resource" = "1"
 				register "hid_desc_reg_offset" = "0x01"
-				device i2c 10 on end
+				device i2c 10 on
+					probe TOUCH_PANEL TOUCH_HID_I2C
+				end
 			end
 			chip drivers/i2c/hid
 				register "generic.hid" = ""ELAN900C""
@@ -408,6 +433,12 @@ chip soc/intel/alderlake
 				register "sdmode_delay" = "5"
 				device generic 0 on end
 			end
+			chip drivers/sof
+				register "spkr_tplg" = "max98360a"
+				register "jack_tplg" = "rt5682"
+				register "mic_tplg" = "_2ch_pdm0"
+				device generic 0 on end
+			end
 		end
 		device ref pcie_rp4 on
 			# PCIe 4 WLAN
@@ -463,7 +494,11 @@ chip soc/intel/alderlake
 					chip drivers/intel/pmc_mux/conn
 						use usb2_port2 as usb2_port
 						use tcss_usb3_port2 as usb3_port
-						device generic 1 alias conn1 on end
+						device generic 1 alias conn1 on
+							probe DB_USB DB_1C_1A
+							probe DB_USB DB_1C
+							probe DB_USB DB_1C_LTE
+						end
 					end
 				end
 			end
@@ -483,7 +518,11 @@ chip soc/intel/alderlake
 						register "type" = "UPC_TYPE_C_USB2_SS_SWITCH"
                                                 register "use_custom_pld" = "true"
                                                 register "custom_pld" = "ACPI_PLD_TYPE_C(RIGHT, LEFT, ACPI_PLD_GROUP(2, 1))"
-						device ref tcss_usb3_port2 on end
+						device ref tcss_usb3_port2 on
+							probe DB_USB DB_1C_1A
+							probe DB_USB DB_1C
+							probe DB_USB DB_1C_LTE
+						end
 					end
 				end
 			end
@@ -503,7 +542,11 @@ chip soc/intel/alderlake
 						register "type" = "UPC_TYPE_C_USB2_SS_SWITCH"
                                                 register "use_custom_pld" = "true"
                                                 register "custom_pld" = "ACPI_PLD_TYPE_C(RIGHT, LEFT, ACPI_PLD_GROUP(2, 1))"
-						device ref usb2_port2 on end
+						device ref usb2_port2 on
+							probe DB_USB DB_1C_1A
+							probe DB_USB DB_1C
+							probe DB_USB DB_1C_LTE
+						end
 					end
 					chip drivers/usb/acpi
 						register "desc" = ""USB2 Type-A Port A0 (MLB)""
@@ -530,6 +573,7 @@ chip soc/intel/alderlake
 						register "custom_pld" = "ACPI_PLD_TYPE_A(RIGHT, RIGHT, ACPI_PLD_GROUP(3, 1))"
 						device ref usb2_port4 on
 							probe DB_USB DB_1C_1A
+							probe DB_USB DB_1A
 						end
 					end
 					chip drivers/usb/acpi
@@ -583,6 +627,7 @@ chip soc/intel/alderlake
                                                 register "custom_pld" = "ACPI_PLD_TYPE_A(RIGHT, RIGHT, ACPI_PLD_GROUP(3, 1))"
 						device ref usb3_port2 on
 							probe DB_USB DB_1C_1A
+							probe DB_USB DB_1A
 						end
 					end
 					chip drivers/usb/acpi

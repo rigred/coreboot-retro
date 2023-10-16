@@ -1,59 +1,6 @@
 config SOC_INTEL_ALDERLAKE
 	bool
-	help
-	  Intel Alderlake support. Mainboards should specify the PCH
-	  type using the `SOC_INTEL_ALDERLAKE_PCH_*` options instead
-	  of selecting this option directly.
-
-config SOC_INTEL_RAPTORLAKE
-	bool
-	select X86_INIT_NEED_1_SIPI
-	help
-	 Intel Raptorlake support. Mainboards using RPL should select
-	 SOC_INTEL_RAPTORLAKE and SOC_INTEL_ALDERLAKE_PCH_* together.
-
-config SOC_INTEL_ALDERLAKE_PCH_M
-	bool
-	select SOC_INTEL_ALDERLAKE
-	help
-	  Choose this option if your mainboard has a PCH-M chipset.
-
-config SOC_INTEL_ALDERLAKE_PCH_N
-	bool
-	select SOC_INTEL_ALDERLAKE
-	select MICROCODE_BLOB_UNDISCLOSED
-	help
-	  Choose this option if your mainboard has a PCH-N chipset.
-
-config SOC_INTEL_ALDERLAKE_PCH_P
-	bool
-	select SOC_INTEL_ALDERLAKE
-	select HAVE_INTEL_FSP_REPO
-	select PLATFORM_USES_FSP2_3
-	help
-	  Choose this option if your mainboard has a PCH-P chipset.
-
-config SOC_INTEL_ALDERLAKE_PCH_S
-	bool
-	select SOC_INTEL_ALDERLAKE
-	select HAVE_INTEL_FSP_REPO if !SOC_INTEL_RAPTORLAKE_PCH_S || (SOC_INTEL_RAPTORLAKE_PCH_S && FSP_TYPE_IOT)
-	select PLATFORM_USES_FSP2_3
-	help
-	  Choose this option if your mainboard has a PCH-S chipset.
-
-config SOC_INTEL_RAPTORLAKE_PCH_S
-	bool
-	select SOC_INTEL_ALDERLAKE_PCH_S
-	select SOC_INTEL_RAPTORLAKE
-	help
-	  Choose this option if your mainboard has a Raptor Lake PCH-S chipset.
-
-if SOC_INTEL_ALDERLAKE
-
-config CPU_SPECIFIC_OPTIONS
-	def_bool y
 	select ACPI_INTEL_HARDWARE_SLEEP_VALUES
-	select ACPI_ADL_IPU_ES_SUPPORT
 	select ARCH_X86
 	select BOOT_DEVICE_SUPPORTS_WRITES
 	select CACHE_MRC_SETTINGS
@@ -82,6 +29,7 @@ config CPU_SPECIFIC_OPTIONS
 	select INTEL_GMA_ACPI
 	select INTEL_GMA_ADD_VBT if RUN_FSP_GOP
 	select INTEL_GMA_OPREGION_2_1
+	select INTEL_GMA_VERSION_2
 	select INTEL_TXT_LIB
 	select MP_SERVICES_PPI_V2
 	select MRC_SETTINGS_PROTECT
@@ -118,6 +66,7 @@ config CPU_SPECIFIC_OPTIONS
 	select SOC_INTEL_COMMON_BLOCK_IRQ
 	select SOC_INTEL_COMMON_BLOCK_ME_SPEC_16
 	select SOC_INTEL_COMMON_BLOCK_MEMINIT
+	select SOC_INTEL_COMMON_BLOCK_OC_WDT
 	select SOC_INTEL_COMMON_BLOCK_PCIE_RTD3
 	select SOC_INTEL_COMMON_BLOCK_PMC_EPOC
 	select SOC_INTEL_COMMON_BLOCK_POWER_LIMIT
@@ -142,6 +91,55 @@ config CPU_SPECIFIC_OPTIONS
 	select UDK_202005_BINDING
 	select VBOOT_LIB
 	select X86_CLFLUSH_CAR
+	help
+	  Intel Alderlake support. Mainboards should specify the PCH
+	  type using the `SOC_INTEL_ALDERLAKE_PCH_*` options instead
+	  of selecting this option directly.
+
+config SOC_INTEL_RAPTORLAKE
+	bool
+	select X86_INIT_NEED_1_SIPI
+	help
+	 Intel Raptorlake support. Mainboards using RPL should select
+	 SOC_INTEL_RAPTORLAKE and SOC_INTEL_ALDERLAKE_PCH_* together.
+
+config SOC_INTEL_ALDERLAKE_PCH_M
+	bool
+	select SOC_INTEL_ALDERLAKE
+	help
+	  Choose this option if your mainboard has a PCH-M chipset.
+
+config SOC_INTEL_ALDERLAKE_PCH_N
+	bool
+	select HAVE_INTEL_FSP_REPO
+	select SOC_INTEL_ALDERLAKE
+	help
+	  Choose this option if your mainboard has a PCH-N chipset.
+
+config SOC_INTEL_ALDERLAKE_PCH_P
+	bool
+	select SOC_INTEL_ALDERLAKE
+	select HAVE_INTEL_FSP_REPO
+	select PLATFORM_USES_FSP2_3
+	help
+	  Choose this option if your mainboard has a PCH-P chipset.
+
+config SOC_INTEL_ALDERLAKE_PCH_S
+	bool
+	select SOC_INTEL_ALDERLAKE
+	select HAVE_INTEL_FSP_REPO if !SOC_INTEL_RAPTORLAKE_PCH_S || (SOC_INTEL_RAPTORLAKE_PCH_S && FSP_TYPE_IOT)
+	select PLATFORM_USES_FSP2_3
+	help
+	  Choose this option if your mainboard has a PCH-S chipset.
+
+config SOC_INTEL_RAPTORLAKE_PCH_S
+	bool
+	select SOC_INTEL_ALDERLAKE_PCH_S
+	select SOC_INTEL_RAPTORLAKE
+	help
+	  Choose this option if your mainboard has a Raptor Lake PCH-S chipset.
+
+if SOC_INTEL_ALDERLAKE
 
 config SOC_INTEL_ALDERLAKE_TCSS_USB4_SUPPORT
 	bool
@@ -216,10 +214,6 @@ config IFD_CHIPSET
 config IED_REGION_SIZE
 	hex
 	default 0x400000
-
-config HEAP_SIZE
-	hex
-	default 0x10000
 
 config GFX_GMA_DEFAULT_MMIO
 	default 0xaf000000 if MAINBOARD_HAS_EARLY_LIBGFXINIT
@@ -405,22 +399,29 @@ config FSP_TYPE_IOT
 config FSP_HEADER_PATH
 	string "Location of FSP headers"
 	default "src/vendorcode/intel/fsp/fsp2_0/alderlake_n/" if SOC_INTEL_ALDERLAKE_PCH_N && !FSP_USE_REPO
-	default "src/vendorcode/intel/fsp/fsp2_0/raptorlake/" if SOC_INTEL_RAPTORLAKE && !FSP_USE_REPO
+	default "src/vendorcode/intel/fsp/fsp2_0/raptorlake/4221.00_google/" if VENDOR_GOOGLE && SOC_INTEL_RAPTORLAKE && !FSP_USE_REPO
+	default "src/vendorcode/intel/fsp/fsp2_0/raptorlake/4301.01/" if SOC_INTEL_RAPTORLAKE && !FSP_USE_REPO
+	default "3rdparty/fsp/RaptorLakeFspBinPkg/Client/RaptorLakeP/Include/" if SOC_INTEL_ALDERLAKE_PCH_P && SOC_INTEL_RAPTORLAKE
+	default "3rdparty/fsp/RaptorLakeFspBinPkg/Client/RaptorLakeS/Include/" if SOC_INTEL_ALDERLAKE_PCH_S && SOC_INTEL_RAPTORLAKE
 	default "3rdparty/fsp/RaptorLakeFspBinPkg/IoT/RaptorLakeS/Include/" if SOC_INTEL_RAPTORLAKE_PCH_S && FSP_TYPE_IOT
 	default "3rdparty/fsp/AlderLakeFspBinPkg/IoT/AlderLakeP/Include/" if SOC_INTEL_ALDERLAKE_PCH_P && FSP_TYPE_IOT
 	default "3rdparty/fsp/AlderLakeFspBinPkg/IoT/AlderLakeS/Include/" if SOC_INTEL_ALDERLAKE_PCH_S && FSP_TYPE_IOT
 	default "3rdparty/fsp/AlderLakeFspBinPkg/Client/AlderLakeP/Include/" if SOC_INTEL_ALDERLAKE_PCH_P
 	default "3rdparty/fsp/AlderLakeFspBinPkg/Client/AlderLakeS/Include/" if SOC_INTEL_ALDERLAKE_PCH_S
+	default "3rdparty/fsp/AlderLakeFspBinPkg/IoT/AlderLakeN/Include/" if SOC_INTEL_ALDERLAKE_PCH_N
 	default "src/vendorcode/intel/fsp/fsp2_0/alderlake/" if !FSP_USE_REPO
 
 config FSP_FD_PATH
 	string
 	depends on FSP_USE_REPO
 	default "3rdparty/fsp/RaptorLakeFspBinPkg/IoT/RaptorLakeS/FSP.fd" if SOC_INTEL_RAPTORLAKE_PCH_S && FSP_TYPE_IOT
+	default "3rdparty/fsp/RaptorLakeFspBinPkg/Client/RaptorLakeP/Fsp.fd" if SOC_INTEL_ALDERLAKE_PCH_P && SOC_INTEL_RAPTORLAKE
+	default "3rdparty/fsp/RaptorLakeFspBinPkg/Client/RaptorLakeS/Fsp.fd" if SOC_INTEL_ALDERLAKE_PCH_S && SOC_INTEL_RAPTORLAKE
 	default "3rdparty/fsp/AlderLakeFspBinPkg/IoT/AlderLakeP/Fsp.fd" if SOC_INTEL_ALDERLAKE_PCH_P && FSP_TYPE_IOT
 	default "3rdparty/fsp/AlderLakeFspBinPkg/IoT/AlderLakeS/Fsp.fd" if SOC_INTEL_ALDERLAKE_PCH_S && FSP_TYPE_IOT
 	default "3rdparty/fsp/AlderLakeFspBinPkg/Client/AlderLakeP/Fsp.fd" if SOC_INTEL_ALDERLAKE_PCH_P
 	default "3rdparty/fsp/AlderLakeFspBinPkg/Client/AlderLakeS/Fsp.fd" if SOC_INTEL_ALDERLAKE_PCH_S
+	default "3rdparty/fsp/AlderLakeFspBinPkg/IoT/AlderLakeN/Fsp.fd" if SOC_INTEL_ALDERLAKE_PCH_N
 
 config SOC_INTEL_ALDERLAKE_DEBUG_CONSENT
 	int "Debug Consent for ADL"
@@ -448,11 +449,6 @@ config DIMMS_PER_CHANNEL
 config MRC_CHANNEL_WIDTH
 	int
 	default 16
-
-config ACPI_ADL_IPU_ES_SUPPORT
-	def_bool n
-	help
-	  Enables ACPI entry to provide silicon type information to IPU kernel driver.
 
 config ALDERLAKE_ENABLE_SOC_WORKAROUND
 	bool
@@ -560,5 +556,8 @@ config HSPHY_FW_FILE
 config HSPHY_FW_MAX_SIZE
 	hex
 	default 0x8000
+
+config HAVE_BMP_LOGO_COMPRESS_LZMA
+	default n
 
 endif

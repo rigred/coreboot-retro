@@ -19,7 +19,7 @@ static const char *display_mtrr_type(uint32_t type)
 	}
 }
 
-static void display_mtrr_fixed_types(uint64_t msr,
+static void display_mtrr_fixed_types(msr_t msr_data,
 	uint32_t starting_address, uint32_t memory_size)
 {
 	uint32_t base_address;
@@ -28,13 +28,13 @@ static void display_mtrr_fixed_types(uint64_t msr,
 	uint32_t next_type;
 	uint32_t type;
 
-	type = msr & MTRR_DEF_TYPE_MASK;
+	type = msr_data.raw & MTRR_DEF_TYPE_MASK;
 	base_address = starting_address;
 	next_address = base_address;
 	for (index = 0; index < 64; index += 8) {
 		next_address = starting_address + (memory_size *
 			((index >> 3) + 1));
-		next_type = (msr >> index) & MTRR_DEF_TYPE_MASK;
+		next_type = (msr_data.raw >> index) & MTRR_DEF_TYPE_MASK;
 		if (next_type != type) {
 			printk(BIOS_DEBUG, "    0x%08x - 0x%08x: %s\n",
 				base_address, next_address - 1,
@@ -52,46 +52,29 @@ static void display_mtrr_fixed_types(uint64_t msr,
 static void display_4k_mtrr(uint32_t msr_reg, uint32_t starting_address,
 	const char *name)
 {
-	union {
-		uint64_t u64;
-		msr_t s;
-	} msr;
-
-	msr.s = rdmsr(msr_reg);
-	printk(BIOS_DEBUG, "0x%016llx: %s\n", msr.u64, name);
-	display_mtrr_fixed_types(msr.u64, starting_address, 0x1000);
+	const msr_t msr = rdmsr(msr_reg);
+	printk(BIOS_DEBUG, "0x%016llx: %s\n", msr.raw, name);
+	display_mtrr_fixed_types(msr, starting_address, 0x1000);
 }
 
 static void display_16k_mtrr(uint32_t msr_reg, uint32_t starting_address,
 	const char *name)
 {
-	union {
-		uint64_t u64;
-		msr_t s;
-	} msr;
-
-	msr.s = rdmsr(msr_reg);
-	printk(BIOS_DEBUG, "0x%016llx: %s\n", msr.u64, name);
-	display_mtrr_fixed_types(msr.u64, starting_address, 0x4000);
+	const msr_t msr = rdmsr(msr_reg);
+	printk(BIOS_DEBUG, "0x%016llx: %s\n", msr.raw, name);
+	display_mtrr_fixed_types(msr, starting_address, 0x4000);
 }
 
 static void display_64k_mtrr(void)
 {
-	union {
-		uint64_t u64;
-		msr_t s;
-	} msr;
-
-	msr.s = rdmsr(MTRR_FIX_64K_00000);
-	printk(BIOS_DEBUG, "0x%016llx: IA32_MTRR_FIX64K_00000\n", msr.u64);
-	display_mtrr_fixed_types(msr.u64, 0, 0x10000);
+	const msr_t msr = rdmsr(MTRR_FIX_64K_00000);
+	printk(BIOS_DEBUG, "0x%016llx: IA32_MTRR_FIX64K_00000\n", msr.raw);
+	display_mtrr_fixed_types(msr, 0, 0x10000);
 }
 
 static void display_mtrrcap(void)
 {
-	msr_t msr;
-
-	msr = rdmsr(MTRR_CAP_MSR);
+	const msr_t msr = rdmsr(MTRR_CAP_MSR);
 	printk(BIOS_DEBUG,
 		"0x%08x%08x: IA32_MTRRCAP: %s%s%s%s%u variable MTRRs\n",
 		msr.hi, msr.lo,
@@ -104,53 +87,39 @@ static void display_mtrrcap(void)
 
 static void display_mtrr_def_type(void)
 {
-	union {
-		uint64_t u64;
-		msr_t s;
-	} msr;
-
-	msr.s = rdmsr(MTRR_DEF_TYPE_MSR);
+	const msr_t msr = rdmsr(MTRR_DEF_TYPE_MSR);
 	printk(BIOS_DEBUG, "0x%016llx: IA32_MTRR_DEF_TYPE:%s%s %s\n",
-		msr.u64,
-		(msr.u64 & MTRR_DEF_TYPE_EN) ? " E," : "",
-		(msr.u64 & MTRR_DEF_TYPE_FIX_EN) ? " FE," : "",
-		display_mtrr_type((uint32_t)(msr.u64 &
+		msr.raw,
+		(msr.raw & MTRR_DEF_TYPE_EN) ? " E," : "",
+		(msr.raw & MTRR_DEF_TYPE_FIX_EN) ? " FE," : "",
+		display_mtrr_type((uint32_t)(msr.raw &
 			MTRR_DEF_TYPE_MASK)));
 }
 
 static void display_variable_mtrr(int index, uint64_t address_mask)
 {
-	const uint32_t msr_reg = MTRR_PHYS_BASE(index);
 	uint64_t base_address;
 	uint64_t length;
 	uint64_t mask;
-	union {
-		uint64_t u64;
-		msr_t s;
-	} msr_a;
-	union {
-		uint64_t u64;
-		msr_t s;
-	} msr_m;
+	const msr_t msr_base = rdmsr(MTRR_PHYS_BASE(index));
+	const msr_t msr_mask = rdmsr(MTRR_PHYS_MASK(index));
 
-	msr_a.s = rdmsr(msr_reg);
-	msr_m.s = rdmsr(msr_reg + 1);
-	if (msr_m.u64 & MTRR_PHYS_MASK_VALID) {
-		base_address = (msr_a.u64 & 0xfffffffffffff000ULL)
+	if (msr_mask.raw & MTRR_PHYS_MASK_VALID) {
+		base_address = (msr_base.raw & 0xfffffffffffff000ULL)
 			& address_mask;
 		printk(BIOS_DEBUG,
 			"0x%016llx: PHYBASE%d: Address = 0x%016llx, %s\n",
-			msr_a.u64, index, base_address,
-			display_mtrr_type(msr_a.u64 & MTRR_DEF_TYPE_MASK));
-		mask = (msr_m.u64 & 0xfffffffffffff000ULL) & address_mask;
+			msr_base.raw, index, base_address,
+			display_mtrr_type(msr_base.raw & MTRR_DEF_TYPE_MASK));
+		mask = (msr_mask.raw & 0xfffffffffffff000ULL) & address_mask;
 		length = (~mask & address_mask) + 1;
 		printk(BIOS_DEBUG,
 			"0x%016llx: PHYMASK%d: Length  = 0x%016llx, Valid\n",
-			msr_m.u64, index, length);
+			msr_mask.raw, index, length);
 	} else {
-		printk(BIOS_DEBUG, "0x%016llx: PHYBASE%d\n", msr_a.u64, index);
+		printk(BIOS_DEBUG, "0x%016llx: PHYBASE%d\n", msr_base.raw, index);
 		printk(BIOS_DEBUG, "0x%016llx: PHYMASK%d: Disabled\n",
-			msr_m.u64, index);
+			msr_mask.raw, index);
 	}
 }
 

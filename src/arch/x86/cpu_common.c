@@ -44,13 +44,16 @@ unsigned int cpu_cpuid_extended_level(void)
 	return cpuid_eax(0x80000000);
 }
 
-int cpu_phys_address_size(void)
+unsigned int cpu_phys_address_size(void)
 {
 	if (!(cpu_have_cpuid()))
 		return 32;
 
-	if (cpu_cpuid_extended_level() >= 0x80000008)
-		return cpuid_eax(0x80000008) & 0xff;
+	if (cpu_cpuid_extended_level() >= 0x80000008) {
+		int size = cpuid_eax(0x80000008) & 0xff;
+		size -= get_reserved_phys_addr_bits();
+		return size;
+	}
 
 	if (cpuid_edx(1) & (CPUID_FEATURE_PAE | CPUID_FEATURE_PSE36))
 		return 36;
@@ -86,20 +89,15 @@ uint32_t cpu_get_feature_flags_edx(void)
 
 enum cpu_type cpu_check_deterministic_cache_cpuid_supported(void)
 {
-	struct cpuid_result res;
-
 	if (cpu_is_intel()) {
-		res = cpuid(0);
-		if (res.eax < 4)
+		if (cpuid_get_max_func() < 4)
 			return CPUID_COMMAND_UNSUPPORTED;
 		return CPUID_TYPE_INTEL;
 	} else if (cpu_is_amd()) {
-		res = cpuid(0x80000000);
-		if (res.eax < 0x80000001)
+		if (cpu_cpuid_extended_level() < 0x80000001)
 			return CPUID_COMMAND_UNSUPPORTED;
 
-		res = cpuid(0x80000001);
-		if (!(res.ecx & (1 << 22)))
+		if (!(cpuid_ecx(0x80000001) & (1 << 22)))
 			return CPUID_COMMAND_UNSUPPORTED;
 
 		return CPUID_TYPE_AMD;
@@ -187,6 +185,22 @@ size_t get_cache_size(const struct cpu_cache_info *info)
 		return 0;
 
 	return info->num_ways * info->physical_partitions * info->line_size * info->num_sets;
+}
+
+/*
+ * Returns the sub-states supported by the specified CPU
+ * C-state level.
+ *
+ * Level 0 corresponds to the lowest C-state (C0).
+ * Higher levels are processor specific.
+ */
+uint8_t cpu_get_c_substate_support(const int state)
+{
+	if ((cpuid_get_max_func() < 5) ||
+	    !(cpuid_ecx(5) & CPUID_FEATURE_MONITOR_MWAIT) || (state > 4))
+		return 0;
+
+	return (cpuid_edx(5) >> (state * 4)) & 0xf;
 }
 
 bool fill_cpu_cache_info(uint8_t level, struct cpu_cache_info *info)

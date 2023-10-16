@@ -32,11 +32,20 @@ static const char *pch_pcie_acpi_name(const struct device *dev)
 	return NULL;
 }
 
+static bool pci_is_hotplugable(struct device *dev)
+{
+	struct southbridge_intel_bd82x6x_config *config = dev->chip_info;
+
+	return config && config->pcie_hotplug_map[PCI_FUNC(dev->path.pci.devfn)];
+}
+
 static void pch_pcie_pm_early(struct device *dev)
 {
 	u16 link_width_p0, link_width_p4;
+	struct device *child = NULL;
 	u8 slot_power_limit = 10; /* 10W for x1 */
-	u32 reg32;
+	static u8 slot_number = 1;
+	u32 reg32, cap;
 	u8 reg8;
 
 	reg32 = RCBA32(RPC);
@@ -117,24 +126,43 @@ static void pch_pcie_pm_early(struct device *dev)
 	reg32 &= ~(1 << 31); /* Disable PME# SCI for native PME handling */
 	pci_write_config32(dev, 0xd8, reg32);
 
+	cap = pci_find_capability(dev, PCI_CAP_ID_PCIE);
+
 	/* Adjust ASPM L1 exit latency */
-	reg32 = pci_read_config32(dev, 0x4c);
-	reg32 &= ~((1 << 17) | (1 << 16) | (1 << 15));
+	reg32 = pci_read_config32(dev, cap + PCI_EXP_LNKCAP);
+	reg32 &= ~PCI_EXP_LNKCAP_L1EL;
 	if (RCBA32(CIR9) & (1 << 16)) {
 		/* If RCBA+2320[15]=1 set ASPM L1 to 8-16us */
-		reg32 |= (1 << 17);
+		reg32 |= (4 << 15);
 	} else {
 		/* Else set ASPM L1 to 2-4us */
-		reg32 |= (1 << 16);
+		reg32 |= (2 << 15);
 	}
-	pci_write_config32(dev, 0x4c, reg32);
+	pci_write_config32(dev, cap + PCI_EXP_LNKCAP, reg32);
+
+	/*
+	 * PCI device enumeration hasn't started yet, thus any downstream device here
+	 * must be a static device from devicetree.cb.
+	 * If one is found assume it's an integrated device and not a PCIe slot.
+	 */
+	if (dev->link_list)
+		child = pcidev_path_behind(dev->link_list, PCI_DEVFN(0, 0));
 
 	/* Set slot power limit as configured above */
-	reg32 = pci_read_config32(dev, 0x54);
-	reg32 &= ~((1 << 15) | (1 << 16)); /* 16:15 = Slot power scale */
-	reg32 &= ~(0xff << 7);             /* 14:7  = Slot power limit */
-	reg32 |= (slot_power_limit << 7);
-	pci_write_config32(dev, 0x54, reg32);
+	reg32 = pci_read_config32(dev, cap + PCI_EXP_SLTCAP);
+	if (pci_is_hotplugable(dev))
+		reg32 |= (PCI_EXP_SLTCAP_HPS | PCI_EXP_SLTCAP_HPC);
+	else
+		reg32 &= ~(PCI_EXP_SLTCAP_HPS | PCI_EXP_SLTCAP_HPC);
+	reg32 &= ~PCI_EXP_SLTCAP_SPLS; /* 16:15 = Slot power scale */
+	reg32 &= ~PCI_EXP_SLTCAP_SPLV; /* 14:7  = Slot power limit */
+	reg32 &= ~PCI_EXP_SLTCAP_PSN;
+	if (!child || !child->on_mainboard) {
+		/* Only PCIe slots have a power limit and slot number */
+		reg32 |= (slot_power_limit << 7);
+		reg32 |= (slot_number++ << 19);
+	}
+	pci_write_config32(dev, cap + PCI_EXP_SLTCAP, reg32);
 }
 
 static void pch_pcie_pm_late(struct device *dev)
@@ -179,7 +207,6 @@ static void pch_pcie_pm_late(struct device *dev)
 static void pci_init(struct device *dev)
 {
 	u16 reg16;
-	struct southbridge_intel_bd82x6x_config *config = dev->chip_info;
 
 	printk(BIOS_DEBUG, "Initializing PCH PCIe bridge.\n");
 
@@ -202,10 +229,8 @@ static void pci_init(struct device *dev)
 	pci_write_config16(dev, 0x1e, reg16);
 
 	/* Enable expresscard hotplug events.  */
-	if (config->pcie_hotplug_map[PCI_FUNC(dev->path.pci.devfn)]) {
+	if (pci_is_hotplugable(dev))
 		pci_or_config32(dev, 0xd8, 1 << 30);
-		pci_write_config16(dev, 0x42, 0x142);
-	}
 }
 
 static void pch_pcie_enable(struct device *dev)
@@ -216,14 +241,18 @@ static void pch_pcie_enable(struct device *dev)
 
 static void pch_pciexp_scan_bridge(struct device *dev)
 {
-	struct southbridge_intel_bd82x6x_config *config = dev->chip_info;
+	uint32_t cap = pci_find_capability(dev, PCI_CAP_ID_PCIE);
 
-	if (CONFIG(PCIEXP_HOTPLUG) && config->pcie_hotplug_map[PCI_FUNC(dev->path.pci.devfn)]) {
+	if (CONFIG(PCIEXP_HOTPLUG) && pci_is_hotplugable(dev)) {
 		pciexp_hotplug_scan_bridge(dev);
 	} else {
 		/* Normal PCIe Scan */
 		pciexp_scan_bridge(dev);
 	}
+	if ((pci_read_config16(dev, cap + PCI_EXP_SLTSTA) & PCI_EXP_SLTSTA_PDS) &&
+	    !dev_is_active_bridge(dev))
+		printk(BIOS_WARNING, "%s: Has a slow downstream device. Enumeration failed.\n",
+			dev_path(dev));
 
 	/* Late Power Management init after bridge device enumeration */
 	pch_pcie_pm_late(dev);

@@ -1,3 +1,5 @@
+## SPDX-License-Identifier: BSD-3-Clause
+
 #*****************************************************************************
 #
 # Copyright (c) 2012, 2016   Advanced Micro Devices, Inc.
@@ -28,9 +30,10 @@
 #
 #*****************************************************************************
 
+ifeq ($(CONFIG_SOC_AMD_STONEYRIDGE),y)
+
 subdirs-y += 00670F00
 
-ifeq ($(CONFIG_SOC_AMD_STONEYRIDGE),y)
 # AGESA V5 Files
 
 AGESA_ROOT = $(top)/$(call strip_quotes,$(CONFIG_AGESA_BINARY_PI_VENDORCODE_PATH))
@@ -59,6 +62,8 @@ endif
 
 ifeq ($(CONFIG_CPU_AMD_PI_00730F01),y)
 # AGESA V5 Files
+
+subdirs-y += 00730F01
 
 AGESA_ROOT = $(call strip_quotes,$(CONFIG_AGESA_BINARY_PI_VENDORCODE_PATH))
 

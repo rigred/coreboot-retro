@@ -55,7 +55,7 @@ else:
 #
 # This is also used if you do content translation via gettext catalogs.
 # Usually you set "language" from the command line for these cases.
-language = None
+language = 'en'
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
@@ -87,100 +87,12 @@ html_theme = 'sphinx_rtd_theme'
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
 
-html_context = {
-      'css_files': [
-        '_static/theme_overrides.css',  # override wide tables in RTD theme
-      ],
-}
+html_css_files = [
+    'theme_overrides.css',  # override wide tables in RTD theme
+]
 
 # Output file base name for HTML help builder.
 htmlhelp_basename = 'corebootdoc'
-
-# -- Options for LaTeX output ---------------------------------------------
-
-latex_elements = {
-     # The paper size ('letterpaper' or 'a4paper').
-     #
-     # 'papersize': 'letterpaper',
-
-     # The font size ('10pt', '11pt' or '12pt').
-     #
-     # 'pointsize': '10pt',
-
-     # Additional stuff for the LaTeX preamble.
-     #
-     # 'preamble': '',
-
-     # Latex figure (float) alignment
-     #
-     # 'figure_align': 'htbp',
-}
-
-# Grouping the document tree into LaTeX files. List of tuples
-# (source start file, target name, title,
-#  author, documentclass [howto, manual, or own class]).
-latex_documents = [
-    (master_doc, 'coreboot.tex', u'coreboot Documentation',
-     u'the coreboot project', 'manual'),
-]
-
-# The name of an image file (relative to this directory) to place at the top of
-# the title page.
-#
-# latex_logo = None
-
-# For "manual" documents, if this is true, then toplevel headings are parts,
-# not chapters.
-#
-# latex_use_parts = False
-
-# If true, show page references after internal links.
-#
-# latex_show_pagerefs = False
-
-# If true, show URL addresses after external links.
-#
-# latex_show_urls = False
-
-# Documents to append as an appendix to all manuals.
-#
-# latex_appendices = []
-
-# If false, will not define \strong, \code,	itleref, \crossref ... but only
-# \sphinxstrong, ..., \sphinxtitleref, ... To help avoid clash with user added
-# packages.
-#
-# latex_keep_old_macro_names = True
-
-# If false, no module index is generated.
-#
-# latex_domain_indices = True
-
-
-# -- Options for manual page output ---------------------------------------
-
-# One entry per manual page. List of tuples
-# (source start file, name, description, authors, manual section).
-man_pages = [
-    (master_doc, 'coreboot', u'coreboot Documentation',
-     [author], 1)
-]
-
-# If true, show URL addresses after external links.
-#
-# man_show_urls = False
-
-
-# -- Options for Texinfo output -------------------------------------------
-
-# Grouping the document tree into Texinfo files. List of tuples
-# (source start file, target name, title, author,
-#  dir menu entry, description, category)
-texinfo_documents = [
-    (master_doc, 'coreboot', u'coreboot Documentation',
-     author, 'coreboot', 'One line description of project.',
-     'Miscellaneous'),
-]
 
 enable_auto_toc_tree = True
 
@@ -190,23 +102,6 @@ class MyCommonMarkParser(CommonMarkParser):
         from docutils import nodes
         n = nodes.literal(mdnode.literal, mdnode.literal)
         self.current_node.append(n)
-
-# Documents to append as an appendix to all manuals.
-#
-# texinfo_appendices = []
-
-# If false, no module index is generated.
-#
-# texinfo_domain_indices = True
-
-# How to display URL addresses: 'footnote', 'no', or 'inline'.
-#
-# texinfo_show_urls = 'footnote'
-
-# If true, do not generate a @detailmenu in the "Top" node's menu.
-#
-# texinfo_no_detailmenu = False
-
 
 def setup(app):
     from recommonmark.transform import AutoStructify

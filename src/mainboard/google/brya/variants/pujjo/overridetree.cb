@@ -30,11 +30,13 @@ fw_config
 		option EXT_VR_PRESENT		0
 		option EXT_VR_ABSENT		1
 	end
-	field WIFI_SAR_ID 16 17
+	field WIFI_SAR_ID 16 18
 		option WIFI_SAR_TABLE_0		0
 		option WIFI_SAR_TABLE_1		1
 		option WIFI_SAR_TABLE_2		2
 		option WIFI_SAR_TABLE_3		3
+		option WIFI_SAR_TABLE_4		4
+		option WIFI_SAR_TABLE_5		5
 	end
 	field WWAN_5G 19
 		option WWAN_5G_ABSENT		0
@@ -43,6 +45,10 @@ fw_config
 	field LTE_EM060 20
 		option LTE_EM060_ABSENT		0
 		option LTE_EM060_PRESENT	1
+	end
+	field PANEL_IVO_BOE 21
+		option IVO_BOE_ABSENT		0
+		option IVO_BOE_PRESENT		1
 	end
 
 end
@@ -607,6 +613,23 @@ chip soc/intel/alderlake
 				device generic 0 on
 					probe AUDIO MAX98357_ALC5682I
 					probe AUDIO MAX98357_ALC5682IVS
+				end
+			end
+			chip drivers/sof
+				register "spkr_tplg" = "max98360a"
+				register "jack_tplg" = "rt5682"
+				register "mic_tplg" = "_2ch_pdm0"
+				device generic 0 on
+					probe AUDIO MAX98357_ALC5682I
+					probe AUDIO MAX98357_ALC5682IVS
+				end
+			end
+			chip drivers/sof
+				register "spkr_tplg" = "rt1019"
+				register "jack_tplg" = "rt5682"
+				register "mic_tplg" = "_2ch_pdm0"
+				device generic 0 on
+					probe AUDIO ALC1019_ALC5682IVS
 				end
 			end
 		end

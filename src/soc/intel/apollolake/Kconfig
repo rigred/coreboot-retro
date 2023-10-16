@@ -1,27 +1,6 @@
 config SOC_INTEL_APOLLOLAKE
 	bool
 	select INTEL_CAR_CQOS
-	help
-	  Intel Apollolake support
-
-config SOC_INTEL_GEMINILAKE
-	bool
-	default n
-	select SOC_INTEL_APOLLOLAKE
-	select SOC_INTEL_COMMON_BLOCK_CNVI
-	select SOC_INTEL_COMMON_BLOCK_CPU_MPINIT
-	select SOC_INTEL_COMMON_BLOCK_SGX
-	select SOC_INTEL_COMMON_BLOCK_GSPI_VERSION_2
-	select IDT_IN_EVERY_STAGE
-	select PAGING_IN_CACHE_AS_RAM
-	select INTEL_CAR_NEM
-	help
-	  Intel GLK support
-
-if SOC_INTEL_APOLLOLAKE
-
-config CPU_SPECIFIC_OPTIONS
-	def_bool y
 	select ACPI_INTEL_HARDWARE_SLEEP_VALUES
 	select ACPI_NO_PCAT_8259
 	select ARCH_X86
@@ -102,6 +81,24 @@ config CPU_SPECIFIC_OPTIONS
 	# This SoC does not map SPI flash like many previous SoC. Therefore we
 	# provide a custom media driver that facilitates mapping
 	select X86_CUSTOM_BOOTMEDIA
+	help
+	  Intel Apollolake support
+
+config SOC_INTEL_GEMINILAKE
+	bool
+	default n
+	select SOC_INTEL_APOLLOLAKE
+	select SOC_INTEL_COMMON_BLOCK_CNVI
+	select SOC_INTEL_COMMON_BLOCK_CPU_MPINIT
+	select SOC_INTEL_COMMON_BLOCK_SGX
+	select SOC_INTEL_COMMON_BLOCK_GSPI_VERSION_2
+	select IDT_IN_EVERY_STAGE
+	select PAGING_IN_CACHE_AS_RAM
+	select INTEL_CAR_NEM
+	help
+	  Intel Geminilake support
+
+if SOC_INTEL_APOLLOLAKE
 
 config SKIP_CSE_RBP
 	bool
@@ -192,8 +189,8 @@ config VERSTAGE_ADDR
 	  The base address (in CAR) where verstage should be linked
 
 config FSP_HEADER_PATH
-	default "src/vendorcode/intel/fsp/fsp2_0/glk/2.2.0.0" if VENDOR_GOOGLE && SOC_INTEL_GEMINILAKE
-	default "src/vendorcode/intel/fsp/fsp2_0/glk/2.2.3.1" if SOC_INTEL_GEMINILAKE
+	default "src/vendorcode/intel/fsp/fsp2_0/geminilake/2.2.0.0" if VENDOR_GOOGLE && SOC_INTEL_GEMINILAKE
+	default "src/vendorcode/intel/fsp/fsp2_0/geminilake/2.2.3.1" if SOC_INTEL_GEMINILAKE
 	default "3rdparty/fsp/ApolloLakeFspBinPkg/Include/"
 
 config FSP_FD_PATH
@@ -254,10 +251,6 @@ config IFWI_FILE_NAME
 	default "3rdparty/blobs/mainboard/\$(CONFIG_MAINBOARD_DIR)/ifwi.bin"
 	help
 	  Name of file to store in the IFWI region.
-
-config HEAP_SIZE
-	hex
-	default 0x8000
 
 config MAX_ROOT_PORTS
 	int

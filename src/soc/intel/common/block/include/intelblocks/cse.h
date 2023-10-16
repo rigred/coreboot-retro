@@ -40,7 +40,7 @@ enum mkhi_group_id {
 /* Get Firmware Feature State Command Id */
 #define MKHI_FWCAPS_GET_FW_FEATURE_STATE	0x02
 #define   ME_FEATURE_STATE_RULE_ID		0x20
-
+#define   ME_FW_FEATURE_PSR			BIT(5)
 /* MEI bus disable command. Must be sent to MEI client endpoint, not MKHI */
 #define MEI_BUS_DISABLE_COMMAND	0xc
 
@@ -80,6 +80,9 @@ enum me_fw_sku {
 /* Number of cse boot performance data */
 #define NUM_CSE_BOOT_PERF_DATA	64
 
+/* PSR_HECI_FW_DOWNGRADE_BACKUP Command */
+#define PSR_HECI_FW_DOWNGRADE_BACKUP 0x3
+
 /* HFSTS register offsets in PCI config space */
 enum {
 	PCI_ME_HFSTS1 = 0x40,
@@ -103,6 +106,24 @@ struct mkhi_hdr {
 	uint8_t is_resp:1;
 	uint8_t rsvd;
 	uint8_t result;
+} __packed;
+
+/* PSR HECI message status */
+enum psr_status {
+	PSR_STATUS_SUCCESS,
+	PSR_STATUS_FEATURE_NOT_SUPPORTED,
+	PSR_STATUS_UPID_DISABLED,
+	PSR_STATUS_ACTION_NOT_ALLOWED,
+	PSR_STATUS_INVALID_INPUT_PARAMETER,
+	PSR_STATUS_INTERNAL_ERROR,
+	PSR_STATUS_NOT_ALLOWED_AFTER_EOP,
+};
+
+/* PSR HECI message header */
+struct psr_heci_header {
+	uint8_t command;
+	uint8_t reserved;
+	uint16_t length;
 } __packed;
 
 /* CSE FW Version */
@@ -158,6 +179,25 @@ struct cse_fw_ish_version_info {
 struct cse_fw_partition_info {
 	struct fw_version cur_cse_fw_version;
 	struct cse_fw_ish_version_info ish_partition_info;
+};
+
+/* CSE Specific Information */
+struct cse_specific_info {
+	struct cse_fw_partition_info cse_fwp_version;
+	bool cse_downgrade_requested;
+	uint32_t crc;
+};
+
+/* PSR backup status */
+enum psr_backup_state {
+	PSR_BACKUP_DONE	= 0,
+	PSR_BACKUP_PENDING = 1,
+};
+
+struct psr_backup_status {
+	uint32_t signature;
+	int8_t value;
+	uint16_t checksum;
 };
 
 /* CSE RX and TX error status */
@@ -379,6 +419,9 @@ int cse_hmrfpo_get_status(void);
 /* Fixed Address MEI Header's ME Address field value */
 #define HECI_MKHI_ADDR	0x07
 
+/* Fixed Address MEI Header's ME Address field value for PSR messages */
+#define HECI_PSR_ADDR	0x04
+
 /* Fixed Address MEI Header's ME Address for MEI bus messages */
 #define HECI_MEI_ADDR	0x00
 
@@ -564,5 +607,8 @@ void cse_enable_ptt(bool state);
  * Returns 0 on success and < 0 on failure.
  */
 enum cb_err cse_get_fw_feature_state(uint32_t *feature_state);
+
+/* Fills the CSE Boot Partition Info response */
+void cse_fill_bp_info(void);
 
 #endif // SOC_INTEL_COMMON_CSE_H

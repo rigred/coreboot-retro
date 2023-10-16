@@ -7,6 +7,7 @@
 
 typedef __PTRDIFF_TYPE__ ptrdiff_t;
 typedef __SIZE_TYPE__ size_t;
+#define SIZE_MAX __SIZE_MAX__
 /* There is a GCC macro for a size_t type, but not
  * for a ssize_t type. Below construct tricks GCC
  * into making __SIZE_TYPE__ signed.
@@ -32,12 +33,6 @@ typedef __WINT_TYPE__ wint_t;
 #define DEVTREE_CONST const
 #else
 #define DEVTREE_CONST
-#endif
-
-#if ENV_HAS_DATA_SECTION
-#define MAYBE_STATIC_NONZERO static
-#else
-#define MAYBE_STATIC_NONZERO
 #endif
 
 /* Provide a pointer to address 0 that thwarts any "accessing this is

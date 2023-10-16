@@ -5,6 +5,7 @@
 #include <bootmode.h>
 #include <cbfs.h>
 #include <fmap_config.h>
+#include <security/tpm/tss_errors.h>
 #include <vboot_check.h>
 #include <vboot_common.h>
 #include <vb2_internals_please_do_not_use.h>
@@ -113,26 +114,26 @@ fail:
  * @param[in] eventType		Event type to use when logging
 
  * @retval TPM_SUCCESS		Operation completed successfully.
- * @retval TPM_E_IOERROR	Unexpected device behavior.
+ * @retval TPM_IOERROR		Unexpected device behavior.
  */
-static int measure_item(uint32_t pcr, uint8_t *hashData, uint32_t hashDataLen,
+static tpm_result_t measure_item(uint32_t pcr, uint8_t *hashData, uint32_t hashDataLen,
 		int8_t *event_msg, TCG_EVENTTYPE eventType)
 {
-	int status = TPM_SUCCESS;
+	tpm_result_t rc = TPM_SUCCESS;
 	TCG_PCR_EVENT2_HDR tcgEventHdr;
 
 	memset(&tcgEventHdr, 0, sizeof(tcgEventHdr));
 	tcgEventHdr.pcrIndex = pcr;
 	tcgEventHdr.eventType = eventType;
 	if (event_msg) {
-		status = mboot_hash_extend_log(MBOOT_HASH_PROVIDED, hashData,
+		rc = mboot_hash_extend_log(MBOOT_HASH_PROVIDED, hashData,
 					       hashDataLen, &tcgEventHdr,
 					       (uint8_t *)event_msg);
-		if (status == TPM_SUCCESS)
+		if (rc == TPM_SUCCESS)
 			printk(BIOS_INFO, "%s: Success! %s measured to pcr %d.\n", __func__,
 			       event_msg, pcr);
 	}
-	return status;
+	return rc;
 }
 
 static void verified_boot_check_buffer(const char *name, void *start, size_t size,
@@ -140,6 +141,7 @@ static void verified_boot_check_buffer(const char *name, void *start, size_t siz
 {
 	uint8_t  digest[DIGEST_SIZE];
 	vb2_error_t status;
+	tpm_result_t rc = TPM_SUCCESS;
 
 	printk(BIOS_DEBUG, "%s: %s HASH verification buffer %p size %d\n", __func__, name,
 	       start, (int)size);
@@ -166,10 +168,11 @@ static void verified_boot_check_buffer(const char *name, void *start, size_t siz
 				if (pcr != -1) {
 					printk(BIOS_DEBUG, "%s: measuring %s\n", __func__,
 					       name);
-					if (measure_item(pcr, digest, sizeof(digest),
-							 (int8_t *)name, 0))
-						printk(BIOS_DEBUG, "%s: measuring failed!\n",
-						       __func__);
+					rc = measure_item(pcr, digest, sizeof(digest),
+							 (int8_t *)name, 0);
+					if (rc)
+						printk(BIOS_DEBUG, "%s: measuring failed with error %#x!\n",
+						       __func__, rc);
 				}
 			}
 			if (CONFIG(VENDORCODE_ELTAN_VBOOT))
@@ -256,7 +259,7 @@ void process_verify_list(const verify_item_t list[])
 						   list[i].hash_index, list[i].pcr);
 			break;
 		default:
-			printk(BIOS_EMERG, "INVALID TYPE IN VERIFY LIST 0x%x\n", list[i].type);
+			printk(BIOS_EMERG, "INVALID TYPE IN VERIFY LIST %#x\n", list[i].type);
 			die("HASH verification failed!\n");
 		}
 		i++;
@@ -289,7 +292,7 @@ void verified_boot_early_check(void)
 	printk(BIOS_SPEW, "%s: processing early items\n", __func__);
 
 	if (CONFIG(VENDORCODE_ELTAN_MBOOT)) {
-		printk(BIOS_DEBUG, "mb_measure returned 0x%x\n",
+		printk(BIOS_DEBUG, "mb_measure returned %#x\n",
 		mb_measure(platform_is_resuming()));
 	}
 
@@ -338,7 +341,7 @@ static int process_oprom_list(const verify_item_t list[],
 			}
 			break;
 		default:
-			printk(BIOS_EMERG, "%s: INVALID TYPE IN OPTION ROM LIST 0x%x\n",
+			printk(BIOS_EMERG, "%s: INVALID TYPE IN OPTION ROM LIST %#x\n",
 			       __func__, list[i].type);
 			die("HASH verification failed!\n");
 		}

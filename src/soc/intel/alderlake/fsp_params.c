@@ -12,6 +12,7 @@
 #include <drivers/intel/gma/i915_reg.h>
 #include <fsp/api.h>
 #include <fsp/fsp_debug_event.h>
+#include <fsp/fsp_gop_blt.h>
 #include <fsp/ppi/mp_service_ppi.h>
 #include <fsp/util.h>
 #include <gpio.h>
@@ -923,7 +924,7 @@ static void fill_fsps_pcie_params(FSP_S_CONFIG *s_cfg,
 	}
 	s_cfg->PcieComplianceTestMode = CONFIG(SOC_INTEL_COMPLIANCE_TEST_MODE);
 
-#if CONFIG(FSP_TYPE_IOT)
+#if CONFIG(FSP_TYPE_IOT) && !CONFIG(SOC_INTEL_RAPTORLAKE)
 	/*
 	 * Intel requires that all enabled PCH PCIe ports have a CLK_REQ signal connected.
 	 * The CLK_REQ is used to wake the silicon when link entered L1 link-state. L1
@@ -1060,11 +1061,12 @@ static void fill_fsps_misc_power_params(FSP_S_CONFIG *s_cfg,
 
 	s_cfg->VrPowerDeliveryDesign = config->vr_power_delivery_design;
 
-	/* FIXME: Disable package C state demotion on Raptorlake as a W/A for S0ix issues */
-	if ((cpu_id == CPUID_RAPTORLAKE_J0) || (cpu_id == CPUID_RAPTORLAKE_Q0))
-		s_cfg->PkgCStateDemotion = 0;
-	else
-		s_cfg->PkgCStateDemotion = !config->disable_package_c_state_demotion;
+	/* C state demotion must be disabled for Raptorlake J0 and Q0 SKUs */
+	assert(!(config->s0ix_enable && ((cpu_id == CPUID_RAPTORLAKE_J0) ||
+		(cpu_id == CPUID_RAPTORLAKE_Q0)) &&
+		!config->disable_package_c_state_demotion));
+
+	s_cfg->PkgCStateDemotion = !config->disable_package_c_state_demotion;
 
 	if (cpu_id == CPUID_RAPTORLAKE_J0 || cpu_id == CPUID_RAPTORLAKE_Q0)
 		s_cfg->C1e = 0;
@@ -1371,5 +1373,10 @@ __weak void mainboard_silicon_init_params(FSP_S_CONFIG *s_cfg)
 /* Handle FSP logo params */
 void soc_load_logo(FSPS_UPD *supd)
 {
-	bmp_load_logo(&supd->FspsConfig.LogoPtr, &supd->FspsConfig.LogoSize);
+	fsp_convert_bmp_to_gop_blt(&supd->FspsConfig.LogoPtr,
+			 &supd->FspsConfig.LogoSize,
+			 &supd->FspsConfig.BltBufferAddress,
+			 &supd->FspsConfig.BltBufferSize,
+			 &supd->FspsConfig.LogoPixelHeight,
+			 &supd->FspsConfig.LogoPixelWidth);
 }

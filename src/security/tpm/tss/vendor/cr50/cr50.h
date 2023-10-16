@@ -3,6 +3,7 @@
 #define CR50_TSS_STRUCTURES_H_
 
 #include <stdint.h>
+#include <security/tpm/tss_errors.h>
 
 /* FIXME: below is not enough to differentiate between vendors commands
    of numerous devices. However, the current tpm2 APIs aren't very amenable
@@ -45,7 +46,7 @@ enum cr50_tpm_mode {
  * CR50 specific tpm command to enable nvmem commits before internal timeout
  * expires.
  */
-uint32_t tlcl_cr50_enable_nvcommits(void);
+tpm_result_t tlcl_cr50_enable_nvcommits(void);
 
 /**
  * CR50 specific tpm command to restore header(s) of the dormant RO/RW
@@ -56,8 +57,8 @@ uint32_t tlcl_cr50_enable_nvcommits(void);
  * Return value indicates success or failure of accessing the TPM; in case of
  * success the number of restored headers is saved in num_restored_headers.
  */
-uint32_t tlcl_cr50_enable_update(uint16_t timeout_ms,
-				 uint8_t *num_restored_headers);
+tpm_result_t tlcl_cr50_enable_update(uint16_t timeout_ms,
+				     uint8_t *num_restored_headers);
 
 /**
  * CR50 specific tpm command to get the latched state of the recovery button.
@@ -65,27 +66,27 @@ uint32_t tlcl_cr50_enable_update(uint16_t timeout_ms,
  * Return value indicates success or failure of accessing the TPM; in case of
  * success the recovery button state is saved in recovery_button_state.
  */
-uint32_t tlcl_cr50_get_recovery_button(uint8_t *recovery_button_state);
+tpm_result_t tlcl_cr50_get_recovery_button(uint8_t *recovery_button_state);
 
 /**
  * CR50 specific TPM command sequence to query the current TPM mode.
  *
  * Returns TPM_SUCCESS if TPM mode command completed, the Cr50 does not need a
  * reboot, and the tpm_mode parameter is set to the current TPM mode.
- * Returns TPM_E_MUST_REBOOT if TPM mode command completed, but the Cr50
+ * Returns TPM_CB_MUST_REBOOT if TPM mode command completed, but the Cr50
  * requires a reboot.
- * Returns TPM_E_NO_SUCH_COMMAND if the Cr50 does not support the command.
+ * Returns TPM_CB_NO_SUCH_COMMAND if the Cr50 does not support the command.
  * Other returns value indicate a failure accessing the TPM.
  */
-uint32_t tlcl_cr50_get_tpm_mode(uint8_t *tpm_mode);
+tpm_result_t tlcl_cr50_get_tpm_mode(uint8_t *tpm_mode);
 
 /**
  * CR50 specific TPM command sequence to query the current boot mode.
  *
  * Returns TPM_SUCCESS if boot mode is successfully retrieved.
- * Returns TPM_E_* for errors.
+ * Returns TPM_* for errors.
  */
-uint32_t tlcl_cr50_get_boot_mode(uint8_t *boot_mode);
+tpm_result_t tlcl_cr50_get_boot_mode(uint8_t *boot_mode);
 
 /**
  * CR50 specific TPM command sequence to trigger an immediate reset to the Cr50
@@ -94,14 +95,14 @@ uint32_t tlcl_cr50_get_boot_mode(uint8_t *boot_mode);
  *
  * Return value indicates success or failure of accessing the TPM.
  */
-uint32_t tlcl_cr50_immediate_reset(uint16_t timeout_ms);
+tpm_result_t tlcl_cr50_immediate_reset(uint16_t timeout_ms);
 
 /**
  * CR50 specific TPM command sequence to issue an EC reset.
  *
- * Returns TPM_E_* for errors.
+ * Returns TPM_* for errors.
  * On Success, this function invokes halt() and does not return.
  */
-uint32_t tlcl_cr50_reset_ec(void);
+tpm_result_t tlcl_cr50_reset_ec(void);
 
 #endif /* CR50_TSS_STRUCTURES_H_ */

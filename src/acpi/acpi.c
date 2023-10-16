@@ -23,6 +23,7 @@
 #include <cpu/cpu.h>
 #include <device/mmio.h>
 #include <device/pci.h>
+#include <drivers/uart/pl011.h>
 #include <string.h>
 #include <types.h>
 #include <version.h>
@@ -47,7 +48,7 @@ void acpi_add_table(acpi_rsdp_t *rsdp, void *table)
 {
 	int i, entries_num;
 	acpi_rsdt_t *rsdt;
-	acpi_xsdt_t *xsdt = NULL;
+	acpi_xsdt_t *xsdt;
 
 	/* The 32bit RSDT may not be valid if tables live above 4GiB */
 	rsdt = (acpi_rsdt_t *)(uintptr_t)rsdp->rsdt_address;
@@ -116,12 +117,11 @@ static enum cb_err acpi_fill_header(acpi_header_t *header, const char name[4],
 	return CB_SUCCESS;
 }
 
-static int acpi_create_mcfg_mmconfig(acpi_mcfg_mmconfig_t *mmconfig, u32 base,
+static int acpi_create_mcfg_mmconfig(acpi_mcfg_mmconfig_t *mmconfig, u64 base,
 				u16 seg_nr, u8 start, u8 end)
 {
 	memset(mmconfig, 0, sizeof(*mmconfig));
 	mmconfig->base_address = base;
-	mmconfig->base_reserved = 0;
 	mmconfig->pci_segment_group_number = seg_nr;
 	mmconfig->start_bus_number = start;
 	mmconfig->end_bus_number = end;
@@ -295,7 +295,7 @@ static void acpi_ssdt_write_cbtable(void)
 	acpigen_write_device("CTBL");
 	acpigen_write_coreboot_hid(COREBOOT_ACPI_ID_CBTABLE);
 	acpigen_write_name_integer("_UID", 0);
-	acpigen_write_STA(ACPI_STATUS_DEVICE_HIDDEN_ON);
+	acpigen_write_STA(ACPI_STATUS_DEVICE_ALL_ON);
 	acpigen_write_name("_CRS");
 	acpigen_write_resourcetemplate_header();
 	acpigen_write_mem32fixed(0, base, size);
@@ -817,12 +817,48 @@ static void acpi_create_dbg2(acpi_dbg2_header_t *dbg2,
 	header->checksum = acpi_checksum((uint8_t *)dbg2, header->length);
 }
 
-unsigned long acpi_write_dbg2_pci_uart(acpi_rsdp_t *rsdp, unsigned long current,
-				const struct device *dev, uint8_t access_size)
+static unsigned long acpi_write_dbg2_uart(acpi_rsdp_t *rsdp, unsigned long current,
+					  int space_id, uint64_t base, uint32_t size,
+					  int access_size, const char *name)
 {
 	acpi_dbg2_header_t *dbg2 = (acpi_dbg2_header_t *)current;
-	struct resource *res;
 	acpi_addr_t address;
+
+	memset(&address, 0, sizeof(address));
+
+	address.space_id = space_id;
+	address.addrl = (uint32_t)base;
+	address.addrh = (uint32_t)((base >> 32) & 0xffffffff);
+	address.access_size = access_size;
+
+	int subtype;
+	/* 16550-compatible with parameters defined in Generic Address Structure */
+	if (CONFIG(DRIVERS_UART_8250IO) || CONFIG(DRIVERS_UART_8250MEM))
+		subtype = ACPI_DBG2_PORT_SERIAL_16550;
+	else if (CONFIG(DRIVERS_UART_PL011))
+		subtype = ACPI_DBG2_PORT_SERIAL_ARM_PL011;
+	else
+		return current;
+
+	acpi_create_dbg2(dbg2,
+			 ACPI_DBG2_PORT_SERIAL,
+			 subtype,
+			 &address, size,
+			 name);
+
+	if (dbg2->header.length) {
+		current += dbg2->header.length;
+		current = acpi_align_current(current);
+		acpi_add_table(rsdp, dbg2);
+	}
+
+	return current;
+}
+
+unsigned long acpi_write_dbg2_pci_uart(acpi_rsdp_t *rsdp, unsigned long current,
+				       const struct device *dev, uint8_t access_size)
+{
+	struct resource *res;
 
 	if (!dev) {
 		printk(BIOS_DEBUG, "%s: Device not found\n", __func__);
@@ -839,33 +875,25 @@ unsigned long acpi_write_dbg2_pci_uart(acpi_rsdp_t *rsdp, unsigned long current,
 		return current;
 	}
 
-	memset(&address, 0, sizeof(address));
+	int space_id;
 	if (res->flags & IORESOURCE_IO)
-		address.space_id = ACPI_ADDRESS_SPACE_IO;
+		space_id = ACPI_ADDRESS_SPACE_IO;
 	else if (res->flags & IORESOURCE_MEM)
-		address.space_id = ACPI_ADDRESS_SPACE_MEMORY;
+		space_id = ACPI_ADDRESS_SPACE_MEMORY;
 	else {
 		printk(BIOS_ERR, "%s: Unknown address space type\n", __func__);
 		return current;
 	}
 
-	address.addrl = (uint32_t)res->base;
-	address.addrh = (uint32_t)((res->base >> 32) & 0xffffffff);
-	address.access_size = access_size;
+	return acpi_write_dbg2_uart(rsdp, current, space_id, res->base, res->size, access_size, acpi_device_path(dev));
+}
 
-	acpi_create_dbg2(dbg2,
-			 ACPI_DBG2_PORT_SERIAL,
-			 ACPI_DBG2_PORT_SERIAL_16550,
-			 &address, res->size,
-			 acpi_device_path(dev));
-
-	if (dbg2->header.length) {
-		current += dbg2->header.length;
-		current = acpi_align_current(current);
-		acpi_add_table(rsdp, dbg2);
-	}
-
-	return current;
+unsigned long acpi_pl011_write_dbg2_uart(acpi_rsdp_t *rsdp, unsigned long current,
+					 uint64_t base, const char *name)
+{
+	return acpi_write_dbg2_uart(rsdp, current, ACPI_ADDRESS_SPACE_MEMORY, base,
+				    sizeof(struct pl011_uart), ACPI_ACCESS_SIZE_DWORD_ACCESS,
+				    name);
 }
 
 static void acpi_create_facs(void *header)
@@ -1380,10 +1408,33 @@ unsigned long write_acpi_tables(const unsigned long start)
 		if (!rsdp)
 			return fw;
 
+		current = fw;
+		current = acpi_align_current(current);
+		if (rsdp->xsdt_address == 0) {
+			xsdt = (acpi_xsdt_t *)current;
+			current += sizeof(acpi_xsdt_t);
+			current = acpi_align_current(current);
+
+			/*
+			 * Qemu only creates an RSDT.
+			 * Add an XSDT based on the existing RSDT entries.
+			 */
+			acpi_rsdt_t *existing_rsdt = (acpi_rsdt_t *)(uintptr_t)rsdp->rsdt_address;
+			acpi_write_rsdp(rsdp, existing_rsdt, xsdt, oem_id);
+			acpi_write_xsdt(xsdt, oem_id, oem_table_id);
+			/*
+			 * Copy existing entries to the new XSDT. This will override existing
+			 * RSDT entries with the same value.
+			 */
+			for (int i = 0; existing_rsdt->entry[i]; i++)
+				acpi_add_table(rsdp, (void *)(uintptr_t)existing_rsdt->entry[i]);
+
+		}
+
 		/* Add BOOT0000 for Linux google firmware driver */
 		printk(BIOS_DEBUG, "ACPI:     * SSDT\n");
-		ssdt = (acpi_header_t *)fw;
-		current = (unsigned long)ssdt + sizeof(acpi_header_t);
+		ssdt = (acpi_header_t *)current;
+		current += sizeof(acpi_header_t);
 
 		memset((void *)ssdt, 0, sizeof(acpi_header_t));
 

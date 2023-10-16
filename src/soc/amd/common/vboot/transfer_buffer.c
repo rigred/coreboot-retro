@@ -4,9 +4,9 @@
 #include <console/cbmem_console.h>
 #include <console/console.h>
 #include <pc80/mc146818rtc.h>
+#include <psp_verstage/psp_transfer.h>
 #include <security/vboot/vbnv.h>
 #include <security/vboot/symbols.h>
-#include <soc/psp_transfer.h>
 #include <timestamp.h>
 #include <2struct.h>
 
@@ -57,9 +57,6 @@ void show_psp_transfer_info(void)
 		printk(BIOS_INFO, "PSP boot mode: %s\n",
 				info->psp_info & PSP_INFO_PRODUCTION_MODE ?
 				"Production" : "Development");
-		printk(BIOS_INFO, "Silicon level: %s\n",
-				info->psp_info & PSP_INFO_PRODUCTION_SILICON ?
-				"Production" : "Pre-Production");
 	}
 }
 

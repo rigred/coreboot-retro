@@ -1,13 +1,13 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 
 #include <acpi/acpigen.h>
-#include <amdblocks/cpu.h>
 #include <amdblocks/data_fabric.h>
 #include <amdblocks/root_complex.h>
 #include <arch/ioapic.h>
 #include <arch/vga.h>
 #include <console/console.h>
 #include <cpu/amd/mtrr.h>
+#include <cpu/cpu.h>
 #include <device/device.h>
 #include <device/pci_ops.h>
 #include <types.h>
@@ -16,10 +16,15 @@ void amd_pci_domain_scan_bus(struct device *domain)
 {
 	uint8_t bus, limit;
 
-	/* TODO: Systems with more than one PCI root need to read the data fabric registers to
-	   see which PCI bus numbers get decoded to which PCI root. */
-	bus = 0;
-	limit = CONFIG_ECAM_MMCONF_BUS_NUMBER - 1;
+	if (data_fabric_get_pci_bus_numbers(domain, &bus, &limit) != CB_SUCCESS) {
+		printk(BIOS_ERR, "No PCI bus numbers decoded to PCI root.\n");
+		return;
+	}
+
+	/* TODO: Check if bus >= CONFIG_ECAM_MMCONF_BUS_NUMBER and return in that case */
+
+	/* Make sure to not report more than CONFIG_ECAM_MMCONF_BUS_NUMBER PCI buses */
+	limit = MIN(limit, CONFIG_ECAM_MMCONF_BUS_NUMBER - 1);
 
 	/* Set bus first number of PCI root */
 	domain->link_list->secondary = bus;
@@ -29,17 +34,6 @@ void amd_pci_domain_scan_bus(struct device *domain)
 	domain->link_list->max_subordinate = limit;
 
 	pci_domain_scan_bus(domain);
-}
-
-/* Read the registers and return normalized values */
-static void data_fabric_get_mmio_base_size(unsigned int reg,
-					   resource_t *mmio_base, resource_t *mmio_limit)
-{
-	const uint32_t base_reg = data_fabric_broadcast_read32(DF_MMIO_BASE(reg));
-	const uint32_t limit_reg = data_fabric_broadcast_read32(DF_MMIO_LIMIT(reg));
-	/* The raw register values are bits 47..16  of the actual address */
-	*mmio_base = (resource_t)base_reg << DF_MMIO_SHIFT;
-	*mmio_limit = (((resource_t)limit_reg + 1) << DF_MMIO_SHIFT) - 1;
 }
 
 static void print_df_mmio_outside_of_cpu_mmio_error(unsigned int reg)
@@ -89,13 +83,14 @@ static void report_data_fabric_mmio(struct device *domain, unsigned int idx,
 /* Tell the resource allocator about the usable MMIO ranges configured in the data fabric */
 static void add_data_fabric_mmio_regions(struct device *domain, unsigned int *idx)
 {
+	const signed int iohc_dest_fabric_id = get_iohc_fabric_id(domain);
 	union df_mmio_control ctrl;
 	resource_t mmio_base;
 	resource_t mmio_limit;
 
 	/* The last 12GB of the usable address space are reserved and can't be used for MMIO */
 	const resource_t reserved_upper_mmio_base =
-		(1ULL << get_usable_physical_address_bits()) - DF_RESERVED_TOP_12GB_MMIO_SIZE;
+		(1ULL << cpu_phys_address_size()) - DF_RESERVED_TOP_12GB_MMIO_SIZE;
 
 	for (unsigned int i = 0; i < DF_MMIO_REG_SET_COUNT; i++) {
 		ctrl.raw = data_fabric_broadcast_read32(DF_MMIO_CONTROL(i));
@@ -108,8 +103,9 @@ static void add_data_fabric_mmio_regions(struct device *domain, unsigned int *id
 		if (ctrl.np)
 			continue;
 
-		/* TODO: Systems with more than one PCI root need to check to which PCI root
-		   the MMIO range gets decoded to. */
+		/* Only look at MMIO regions that are decoded to the right PCI root */
+		if (ctrl.dst_fabric_id != iohc_dest_fabric_id)
+			continue;
 
 		data_fabric_get_mmio_base_size(i, &mmio_base, &mmio_limit);
 
@@ -149,6 +145,7 @@ static void report_data_fabric_io(struct device *domain, unsigned int idx,
 /* Tell the resource allocator about the usable I/O space */
 static void add_data_fabric_io_regions(struct device *domain, unsigned int *idx)
 {
+	const signed int iohc_dest_fabric_id = get_iohc_fabric_id(domain);
 	union df_io_base base_reg;
 	union df_io_limit limit_reg;
 	resource_t io_base;
@@ -163,8 +160,9 @@ static void add_data_fabric_io_regions(struct device *domain, unsigned int *idx)
 
 		limit_reg.raw = data_fabric_broadcast_read32(DF_IO_LIMIT(i));
 
-		/* TODO: Systems with more than one PCI root need to check to which PCI root
-		   the IO range gets decoded to. */
+		/* Only look at IO regions that are decoded to the right PCI root */
+		if (limit_reg.dst_fabric_id != iohc_dest_fabric_id)
+			continue;
 
 		io_base = base_reg.io_base << DF_IO_ADDR_SHIFT;
 		io_limit = ((limit_reg.io_limit + 1) << DF_IO_ADDR_SHIFT) - 1;

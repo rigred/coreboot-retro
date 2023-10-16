@@ -31,6 +31,7 @@ config SOC_INTEL_METEORLAKE
 	select INTEL_GMA_ACPI
 	select INTEL_GMA_ADD_VBT if RUN_FSP_GOP
 	select INTEL_GMA_OPREGION_2_1
+	select INTEL_GMA_VERSION_2
 	select IOAPIC
 	select MICROCODE_BLOB_UNDISCLOSED
 	select MP_SERVICES_PPI_V2
@@ -83,8 +84,11 @@ config SOC_INTEL_METEORLAKE
 	select SOC_INTEL_COMMON_PCH_CLIENT
 	select SOC_INTEL_COMMON_RESET
 	select SOC_INTEL_COMMON_BLOCK_IOC
+	select SOC_INTEL_CRASHLOG
+	select SOC_INTEL_CSE_LITE_PSR if MAINBOARD_HAS_CHROMEOS
 	select SOC_INTEL_CSE_SEND_EOP_LATE if !MAINBOARD_HAS_CHROMEOS
 	select SOC_INTEL_CSE_SET_EOP
+	select SOC_INTEL_IOE_DIE_SUPPORT
 	select SOC_INTEL_GFX_NON_PREFETCHABLE_MMIO
 	select SOC_INTEL_MEM_MAPPED_PM_CONFIGURATION
 	select SSE2
@@ -118,6 +122,14 @@ config SOC_INTEL_METEORLAKE_S
 	help
 	  Choose this option if your mainboard has a MTL-S (35W or 65W) SoC.
 	  Note, MTL-S SoC combines Compute, GFX, SoC, IOE and PCH die.
+
+config SOC_INTEL_METEORLAKE_PRE_PRODUCTION_SILICON
+	bool
+	default n
+	help
+	  Choose this option if your mainboard has a Meteor Lake pre-production
+	  silicon. Typically known as engineering samples (like ES). This type
+	  of the silicon are very common for early platform development.
 
 if SOC_INTEL_METEORLAKE
 
@@ -184,11 +196,6 @@ config IFD_CHIPSET
 config IED_REGION_SIZE
 	hex
 	default 0x400000
-
-config HEAP_SIZE
-	hex
-	default 0x80000 if BMP_LOGO
-	default 0x10000
 
 # Intel recommends reserving the PCIe TBT root port resources as below:
 # - 42 buses
@@ -425,5 +432,18 @@ config PCIE_LTR_MAX_NO_SNOOP_LATENCY
 config IOE_DIE_CLOCK_START
 	int
 	default 6 if SOC_INTEL_METEORLAKE_U_H
+
+config HAVE_BMP_LOGO_COMPRESS_LZMA
+	default n
+
+# The default offset to store CSE RW FW version information is at 68.
+# However, in Intel Meteor Lake based systems that use PSR, the additional
+# size required to keep CSE RW FW version information and PSR back-up status
+# in adjacent CMOS memory at offset 68 is not available. Therefore, we
+# override the default offset to 161, which has enough space to keep both
+# the CSE related information together.
+config SOC_INTEL_CSE_FW_PARTITION_CMOS_OFFSET
+	int
+	default 161
 
 endif

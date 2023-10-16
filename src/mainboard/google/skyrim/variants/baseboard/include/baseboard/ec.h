@@ -41,7 +41,8 @@
 				| EC_HOST_EVENT_MASK(EC_HOST_EVENT_KEY_PRESSED)		\
 				| EC_HOST_EVENT_MASK(EC_HOST_EVENT_MODE_CHANGE)		\
 				| EC_HOST_EVENT_MASK(EC_HOST_EVENT_BATTERY_CRITICAL)	\
-				| EC_HOST_EVENT_MASK(EC_HOST_EVENT_BATTERY_SHUTDOWN))
+				| EC_HOST_EVENT_MASK(EC_HOST_EVENT_BATTERY_SHUTDOWN)	\
+				| EC_HOST_EVENT_MASK(EC_HOST_EVENT_USB_MUX))
 
 #define MAINBOARD_EC_S0IX_WAKE_EVENTS (MAINBOARD_EC_S3_WAKE_EVENTS)
 
@@ -68,7 +69,7 @@
 #define SIO_EC_MEMMAP_ENABLE /* EC Memory Map Resources */
 #define SIO_EC_HOST_ENABLE   /* EC Host Interface Resources */
 #define SIO_EC_ENABLE_PS2K   /* Enable PS/2 Keyboard */
-#define SIO_EC_PS2K_IRQ Interrupt (ResourceConsumer, Level, ActiveLow, Shared) {1}
+#define SIO_EC_PS2K_IRQ Interrupt(ResourceConsumer, Level, ActiveLow, Shared) {1}
 
 /* Enable EC sync interrupt */
 #define EC_ENABLE_SYNC_IRQ_GPIO

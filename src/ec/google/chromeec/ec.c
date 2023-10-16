@@ -1522,3 +1522,29 @@ int google_chromeec_regulator_get_voltage(uint32_t index, uint32_t *voltage_mv)
 	*voltage_mv = resp.voltage_mv;
 	return 0;
 }
+
+void google_chromeec_clear_ec_ap_idle(void)
+{
+	/* Send EC command to clear AP_IDLE flag */
+	if (!google_chromeec_reboot(EC_REBOOT_NO_OP, EC_REBOOT_FLAG_CLEAR_AP_IDLE |
+				    EC_REBOOT_FLAG_ON_AP_SHUTDOWN))
+		printk(BIOS_INFO, "Successfully clear AP_IDLE flag\n");
+	else
+		printk(BIOS_ERR, "Failed to clear EC AP_IDLE flag\n");
+}
+
+bool google_chromeec_is_battery_present_and_above_critical_threshold(void)
+{
+	struct ec_params_battery_dynamic_info params = {
+		.index = 0,
+	};
+	struct ec_response_battery_dynamic_info resp;
+
+	if (ec_cmd_battery_get_dynamic(PLAT_EC, &params, &resp) == 0) {
+		/* Check if battery is present and LEVEL_CRITICAL is not set */
+		if (resp.flags && !(resp.flags & EC_BATT_FLAG_LEVEL_CRITICAL))
+			return true;
+	}
+
+	return false;
+}

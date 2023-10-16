@@ -4,45 +4,15 @@
 # hacked together by Stefan Reinauer <stepan@openbios.org>
 #
 
-PDFLATEX  = pdflatex -t a4
 BUILDDIR ?= _build
+SPHINXOPTS ?= -j auto
 
-FIGS=codeflow.pdf hypertransport.pdf
+export SPHINXOPTS
 
-all: sphinx corebootPortingGuide.pdf
-
-SVG2PDF=$(shell command -v svg2pdf)
-INKSCAPE=$(shell command -v inkscape)
-CONVERT=$(shell command -v convert)
-
-codeflow.pdf: codeflow.svg
-ifneq ($(strip $(SVG2PDF)),)
-	svg2pdf $< $@
-else ifneq ($(strip $(INKSCAPE)),)
-	inkscape $< --export-pdf=$@
-else ifneq ($(strip $(CONVERT)),)
-	convert $< $@
-endif
-
-hypertransport.pdf: hypertransport.svg
-ifneq ($(strip $(SVG2PDF)),)
-	svg2pdf $< $@
-else ifneq ($(strip $(INKSCAPE)),)
-	inkscape $< --export-pdf=$@
-else ifneq ($(strip $(CONVERT)),)
-	convert $< $@
-endif
+all: sphinx
 
 $(BUILDDIR):
 	mkdir -p $(BUILDDIR)
-
-corebootPortingGuide.toc: $(FIGS) corebootBuildingGuide.tex
-	# 2 times to make sure we have a current toc.
-	$(PDFLATEX) corebootBuildingGuide.tex
-	$(PDFLATEX) corebootBuildingGuide.tex
-
-corebootPortingGuide.pdf: $(FIGS) corebootBuildingGuide.tex corebootPortingGuide.toc
-	$(PDFLATEX) corebootBuildingGuide.tex
 
 sphinx: $(BUILDDIR)
 	$(MAKE) -f Makefile.sphinx html BUILDDIR="$(BUILDDIR)"
@@ -57,7 +27,7 @@ distclean: clean
 	rm -f corebootPortingGuide.pdf
 
 livesphinx: $(BUILDDIR)
-	$(MAKE) -f Makefile.sphinx livehtml SPHINXOPTS="$(SPHINXOPTS)" BUILDDIR="$(BUILDDIR)"
+	$(MAKE) -f Makefile.sphinx livehtml BUILDDIR="$(BUILDDIR)"
 
 test:
 	@echo "Test for logging purposes - Failing tests will not fail the build"
@@ -65,7 +35,7 @@ test:
 	-$(MAKE) -f Makefile.sphinx clean && $(MAKE) -K -f Makefile.sphinx doctest
 
 help:
-	@echo "all            - Builds coreboot porting guide PDF (outdated)"
+	@echo "all            - Builds all documentation targets"
 	@echo "sphinx         - Builds html documentation in _build directory"
 	@echo "clean          - Cleans intermediate files"
 	@echo "clean-sphinx   - Removes sphinx output files"

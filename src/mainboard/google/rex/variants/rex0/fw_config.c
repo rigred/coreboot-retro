@@ -53,6 +53,17 @@ static const struct pad_config bt_i2s_enable_pads[] = {
 	PAD_CFG_NF(GPP_VGPIO37, NONE, DEEP, NF1),
 };
 
+static const struct pad_config discrete_bt_i2s_enable_pads[] = {
+	/* GPP_S00 : [] ==> I2S1_SCLK */
+	PAD_CFG_NF(GPP_S00, NONE, DEEP, NF6),
+	/* GPP_S01 : [] ==> I2S1_SFRM */
+	PAD_CFG_NF(GPP_S01, NONE, DEEP, NF6),
+	/* GPP_S02 : [] ==> I2S1_TXD */
+	PAD_CFG_NF(GPP_S02, NONE, DEEP, NF6),
+	/* GPP_S03 : [] ==> I2S1_RXD */
+	PAD_CFG_NF(GPP_S03, NONE, DEEP, NF6),
+};
+
 static const struct pad_config bt_i2s_disable_pads[] = {
 	/* GPP_V30 : [] ==> BT_I2S_BCLK */
 	PAD_NC(GPP_VGPIO30, NONE),
@@ -74,19 +85,21 @@ static const struct pad_config bt_i2s_disable_pads[] = {
 
 static const struct pad_config ish_enable_pads[] = {
 	/* GPP_B02 : ISH I2C0_SDA */
-	PAD_CFG_NF(GPP_B02, NONE, DEEP, NF3),
+	PAD_CFG_NF_IOSTANDBY_IGNORE(GPP_B02, NONE, DEEP, NF3),
 	/* GPP_B03 : ISH_I2C0_SCL */
-	PAD_CFG_NF(GPP_B03, NONE, DEEP, NF3),
-	/* GPP_D05 : ISH_UART_TX */
-	PAD_CFG_NF(GPP_D05, NONE, DEEP, NF2),
-	/* GPP_D06 : ISH_UART_RX */
-	PAD_CFG_NF(GPP_D06, NONE, DEEP, NF2),
+	PAD_CFG_NF_IOSTANDBY_IGNORE(GPP_B03, NONE, DEEP, NF3),
 	/* GPP_B08 : ISH_GP3, SOC_ISH_ACCEL_INT_L */
 	PAD_CFG_NF(GPP_B08, NONE, DEEP, NF4),
 	/* GPP_E15 : ISH_GP5A, SOC_ISH_IMU_INT_L */
 	PAD_CFG_NF(GPP_E15, NONE, DEEP, NF8),
+	/* GPP_E16 : ISH_GP10, SOC_EC_ISH_NB_MODE */
+	PAD_CFG_NF(GPP_E16, NONE, DEEP, NF8),
 	/* GPP_F22 : ISH_GP8A, SOC_ISH_ALS_INT_L */
 	PAD_CFG_NF(GPP_F22, NONE, DEEP, NF8),
+	/* GPP_F23 : ISH_GP9A, LID_OPEN_1V8 */
+	PAD_CFG_NF(GPP_F23, NONE, DEEP, NF8),
+	/* GPP_H11 : ISH_GP11A, SOC_ISH_IMU_INT_L */
+	PAD_CFG_NF(GPP_H11, NONE, DEEP, NF8),
 };
 
 static const struct pad_config touchscreen_i2c_int_pads[] = {
@@ -97,6 +110,20 @@ static const struct pad_config touchscreen_i2c_int_pads[] = {
 static const struct pad_config touchscreen_spi_int_pads[] = {
 	/* GPP_C07 : [] ==> SOC_TCHSCR_INT */
 	PAD_CFG_GPI_APIC(GPP_C07, NONE, PLTRST, EDGE_SINGLE, INVERT),
+};
+
+static const struct pad_config uwb_gspi1_enable_pads[] = {
+	PAD_CFG_GPO_LOCK(GPP_D07, 0, LOCK_CONFIG), /* FPMCU_UWB_MUX_SEL */
+	PAD_CFG_GPO(GPP_E06, 0, DEEP), /* UWB_SOC_SYNC */
+	PAD_CFG_GPO(GPP_F19, 0, DEEP), /* EN_PP1800_UWB */
+	PAD_CFG_GPI_INT(GPP_F20, NONE, PLTRST, LEVEL), /* UWB_SOC_INT */
+};
+
+static const struct pad_config uwb_gspi1_disable_pads[] = {
+	PAD_CFG_GPO_LOCK(GPP_D07, 1, LOCK_CONFIG), /* FPMCU_UWB_MUX_SEL */
+	PAD_NC(GPP_E06, NONE),
+	PAD_NC(GPP_F19, NONE),
+	PAD_NC(GPP_F20, NONE),
 };
 
 void fw_config_gpio_padbased_override(struct pad_config *padbased_table)
@@ -125,6 +152,11 @@ void fw_config_gpio_padbased_override(struct pad_config *padbased_table)
 		GPIO_PADBASED_OVERRIDE(padbased_table, sndw_disable_pads);
 		printk(BIOS_INFO, "Configure GPIOs for BT offload mode.\n");
 		GPIO_PADBASED_OVERRIDE(padbased_table, bt_i2s_enable_pads);
+	} else if (fw_config_probe(FW_CONFIG(AUDIO, MAX98360_ALC5682I_DISCRETE_I2S_BT))) {
+		printk(BIOS_INFO, "Configure GPIOs for I2S audio.\n");
+		GPIO_PADBASED_OVERRIDE(padbased_table, sndw_disable_pads);
+		printk(BIOS_INFO, "Configure GPIOs for BT offload mode(discrete).\n");
+		GPIO_PADBASED_OVERRIDE(padbased_table, discrete_bt_i2s_enable_pads);
 	}
 
 	if (fw_config_probe(FW_CONFIG(ISH, ISH_ENABLE))) {
@@ -138,5 +170,14 @@ void fw_config_gpio_padbased_override(struct pad_config *padbased_table)
 	} else { /* SPI */
 		printk(BIOS_INFO, "Configure Touchscreen Interrupt for SPI.\n");
 		GPIO_PADBASED_OVERRIDE(padbased_table, touchscreen_spi_int_pads);
+	}
+
+	if (fw_config_probe(FW_CONFIG(UWB, UWB_GSPI1)) &&
+		fw_config_probe(FW_CONFIG(FP, FP_ABSENT))) {
+		printk(BIOS_INFO, "Configure GPIOs for UWB over GSPI1.\n");
+		GPIO_PADBASED_OVERRIDE(padbased_table, uwb_gspi1_enable_pads);
+	} else {
+		printk(BIOS_INFO, "Disabling UWB (absent or misconfigured)\n");
+		GPIO_PADBASED_OVERRIDE(padbased_table, uwb_gspi1_disable_pads);
 	}
 }

@@ -58,6 +58,42 @@ Device (GPIO)
 	}
 }
 
+Device (MMC0)
+{
+	Name (_HID, "AMDI0040")
+	Name (_UID, 0x0)
+	Method (_CRS, 0) {
+		Local0 = ResourceTemplate() {
+			Interrupt (
+				ResourceConsumer,
+				Level,
+				ActiveLow,
+				Exclusive, , , IRQR)
+			{ 0 }
+			Memory32Fixed (ReadWrite, APU_EMMC_BASE, 0x1000)
+		}
+		CreateDWordField (Local0, IRQR._INT, IRQN)
+		If (PICM) {
+			IRQN = IMMC
+		} Else {
+			IRQN = PMMC
+		}
+		If (IRQN == 0x1f) {
+			Return (ResourceTemplate(){
+				Memory32Fixed (ReadWrite, APU_EMMC_BASE, 0x1000)
+			})
+		} Else {
+			Return (Local0)
+		}
+	}
+
+	Name (STAT, 0x0)
+	Method (_STA, 0x0, NotSerialized)
+	{
+		Return (STAT)
+	}
+}
+
 Device (FUR0)
 {
 	Name (_HID, "AMDI0020")
@@ -161,9 +197,10 @@ Device (I2C0) {
 		}
 	}
 
+	Name (STAT, 0x0)
 	Method (_STA, 0x0, NotSerialized)
 	{
-		Return (0x0F)
+		Return (STAT)
 	}
 
 	AOAC_DEVICE(FCH_AOAC_DEV_I2C0, 0)
@@ -197,9 +234,10 @@ Device (I2C1) {
 		}
 	}
 
+	Name (STAT, 0x0)
 	Method (_STA, 0x0, NotSerialized)
 	{
-		Return (0x0F)
+		Return (STAT)
 	}
 
 	AOAC_DEVICE(FCH_AOAC_DEV_I2C1, 0)
@@ -233,9 +271,10 @@ Device (I2C2) {
 		}
 	}
 
+	Name (STAT, 0x0)
 	Method (_STA, 0x0, NotSerialized)
 	{
-		Return (0x0F)
+		Return (STAT)
 	}
 
 	AOAC_DEVICE(FCH_AOAC_DEV_I2C2, 0)
@@ -273,9 +312,11 @@ Device (I2C3)
 			Return (Local0)
 		}
 	}
+
+	Name (STAT, 0x0)
 	Method (_STA, 0x0, NotSerialized)
 	{
-		Return (0x0F)
+		Return (STAT)
 	}
 
 /* If this device is shared with PSP, then PSP takes care of power management */

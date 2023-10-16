@@ -47,8 +47,15 @@ config CBFS_PREFIX
 	  Select the prefix to all files put into the image. It's "fallback"
 	  by default, "normal" is a common alternative.
 
+config DEFAULT_COMPILER_LLVM_CLANG
+	bool
+	help
+	  Allows to override the default compiler. This can for instance be
+	  set in site-local/Kconfig.
+
 choice
 	prompt "Compiler to use"
+	default COMPILER_LLVM_CLANG if DEFAULT_COMPILER_LLVM_CLANG
 	default COMPILER_GCC
 	help
 	  This option allows you to select the compiler used for building
@@ -744,8 +751,7 @@ config RTC
 
 config HEAP_SIZE
 	hex
-	default 0x100000 if FLATTENED_DEVICE_TREE
-	default 0x4000
+	default 0x100000
 
 config STACK_SIZE
 	hex

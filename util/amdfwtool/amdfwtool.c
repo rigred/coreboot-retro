@@ -88,6 +88,8 @@
 
 #define AMD_ROMSIG_OFFSET	0x20000
 #define MIN_ROM_KB		256
+#define MAX_MAPPED_WINDOW	(16 * MiB)
+#define MAX_MAPPED_WINDOW_MASK	(MAX_MAPPED_WINDOW - 1)
 
 #define _MAX(A, B) (((A) > (B)) ? (A) : (B))
 
@@ -195,6 +197,7 @@ static void usage(void)
 	printf("--instance <number>            Sets instance field for the next BIOS\n");
 	printf("                               firmware\n");
 	printf("--apcb <FILE>                  Add AGESA PSP customization block\n");
+	printf("--apcb-combo1 <FILE>           Add APCB for 1st combo\n");
 	printf("--apob-base <HEX_VAL>          Destination for AGESA PSP output block\n");
 	printf("--apob-nv-base <HEX_VAL>       Location of S3 resume data\n");
 	printf("--apob-nv-size <HEX_VAL>       Size of S3 resume data\n");
@@ -706,6 +709,7 @@ static void fill_psp_directory_to_efs(embedded_firmware *amd_romsig, void *pspdi
 	case PLATFORM_PICASSO:
 	case PLATFORM_LUCIENNE:
 	case PLATFORM_RENOIR:
+	case PLATFORM_GENOA:
 	default:
 		/* for combo, it is also combo_psp_directory */
 		amd_romsig->new_psp_directory =
@@ -721,6 +725,7 @@ static void fill_bios_directory_to_efs(embedded_firmware *amd_romsig, void *bios
 	case PLATFORM_RENOIR:
 	case PLATFORM_LUCIENNE:
 	case PLATFORM_CEZANNE:
+	case PLATFORM_GENOA:
 		if (!cb_config->recovery_ab)
 			amd_romsig->bios3_entry =
 				BUFF_TO_RUN_MODE(*ctx, biosdir, AMD_ADDR_REL_BIOS);
@@ -801,6 +806,9 @@ static uint32_t get_psp_id(enum platform soc_id)
 		break;
 	case PLATFORM_PHOENIX:
 		psp_id = 0xBC0D0400;
+		break;
+	case PLATFORM_GENOA:
+		psp_id = 0xBC0C0111;
 		break;
 	case PLATFORM_CARRIZO:
 	default:
@@ -905,10 +913,15 @@ static void dump_psp_firmwares(amd_fw_entry *fw_table)
 {
 	amd_fw_entry *index;
 
-	printf("PSP firmware components:");
+	printf("PSP firmware components:\n");
 	for (index = fw_table; index->type != AMD_FW_INVALID; index++) {
-		if (index->filename)
-			printf("  %2x: %s\n", index->type, index->filename);
+		if (index->type == AMD_PSP_FUSE_CHAIN)
+			printf("  %2x: level=%x, subprog=%x, inst=%x\n",
+				index->type, index->level, index->subprog, index->inst);
+		else if (index->filename)
+			printf("  %2x: level=%x, subprog=%x, inst=%x, %s\n",
+				index->type, index->level, index->subprog, index->inst,
+				index->filename);
 	}
 }
 
@@ -916,10 +929,11 @@ static void dump_bdt_firmwares(amd_bios_entry *fw_table)
 {
 	amd_bios_entry *index;
 
-	printf("BIOS Directory Table (BDT) components:");
+	printf("BIOS Directory Table (BDT) components:\n");
 	for (index = fw_table; index->type != AMD_BIOS_INVALID; index++) {
 		if (index->filename)
-			printf("  %2x: %s\n", index->type, index->filename);
+			printf("  %2x: level=%x, %s\n",
+				index->type, index->level, index->filename);
 	}
 }
 
@@ -1535,6 +1549,7 @@ enum {
 
 	AMDFW_OPT_INSTANCE,
 	AMDFW_OPT_APCB,
+	AMDFW_OPT_APCB_COMBO1,
 	AMDFW_OPT_APOBBASE,
 	AMDFW_OPT_BIOSBIN,
 	AMDFW_OPT_BIOSBIN_SOURCE,
@@ -1593,6 +1608,7 @@ static struct option long_options[] = {
 	/* BIOS Directory Table items */
 	{"instance",         required_argument, 0, AMDFW_OPT_INSTANCE },
 	{"apcb",             required_argument, 0, AMDFW_OPT_APCB },
+	{"apcb-combo1",      required_argument, 0, AMDFW_OPT_APCB_COMBO1 },
 	{"apob-base",        required_argument, 0, AMDFW_OPT_APOBBASE },
 	{"bios-bin",         required_argument, 0, AMDFW_OPT_BIOSBIN },
 	{"bios-bin-src",     required_argument, 0, AMDFW_OPT_BIOSBIN_SOURCE },
@@ -1772,6 +1788,7 @@ static int set_efs_table(uint8_t soc_id, amd_cb_config *cb_config,
 	case PLATFORM_MENDOCINO:
 	case PLATFORM_PHOENIX:
 	case PLATFORM_GLINDA:
+	case PLATFORM_GENOA:
 		amd_romsig->spi_readmode_f17_mod_30_3f = efs_spi_readmode;
 		amd_romsig->spi_fastspeed_f17_mod_30_3f = efs_spi_speed;
 		switch (efs_spi_micron_flag) {
@@ -1901,6 +1918,11 @@ int main(int argc, char **argv)
 	psp_directory_table *pspdir2_b = NULL;
 	psp_combo_directory *psp_combo_dir = NULL, *bhd_combo_dir = NULL;
 	char *combo_config[MAX_COMBO_ENTRIES] = { 0 };
+	struct _combo_apcb {
+		char *filename;
+		uint8_t ins;
+		uint8_t sub;
+	} combo_apcb[MAX_COMBO_ENTRIES] = {0}, combo_apcb_bk[MAX_COMBO_ENTRIES] = {0};
 	int combo_index = 0;
 	int fuse_defined = 0;
 	int targetfd;
@@ -1912,7 +1934,6 @@ int main(int argc, char **argv)
 	uint32_t efs_location = 0;
 	bool any_location = 0;
 	uint32_t romsig_offset;
-	uint32_t rom_base_address;
 	uint8_t efs_spi_readmode = 0xff;
 	uint8_t efs_spi_speed = 0xff;
 	uint8_t efs_spi_micron_flag = 0xff;
@@ -1991,9 +2012,29 @@ int main(int argc, char **argv)
 		case AMDFW_OPT_APCB:
 			if ((instance & 0xF0) == 0) {
 				register_bdt_data(AMD_BIOS_APCB, sub, instance & 0xF, optarg);
+				combo_apcb[0].filename = optarg;
+				combo_apcb[0].ins = instance;
+				combo_apcb[0].sub = sub;
 			} else {
 				register_bdt_data(AMD_BIOS_APCB_BK, sub,
 							instance & 0xF, optarg);
+				combo_apcb_bk[0].filename = optarg;
+				combo_apcb_bk[0].ins = instance;
+				combo_apcb_bk[0].sub = sub;
+				cb_config.have_apcb_bk = 1;
+			}
+			sub = instance = 0;
+			break;
+		case AMDFW_OPT_APCB_COMBO1:
+			assert_fw_entry(1, MAX_COMBO_ENTRIES, &ctx);
+			if ((instance & 0xF0) == 0) {
+				combo_apcb[1].filename = optarg;
+				combo_apcb[1].ins = instance;
+				combo_apcb[1].sub = sub;
+			} else {
+				combo_apcb_bk[1].filename = optarg;
+				combo_apcb_bk[1].ins = instance;
+				combo_apcb_bk[1].sub = sub;
 				cb_config.have_apcb_bk = 1;
 			}
 			sub = instance = 0;
@@ -2194,13 +2235,18 @@ int main(int argc, char **argv)
 
 	printf("    AMDFWTOOL  Using ROM size of %dKB\n", ctx.rom_size / 1024);
 
-	rom_base_address = 0xFFFFFFFF - ctx.rom_size + 1;
+	if (ctx.rom_size <= MAX_MAPPED_WINDOW) {
+		uint32_t rom_base_address;
 
-	if (efs_location & 0xFF000000)
-		efs_location = efs_location - rom_base_address;
-	if (body_location & 0xFF000000)
-		body_location = body_location - rom_base_address;
+		rom_base_address = 0xFFFFFFFF - ctx.rom_size + 1;
+		if (efs_location & ~MAX_MAPPED_WINDOW_MASK)
+			efs_location = efs_location - rom_base_address;
+		if (body_location & ~MAX_MAPPED_WINDOW_MASK)
+			body_location = body_location - rom_base_address;
+	}
 
+	/* If the flash size is larger than 16M, we assume the given
+	   addresses are already relative ones. Otherwise we print error.*/
 	if (efs_location && efs_location > ctx.rom_size) {
 		fprintf(stderr, "Error: EFS/Directory location outside of ROM.\n\n");
 		return 1;
@@ -2369,6 +2415,27 @@ int main(int argc, char **argv)
 				ctx.address_mode = AMD_ADDR_REL_BIOS;
 			else
 				ctx.address_mode = AMD_ADDR_PHYSICAL;
+
+			if (combo_apcb[combo_index].filename != NULL) {
+				register_bdt_data(AMD_BIOS_APCB,
+					combo_apcb[combo_index].sub,
+					combo_apcb[combo_index].ins & 0xF,
+					combo_apcb[combo_index].filename);
+				if (cb_config.have_apcb_bk)
+					register_bdt_data(AMD_BIOS_APCB_BK,
+						combo_apcb_bk[combo_index].sub,
+						combo_apcb_bk[combo_index].ins & 0xF,
+						combo_apcb_bk[combo_index].filename);
+			} else {
+				/* Use main APCB if no Combo APCB is provided */
+				register_bdt_data(AMD_BIOS_APCB, combo_apcb[0].sub,
+					combo_apcb[0].ins & 0xF, combo_apcb[0].filename);
+				if (cb_config.have_apcb_bk)
+					register_bdt_data(AMD_BIOS_APCB_BK,
+						combo_apcb_bk[0].sub,
+						combo_apcb_bk[0].ins & 0xF,
+						combo_apcb_bk[0].filename);
+			}
 		}
 
 		if (cb_config.multi_level) {

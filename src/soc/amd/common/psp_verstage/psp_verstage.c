@@ -12,8 +12,8 @@
 #include <fmap.h>
 #include <fmap_config.h>
 #include <pc80/mc146818rtc.h>
+#include <psp_verstage/psp_transfer.h>
 #include <soc/iomap.h>
-#include <soc/psp_transfer.h>
 #include <security/tpm/tspi.h>
 #include <security/tpm/tss.h>
 #include <security/vboot/vbnv.h>
@@ -208,7 +208,7 @@ static uint32_t save_buffers(void)
  */
 static void psp_verstage_s0i3_resume(void)
 {
-	uint32_t rv;
+	tpm_result_t rc;
 
 	post_code(POSTCODE_VERSTAGE_S0I3_RESUME);
 
@@ -217,15 +217,15 @@ static void psp_verstage_s0i3_resume(void)
 	if (!CONFIG(PSP_INIT_TPM_ON_S0I3_RESUME))
 		return;
 
-	rv = tpm_setup(true);
-	if (rv != TPM_SUCCESS) {
-		printk(BIOS_ERR, "tpm_setup failed rv:%d\n", rv);
+	rc = tpm_setup(true);
+	if (rc != TPM_SUCCESS) {
+		printk(BIOS_ERR, "tpm_setup failed rc:%d\n", rc);
 		reboot_into_recovery(vboot_get_context(), POSTCODE_INIT_TPM_FAILED);
 	}
 
-	rv = tlcl_disable_platform_hierarchy();
-	if (rv != TPM_SUCCESS) {
-		printk(BIOS_ERR, "tlcl_disable_platform_hierarchy failed rv:%d\n", rv);
+	rc = tlcl_disable_platform_hierarchy();
+	if (rc != TPM_SUCCESS) {
+		printk(BIOS_ERR, "tlcl_disable_platform_hierarchy failed rc:%d\n", rc);
 		reboot_into_recovery(vboot_get_context(), POSTCODE_INIT_TPM_FAILED);
 	}
 }

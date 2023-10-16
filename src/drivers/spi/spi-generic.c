@@ -91,14 +91,14 @@ unsigned int spi_crop_chunk(const struct spi_slave *slave, unsigned int cmd_len,
 	deduct_opcode_len = !!(ctrlr->flags & SPI_CNTRLR_DEDUCT_OPCODE_LEN);
 	ctrlr_max = ctrlr->max_xfer_size;
 
-	assert (ctrlr_max != 0);
+	assert(ctrlr_max != 0);
 
 	/* Assume opcode is always one byte and deduct it from the cmd_len
 	   as the hardware has a separate register for the opcode. */
 	if (deduct_opcode_len)
 		cmd_len--;
 
-	/* Subtract command length from useable buffer size. If
+	/* Subtract command length from usable buffer size. If
 	   deduct_opcode_len is set, only subtract the number command bytes
 	   after the opcode. If the adjusted cmd_len is larger than ctrlr_max
 	   return 0 to inidicate an error. */

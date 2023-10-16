@@ -27,7 +27,7 @@ config MRC_WRITE_NV_LATE
 	help
 	  MRC settings are normally written to NVRAM at BS_DEV_ENUMERATE-EXIT.
 	  If a platform requires MRC settings written to NVRAM later than
-	  normal, select this item.  This will cause the write to occur at
+	  normal, select this item. This will cause the write to occur at
 	  BS_OS_RESUME_CHECK-ENTRY.
 
 config MRC_STASH_TO_CBMEM
@@ -54,7 +54,7 @@ config MRC_SAVE_HASH_IN_TPM
 
 config MRC_CACHE_USING_MRC_VERSION
 	bool
-	default y if UDK_VERSION >= UDK_202302_VERSION
+	default y if UDK_VERSION >= 202302
 	default n
 	help
 	  Use the MRC version info from FSP extended header to store the MRC cache data.

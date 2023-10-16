@@ -51,6 +51,9 @@ static inline unsigned int cpuid_get_max_func(void)
 #define CPUID_FEATURE_PSE36 (1 << 17)
 #define CPUID_FEAURE_HTT (1 << 28)
 
+/* Structured Extended Feature Flags */
+#define CPUID_STRUCT_EXTENDED_FEATURE_FLAGS 0x7
+
 // Intel leaf 0x4, AMD leaf 0x8000001d EAX
 
 #define CPUID_CACHE(x, res) \
@@ -95,6 +98,10 @@ static inline unsigned int cpuid_get_max_func(void)
 #define CPUID_CACHE_NO_OF_SETS_SHIFT 0
 #define CPUID_CACHE_NO_OF_SETS_MASK 0xffffffff
 #define CPUID_CACHE_NO_OF_SETS(res) CPUID_CACHE(NO_OF_SETS, (res).ecx)
+
+// Intel leaf 0x5
+#define CPUID_FEATURE_MONITOR_MWAIT		(1 << 0)
+#define CPUID_FEATURE_INTERUPT_BREAK_EVENT	(1 << 1)
 
 unsigned int cpu_cpuid_extended_level(void);
 int cpu_have_cpuid(void);
@@ -308,9 +315,29 @@ size_t cpu_get_max_cache_share(const struct cpu_cache_info *info);
 size_t get_cache_size(const struct cpu_cache_info *info);
 
 /*
+ * Returns the sub-states supported by the specified CPU
+ * C-state level.
+ *
+ * Level 0 corresponds to the lowest C-state (C0).
+ * Higher levels are processor specific.
+ */
+uint8_t cpu_get_c_substate_support(const int state);
+
+/*
  * fill_cpu_cache_info to get all required cache info data and fill into cpu_cache_info
  * structure by calling CPUID.EAX=leaf and ECX=Cache Level.
  */
 bool fill_cpu_cache_info(uint8_t level, struct cpu_cache_info *info);
+
+#if CONFIG(RESERVED_PHYSICAL_ADDRESS_BITS_SUPPORT)
+unsigned int get_reserved_phys_addr_bits(void);
+#else
+/* Default implementation */
+static inline unsigned int get_reserved_phys_addr_bits(void)
+{
+	/* Default implementation */
+	return 0;
+}
+#endif
 
 #endif /* ARCH_CPU_H */

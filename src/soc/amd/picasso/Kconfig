@@ -36,6 +36,8 @@ config SOC_AMD_PICASSO
 	select SOC_AMD_COMMON_BLOCK_CPUFREQ_FAM17H_19H
 	select SOC_AMD_COMMON_BLOCK_DATA_FABRIC
 	select SOC_AMD_COMMON_BLOCK_DATA_FABRIC_DOMAIN
+	select SOC_AMD_COMMON_BLOCK_DATA_FABRIC_NP_REGION
+	select SOC_AMD_COMMON_BLOCK_EMMC
 	select SOC_AMD_COMMON_BLOCK_GRAPHICS
 	select SOC_AMD_COMMON_BLOCK_HAS_ESPI
 	select SOC_AMD_COMMON_BLOCK_HDA
@@ -262,10 +264,6 @@ config S3_VGA_ROM_RUN
 	bool
 	default n
 
-config HEAP_SIZE
-	hex
-	default 0xc0000
-
 config SERIRQ_CONTINUOUS_MODE
 	bool
 	default n
@@ -346,39 +344,6 @@ config FSP_TEMP_RAM_SIZE
 	  The amount of coreboot-allocated heap and stack usage by the FSP.
 
 menu "PSP Configuration Options"
-
-config AMD_FWM_POSITION_INDEX
-	int "Firmware Directory Table location (0 to 5)"
-	range 0 5
-	default 0 if BOARD_ROMSIZE_KB_512
-	default 1 if BOARD_ROMSIZE_KB_1024
-	default 2 if BOARD_ROMSIZE_KB_2048
-	default 3 if BOARD_ROMSIZE_KB_4096
-	default 4 if BOARD_ROMSIZE_KB_8192
-	default 5 if BOARD_ROMSIZE_KB_16384
-	help
-	  Typically this is calculated by the ROM size, but there may
-	  be situations where you want to put the firmware directory
-	  table in a different location.
-	    0: 512 KB - 0xFFFA0000
-	    1: 1 MB   - 0xFFF20000
-	    2: 2 MB   - 0xFFE20000
-	    3: 4 MB   - 0xFFC20000
-	    4: 8 MB   - 0xFF820000
-	    5: 16 MB  - 0xFF020000
-
-comment "AMD Firmware Directory Table set to location for 512KB ROM"
-	depends on AMD_FWM_POSITION_INDEX = 0
-comment "AMD Firmware Directory Table set to location for 1MB ROM"
-	depends on AMD_FWM_POSITION_INDEX = 1
-comment "AMD Firmware Directory Table set to location for 2MB ROM"
-	depends on AMD_FWM_POSITION_INDEX = 2
-comment "AMD Firmware Directory Table set to location for 4MB ROM"
-	depends on AMD_FWM_POSITION_INDEX = 3
-comment "AMD Firmware Directory Table set to location for 8MB ROM"
-	depends on AMD_FWM_POSITION_INDEX = 4
-comment "AMD Firmware Directory Table set to location for 16MB ROM"
-	depends on AMD_FWM_POSITION_INDEX = 5
 
 config AMDFW_CONFIG_FILE
 	string

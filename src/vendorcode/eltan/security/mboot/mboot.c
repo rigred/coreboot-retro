@@ -13,14 +13,14 @@
  */
 EFI_TCG2_EVENT_ALGORITHM_BITMAP tpm2_get_active_pcrs(void)
 {
-	int status;
+	tpm_result_t rc;
 	TPML_PCR_SELECTION Pcrs;
 	EFI_TCG2_EVENT_ALGORITHM_BITMAP tpmHashAlgorithmBitmap = 0;
 	uint32_t activePcrBanks = 0;
 	uint32_t index;
 
-	status = tpm2_get_capability_pcrs(&Pcrs);
-	if (status != TPM_SUCCESS) {
+	rc = tpm2_get_capability_pcrs(&Pcrs);
+	if (rc != TPM_SUCCESS) {
 		tpmHashAlgorithmBitmap = EFI_TCG2_BOOT_HASH_ALG_SHA1;
 		activePcrBanks = EFI_TCG2_BOOT_HASH_ALG_SHA1;
 	} else {
@@ -47,7 +47,7 @@ EFI_TCG2_EVENT_ALGORITHM_BITMAP tpm2_get_active_pcrs(void)
 			case TPM_ALG_SM3_256:
 			default:
 				printk(BIOS_DEBUG, "%s: unsupported algorithm "
-					"reported - 0x%x\n", __func__,
+					"reported - %#x\n", __func__,
 					Pcrs.pcrSelections[index].hash);
 				break;
 			}
@@ -73,22 +73,22 @@ EFI_TCG2_EVENT_ALGORITHM_BITMAP tpm2_get_active_pcrs(void)
  * @param[out] Pcrs		The Pcr Selection
  *
  * @retval TPM_SUCCESS		Operation completed successfully.
- * @retval TPM_E_IOERROR	The command was unsuccessful.
+ * @retval TPM_IOERROR		The command was unsuccessful.
  */
-int tpm2_get_capability_pcrs(TPML_PCR_SELECTION *Pcrs)
+tpm_result_t tpm2_get_capability_pcrs(TPML_PCR_SELECTION *Pcrs)
 {
 	TPMS_CAPABILITY_DATA TpmCap;
-	int status;
+	tpm_result_t rc;
 	int index;
 
-	status = tlcl_get_capability(TPM_CAP_PCRS, 0, 1, &TpmCap);
-	if (status == TPM_SUCCESS) {
+	rc = tlcl_get_capability(TPM_CAP_PCRS, 0, 1, &TpmCap);
+	if (rc == TPM_SUCCESS) {
 		Pcrs->count = TpmCap.data.assignedPCR.count;
 		printk(BIOS_DEBUG, "Pcrs->count = %d\n", Pcrs->count);
 		for (index = 0; index < Pcrs->count; index++) {
 			Pcrs->pcrSelections[index].hash =
 				swab16(TpmCap.data.assignedPCR.pcrSelections[index].hash);
-			printk(BIOS_DEBUG, "Pcrs->pcrSelections[%d].hash = 0x%x\n", index,
+			printk(BIOS_DEBUG, "Pcrs->pcrSelections[%d].hash = %#x\n", index,
 			       Pcrs->pcrSelections[index].hash);
 			Pcrs->pcrSelections[index].sizeofSelect =
 				TpmCap.data.assignedPCR.pcrSelections[index].sizeofSelect;
@@ -97,7 +97,7 @@ int tpm2_get_capability_pcrs(TPML_PCR_SELECTION *Pcrs)
 				Pcrs->pcrSelections[index].sizeofSelect);
 		}
 	}
-	return status;
+	return rc;
 }
 
 /*
@@ -113,9 +113,9 @@ int tpm2_get_capability_pcrs(TPML_PCR_SELECTION *Pcrs)
  * @param[in] eventLog		description of the event.
  *
  * @retval TPM_SUCCESS		Operation completed successfully.
- * @retval TPM_E_IOERROR	Unexpected device behavior.
+ * @retval TPM_IOERROR		Unexpected device behavior.
  */
-int mboot_hash_extend_log(uint64_t flags, uint8_t *hashData, uint32_t hashDataLen,
+tpm_result_t mboot_hash_extend_log(uint64_t flags, uint8_t *hashData, uint32_t hashDataLen,
 	TCG_PCR_EVENT2_HDR *newEventHdr, uint8_t *eventLog)
 {
 	TPMT_HA *digest = NULL;
@@ -130,7 +130,7 @@ int mboot_hash_extend_log(uint64_t flags, uint8_t *hashData, uint32_t hashDataLe
 	} else {
 		struct vb2_hash tmp;
 		if (vb2_hash_calculate(false, hashData, hashDataLen, VB2_HASH_SHA256, &tmp))
-			return TPM_E_IOERROR;
+			return TPM_IOERROR;
 		memcpy(digest->digest.sha256, tmp.sha256, sizeof(tmp.sha256));
 	}
 
@@ -149,7 +149,7 @@ int mboot_hash_extend_log(uint64_t flags, uint8_t *hashData, uint32_t hashDataLe
 void invalidate_pcrs(void)
 {
 	int pcr;
-	int status;
+	tpm_result_t rc;
 
 	TCG_PCR_EVENT2_HDR tcgEventHdr;
 	uint8_t invalidate = 1;
@@ -161,12 +161,12 @@ void invalidate_pcrs(void)
 		tcgEventHdr.eventType = EV_NO_ACTION;
 		tcgEventHdr.eventSize = (uint32_t) sizeof(invalidate);
 
-		status = mboot_hash_extend_log(0, (uint8_t *)&invalidate,
+		rc = mboot_hash_extend_log(0, (uint8_t *)&invalidate,
 					       tcgEventHdr.eventSize, &tcgEventHdr,
 					       (uint8_t *)"Invalidate PCR");
-		if (status != TPM_SUCCESS)
+		if (rc != TPM_SUCCESS)
 			printk(BIOS_DEBUG, "%s: invalidating pcr %d returned"
-				" 0x%x\n", __func__, pcr, status);
+				" %#x\n", __func__, pcr, rc);
 	}
 }
 
@@ -225,12 +225,11 @@ void mboot_print_buffer(uint8_t *buffer, uint32_t bufferSize)
  * @param[in] event_msg		description of the event.
  *
  * @retval TPM_SUCCESS		Operation completed successfully.
- * @retval TPM_E_IOERROR	Unexpected device behavior.
+ * @retval TPM_IOERROR		Unexpected device behavior.
  */
-int mb_measure_log_worker(const char *name, uint32_t type, uint32_t pcr,
+tpm_result_t mb_measure_log_worker(const char *name, uint32_t type, uint32_t pcr,
 			  TCG_EVENTTYPE eventType, const char *event_msg)
 {
-	int status;
 	TCG_PCR_EVENT2_HDR tcgEventHdr;
 	uint8_t *base;
 	size_t size;
@@ -240,7 +239,7 @@ int mb_measure_log_worker(const char *name, uint32_t type, uint32_t pcr,
 
 	if (base == NULL) {
 		printk(BIOS_DEBUG, "%s: CBFS locate fail: %s\n", __func__, name);
-		return VB2_ERROR_READ_FILE_OPEN;
+		return TPM_IOERROR;
 	}
 
 	printk(BIOS_DEBUG, "%s: CBFS locate success: %s\n", __func__, name);
@@ -250,8 +249,7 @@ int mb_measure_log_worker(const char *name, uint32_t type, uint32_t pcr,
 	if (event_msg)
 		tcgEventHdr.eventSize = (uint32_t) strlen(event_msg);
 
-	status = mboot_hash_extend_log(0, base, size, &tcgEventHdr, (uint8_t *)event_msg);
-	return status;
+	return mboot_hash_extend_log(0, base, size, &tcgEventHdr, (uint8_t *)event_msg);
 }
 
 /*
@@ -268,32 +266,34 @@ int mb_measure_log_worker(const char *name, uint32_t type, uint32_t pcr,
  * @param[in] wake_from_s3	1 if we are waking from S3, 0 standard boot
  *
  * @retval TPM_SUCCESS		Operation completed successfully.
- * @retval TPM_E_IOERROR	Unexpected device behavior.
+ * @retval TPM_IOERROR		Unexpected device behavior.
 **/
 
-int __attribute__((weak)) mb_entry(int wake_from_s3)
+__weak tpm_result_t mb_entry(int wake_from_s3)
 {
-	int status;
+	tpm_result_t rc;
 
 	/* Initialize TPM driver. */
 	printk(BIOS_DEBUG, "%s: tlcl_lib_init\n", __func__);
-	if (tlcl_lib_init() != VB2_SUCCESS) {
-		printk(BIOS_ERR, "%s: TPM driver initialization failed.\n", __func__);
-		return TPM_E_IOERROR;
+	rc = tlcl_lib_init();
+	if (rc != TPM_SUCCESS) {
+		printk(BIOS_ERR, "%s: TPM driver initialization failed with error %#x.\n",
+			__func__, rc);
+		return rc;
 	}
 
 	if (wake_from_s3) {
 		printk(BIOS_DEBUG, "%s: tlcl_resume\n", __func__);
-		status = tlcl_resume();
+		rc = tlcl_resume();
 	} else {
 		printk(BIOS_DEBUG, "%s: tlcl_startup\n", __func__);
-		status = tlcl_startup();
+		rc = tlcl_startup();
 	}
 
-	if (status)
-		printk(BIOS_ERR, "%s: StartUp failed 0x%x!\n", __func__, status);
+	if (rc)
+		printk(BIOS_ERR, "%s: StartUp failed %#x!\n", __func__, rc);
 
-	return status;
+	return rc;
 }
 
 /*
@@ -312,30 +312,30 @@ int __attribute__((weak)) mb_entry(int wake_from_s3)
  * @param[in] wake_from_s3	1 if we are waking from S3, 0 standard boot
  *
  * @retval TPM_SUCCESS		Operation completed successfully.
- * @retval TPM_E_IOERROR	Unexpected device behavior.
+ * @retval TPM_IOERROR		Unexpected device behavior.
  */
 
-int __attribute__((weak))mb_measure(int wake_from_s3)
+__weak tpm_result_t mb_measure(int wake_from_s3)
 {
-	uint32_t status;
+	tpm_result_t rc;
 
-	status = mb_entry(wake_from_s3);
-	if (status == TPM_SUCCESS) {
+	rc = mb_entry(wake_from_s3);
+	if (rc == TPM_SUCCESS) {
 		printk(BIOS_DEBUG, "%s: StartUp, successful!\n", __func__);
-		status = mb_measure_log_start();
-		if (status == TPM_SUCCESS) {
+		rc = mb_measure_log_start();
+		if (rc == TPM_SUCCESS) {
 			printk(BIOS_DEBUG, "%s: Measuring, successful!\n", __func__);
 		} else {
 			invalidate_pcrs();
-			printk(BIOS_ERR, "%s: Measuring returned 0x%x unsuccessful! PCRs invalidated.\n",
-			       __func__, status);
+			printk(BIOS_ERR, "%s: Measuring returned %#x unsuccessful! PCRs invalidated.\n",
+			       __func__, rc);
 		}
 	} else {
 		invalidate_pcrs();
-		printk(BIOS_ERR, "%s: StartUp returned 0x%x, unsuccessful! PCRs invalidated.\n", __func__,
-		       status);
+		printk(BIOS_ERR, "%s: StartUp returned %#x, unsuccessful! PCRs invalidated.\n", __func__,
+		       rc);
 	}
-	return status;
+	return rc;
 }
 
 /*
@@ -355,45 +355,45 @@ int __attribute__((weak))mb_measure(int wake_from_s3)
  * @param[in]  none
  *
  * @retval TPM_SUCCESS		Operation completed successfully.
- * @retval TPM_E_IOERROR	Unexpected device behavior.
+ * @retval TPM_IOERROR		Unexpected device behavior.
  */
-int __attribute__((weak))mb_measure_log_start(void)
+__weak tpm_result_t mb_measure_log_start(void)
 {
-	int status;
+	tpm_result_t rc;
 	uint32_t i;
 
 	if ((tpm2_get_active_pcrs() & EFI_TCG2_BOOT_HASH_ALG_SHA256) == 0x0) {
 		printk(BIOS_DEBUG, "%s: SHA256 PCR Bank not active in TPM.\n",
 			__func__);
-		return TPM_E_IOERROR;
+		return TPM_IOERROR;
 	}
 
-	status = mb_crtm();
-	if (status != TPM_SUCCESS) {
+	rc = mb_crtm();
+	if (rc) {
 		printk(BIOS_DEBUG, "%s: Fail! CRTM Version can't be measured."
-			" ABORTING!!!\n", __func__);
-		return status;
+			" Received error %#x, ABORTING!!!\n", __func__, rc);
+		return rc;
 	}
 	printk(BIOS_DEBUG, "%s: Success! CRTM Version measured.\n", __func__);
 
 	/* Log the items defined by the mainboard */
 	for (i = 0; i < ARRAY_SIZE(mb_log_list); i++) {
-		status = mb_measure_log_worker(
+		rc = mb_measure_log_worker(
 				mb_log_list[i].cbfs_name,
 				mb_log_list[i].cbfs_type, mb_log_list[i].pcr,
 				mb_log_list[i].eventType,
 				mb_log_list[i].event_msg);
-		if (status != TPM_SUCCESS) {
+		if (rc != TPM_SUCCESS) {
 			printk(BIOS_DEBUG, "%s: Fail! %s can't be measured."
 				"ABORTING!!!\n", __func__,
 				mb_log_list[i].cbfs_name);
-			return status;
+			return rc;
 		}
 		printk(BIOS_DEBUG, "%s: Success! %s measured to pcr"
 			"%d.\n", __func__, mb_log_list[i].cbfs_name,
 			mb_log_list[i].pcr);
 	}
-	return status;
+	return rc;
 }
 
 static const uint8_t crtm_version[] =
@@ -412,11 +412,11 @@ static const uint8_t crtm_version[] =
  * function with the same name there.
  *
  * @retval TPM_SUCCESS		Operation completed successfully.
- * @retval TPM_E_IOERROR	Unexpected device behavior.
+ * @retval TPM_IOERROR		Unexpected device behavior.
 **/
-int __attribute__((weak))mb_crtm(void)
+__weak tpm_result_t mb_crtm(void)
 {
-	int status;
+	tpm_result_t rc;
 	TCG_PCR_EVENT2_HDR tcgEventHdr;
 	uint8_t hash[VB2_SHA256_DIGEST_SIZE];
 	uint8_t *msgPtr;
@@ -430,18 +430,18 @@ int __attribute__((weak))mb_crtm(void)
 	printk(BIOS_DEBUG, "%s: EventSize - %u\n", __func__,
 		tcgEventHdr.eventSize);
 
-	status = mboot_hash_extend_log(0, (uint8_t *)crtm_version, tcgEventHdr.eventSize,
+	rc = mboot_hash_extend_log(0, (uint8_t *)crtm_version, tcgEventHdr.eventSize,
 				       &tcgEventHdr, (uint8_t *)crtm_version);
-	if (status) {
-		printk(BIOS_DEBUG, "Measure CRTM Version returned 0x%x\n", status);
-		return status;
+	if (rc) {
+		printk(BIOS_DEBUG, "Measure CRTM Version returned %#x\n", rc);
+		return rc;
 	}
 
-	status = get_intel_me_hash(hash);
-	if (status) {
-		printk(BIOS_DEBUG, "get_intel_me_hash returned 0x%x\n", status);
-		status = TPM_E_IOERROR;
-		return status;
+	rc = get_intel_me_hash(hash);
+	if (rc) {
+		printk(BIOS_DEBUG, "get_intel_me_hash returned %#x\n", rc);
+		rc = TPM_IOERROR;
+		return rc;
 	}
 
 	/* Add the me hash */
@@ -453,10 +453,10 @@ int __attribute__((weak))mb_crtm(void)
 
 	msgPtr = NULL;
 	tcgEventHdr.eventSize = 0;
-	status = mboot_hash_extend_log(MBOOT_HASH_PROVIDED, hash, sizeof(hash), &tcgEventHdr,
+	rc = mboot_hash_extend_log(MBOOT_HASH_PROVIDED, hash, sizeof(hash), &tcgEventHdr,
 				       msgPtr);
-	if (status)
-		printk(BIOS_DEBUG, "Add ME hash returned 0x%x\n", status);
+	if (rc)
+		printk(BIOS_DEBUG, "Add ME hash returned %#x\n", rc);
 
-	return status;
+	return rc;
 }

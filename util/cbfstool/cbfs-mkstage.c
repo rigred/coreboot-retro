@@ -10,47 +10,66 @@
 #include "cbfs.h"
 #include "rmodule.h"
 
-/* Checks if program segment contains the ignored section */
-static int is_phdr_ignored(Elf64_Phdr *phdr, Elf64_Shdr *shdr)
+/* Checks if program segment contains the ignored sections */
+static int is_phdr_ignored(Elf64_Phdr *phdr, Elf64_Shdr **shdrs)
 {
 	/* If no ignored section, return false. */
-	if (shdr == NULL)
+	if (shdrs == NULL)
 		return 0;
 
-	Elf64_Addr sh_start = shdr->sh_addr;
-	Elf64_Addr sh_end = shdr->sh_addr + shdr->sh_size;
-	Elf64_Addr ph_start = phdr->p_vaddr;
-	Elf64_Addr ph_end = phdr->p_vaddr + phdr->p_memsz;
+	while (*shdrs) {
+		Elf64_Addr sh_start = (*shdrs)->sh_addr;
+		Elf64_Addr sh_end = (*shdrs)->sh_addr + (*shdrs)->sh_size;
+		Elf64_Addr ph_start = phdr->p_vaddr;
+		Elf64_Addr ph_end = phdr->p_vaddr + phdr->p_memsz;
 
-	/* Return true only if section occupies whole of segment. */
-	if ((sh_start == ph_start) && (sh_end == ph_end)) {
-		DEBUG("Ignoring program segment at 0x%" PRIx64 "\n", ph_start);
-		return 1;
-	}
+		/* Return true only if section occupies whole of segment. */
+		if ((sh_start == ph_start) && (sh_end == ph_end)) {
+			DEBUG("Ignoring program segment at 0x%" PRIx64 "\n", ph_start);
+			return 1;
+		}
 
-	/* If shdr intersects phdr at all, its a conflict */
-	if (((sh_start >= ph_start) && (sh_start <= ph_end)) ||
-	    ((sh_end >= ph_start) && (sh_end <= ph_end))) {
-		ERROR("Conflicting sections in segment\n");
-		exit(1);
+		/* If shdr intersects phdr at all, its a conflict */
+		if (((sh_start >= ph_start) && (sh_start <= ph_end)) ||
+		    ((sh_end >= ph_start) && (sh_end <= ph_end))) {
+			ERROR("Conflicting sections in segment\n");
+			exit(1);
+		}
+		shdrs++;
 	}
 
 	/* Program header doesn't need to be ignored. */
 	return 0;
 }
 
-/* Find section header based on ignored section name */
-static Elf64_Shdr *find_ignored_section_header(struct parsed_elf *pelf,
-					       const char *ignore_section)
+/* Sections to be ignored are comma separated  */
+static bool is_ignored_sections(const char *section_name,
+				const char *ignore_sections)
+{
+	const char *cur, *comma;
+
+	for (cur = ignore_sections; (comma = strchr(cur, ',')); cur = comma + 1)
+		if (!strncmp(cur, section_name, comma - cur))
+			return true;
+	return !strcmp(cur, section_name);
+}
+
+/* Find section headers based on ignored section names.
+ * Returns a NULL-terminated list of section headers.
+ */
+static Elf64_Shdr **find_ignored_sections_header(struct parsed_elf *pelf,
+						 const char *ignore_sections)
 {
 	int i;
 	const char *shstrtab;
+	Elf64_Shdr **headers = NULL;
+	size_t size = 1;
 
 	/* No section needs to be ignored */
-	if (ignore_section == NULL)
+	if (ignore_sections == NULL)
 		return NULL;
 
-	DEBUG("Section to be ignored: %s\n", ignore_section);
+	DEBUG("Sections to be ignored: %s\n", ignore_sections);
 
 	/* Get pointer to string table */
 	shstrtab = buffer_get(pelf->strtabs[pelf->ehdr.e_shstrndx]);
@@ -62,13 +81,20 @@ static Elf64_Shdr *find_ignored_section_header(struct parsed_elf *pelf,
 		shdr = &pelf->shdr[i];
 		section_name = &shstrtab[shdr->sh_name];
 
-		/* If section name matches ignored string, return shdr */
-		if (strcmp(section_name, ignore_section) == 0)
-			return shdr;
+		/* If section name matches ignored string, add to list */
+		if (is_ignored_sections(section_name, ignore_sections)) {
+			headers = realloc(headers, sizeof(*headers) * ++size);
+			if (!headers) {
+				ERROR("Memory allocation failed\n");
+				exit(1);
+			}
+			headers[size - 2] = shdr;
+		}
 	}
 
-	/* No section matches ignore string */
-	return NULL;
+	if (headers)
+		headers[size - 1] = NULL;
+	return headers;
 }
 
 static int fill_cbfs_stageheader(struct cbfs_file_attr_stageheader *stageheader,
@@ -98,7 +124,7 @@ int parse_elf_to_stage(const struct buffer *input, struct buffer *output,
 	struct parsed_elf pelf;
 	Elf64_Phdr *phdr;
 	Elf64_Ehdr *ehdr;
-	Elf64_Shdr *shdr_ignored;
+	Elf64_Shdr **shdrs_ignored;
 	Elf64_Addr virt_to_phys;
 	int ret = -1;
 
@@ -116,17 +142,17 @@ int parse_elf_to_stage(const struct buffer *input, struct buffer *output,
 	ehdr = &pelf.ehdr;
 	phdr = &pelf.phdr[0];
 
-	/* Find the section header corresponding to ignored-section */
-	shdr_ignored = find_ignored_section_header(&pelf, ignore_section);
+	/* Find the section headers corresponding to ignored-sections */
+	shdrs_ignored = find_ignored_sections_header(&pelf, ignore_section);
 
-	if (ignore_section && (shdr_ignored == NULL))
-		WARN("Ignore section not found\n");
+	if (ignore_section && (shdrs_ignored == NULL))
+		WARN("Ignore section(s) not found\n");
 
 	headers = ehdr->e_phnum;
 
 	/* Ignore the program header containing ignored section */
 	for (i = 0; i < headers; i++) {
-		if (is_phdr_ignored(&phdr[i], shdr_ignored))
+		if (is_phdr_ignored(&phdr[i], shdrs_ignored))
 			phdr[i].p_type = PT_NULL;
 	}
 
@@ -217,8 +243,7 @@ err:
 
 struct xip_context {
 	struct rmod_context rmodctx;
-	size_t ignored_section_idx;
-	Elf64_Shdr *ignored_section;
+	Elf64_Shdr **ignored_sections;
 };
 
 static int rmod_filter(struct reloc_filter *f, const Elf64_Rela *r)
@@ -228,12 +253,13 @@ static int rmod_filter(struct reloc_filter *f, const Elf64_Rela *r)
 	struct parsed_elf *pelf;
 	Elf64_Sym *sym;
 	struct xip_context *xipctx;
+	Elf64_Shdr **sections;
 
 	xipctx = f->context;
 	pelf = &xipctx->rmodctx.pelf;
 
 	/* Allow everything through if there isn't an ignored section. */
-	if (xipctx->ignored_section == NULL)
+	if (xipctx->ignored_sections == NULL)
 		return 1;
 
 	reloc_type = ELF64_R_TYPE(r->r_info);
@@ -241,8 +267,11 @@ static int rmod_filter(struct reloc_filter *f, const Elf64_Rela *r)
 	sym = &pelf->syms[symbol_index];
 
 	/* Nothing to filter. Relocation is not being applied to the
-	 * ignored section. */
-	if (sym->st_shndx != xipctx->ignored_section_idx)
+	 * ignored sections. */
+	for (sections = xipctx->ignored_sections; *sections; sections++)
+		if (sym->st_shndx == *sections - pelf->shdr)
+			break;
+	if (!*sections)
 		return 1;
 
 	/* If there is any relocation to the ignored section that isn't
@@ -255,25 +284,66 @@ static int rmod_filter(struct reloc_filter *f, const Elf64_Rela *r)
 		return -1;
 	}
 
-	/* Relocation referencing ignored section. Don't emit it. */
+	/* Relocation referencing ignored sections. Don't emit it. */
 	return 0;
 }
 
+/* Returns a NULL-terminated list of loadable segments.  Returns NULL if no
+ * loadable segments were found or if two consecutive segments are not
+ * consecutive in their physical address space.
+ */
+static Elf64_Phdr **find_loadable_segments(struct parsed_elf *pelf)
+{
+	Elf64_Phdr **phdrs = NULL;
+	Elf64_Phdr *prev = NULL, *cur;
+	size_t size = 1, i;
+
+	for (i = 0; i < pelf->ehdr.e_phnum; i++, prev = cur) {
+		cur = &pelf->phdr[i];
+
+		if (cur->p_type != PT_LOAD || cur->p_memsz == 0)
+			continue;
+
+		phdrs = realloc(phdrs, sizeof(*phdrs) * ++size);
+		if (!phdrs) {
+			ERROR("Memory allocation failed\n");
+			return NULL;
+		}
+		phdrs[size - 2] = cur;
+
+		if (!prev)
+			continue;
+
+		if (prev->p_paddr + prev->p_memsz != cur->p_paddr ||
+		    prev->p_filesz != prev->p_memsz) {
+			ERROR("Loadable segments physical addresses should "
+			      "be consecutive\n");
+			free(phdrs);
+			return NULL;
+		}
+	}
+
+	if (phdrs)
+		phdrs[size - 1] = NULL;
+	return phdrs;
+}
+
 int parse_elf_to_xip_stage(const struct buffer *input, struct buffer *output,
-			   uint32_t location, const char *ignore_section,
+			   uint32_t location, const char *ignore_sections,
 			   struct cbfs_file_attr_stageheader *stageheader)
 {
 	struct xip_context xipctx;
 	struct rmod_context *rmodctx;
 	struct reloc_filter filter;
 	struct parsed_elf *pelf;
-	uint32_t adjustment;
+	uint32_t adjustment, memsz = 0;
 	struct buffer binput;
 	struct buffer boutput;
+	Elf64_Phdr **toload, **phdr;
 	Elf64_Xword i;
 	int ret = -1;
+	size_t filesz = 0;
 
-	xipctx.ignored_section_idx = 0;
 	rmodctx = &xipctx.rmodctx;
 	pelf = &rmodctx->pelf;
 
@@ -287,12 +357,8 @@ int parse_elf_to_xip_stage(const struct buffer *input, struct buffer *output,
 		goto out;
 	}
 
-	xipctx.ignored_section =
-		find_ignored_section_header(pelf, ignore_section);
-
-	if (xipctx.ignored_section != NULL)
-		xipctx.ignored_section_idx =
-			xipctx.ignored_section - pelf->shdr;
+	xipctx.ignored_sections =
+		find_ignored_sections_header(pelf, ignore_sections);
 
 	filter.filter = rmod_filter;
 	filter.context = &xipctx;
@@ -300,27 +366,37 @@ int parse_elf_to_xip_stage(const struct buffer *input, struct buffer *output,
 	if (rmodule_collect_relocations(rmodctx, &filter))
 		goto out;
 
-	if (buffer_create(output, pelf->phdr->p_filesz, input->name) != 0) {
+	toload = find_loadable_segments(pelf);
+	if (!toload)
+		goto out;
+
+	for (phdr = toload; *phdr; phdr++)
+		filesz += (*phdr)->p_filesz;
+	if (buffer_create(output, filesz, input->name) != 0) {
 		ERROR("Unable to allocate memory: %m\n");
 		goto out;
 	}
 	buffer_clone(&boutput, output);
-	memset(buffer_get(&boutput), 0, pelf->phdr->p_filesz);
+	memset(buffer_get(&boutput), 0, filesz);
 	buffer_set_size(&boutput, 0);
 
-	/* Single loadable segment. The entire segment moves to final
-	 * location from based on virtual address of loadable segment. */
+	/* The program segment moves to final location from based on virtual
+	 * address of loadable segment. */
 	adjustment = location - pelf->phdr->p_vaddr;
 	DEBUG("Relocation adjustment: %08x\n", adjustment);
 
+	for (phdr = toload; *phdr; phdr++)
+		memsz += (*phdr)->p_memsz;
 	fill_cbfs_stageheader(stageheader,
 			      (uint32_t)pelf->ehdr.e_entry + adjustment,
 			      (uint32_t)pelf->phdr->p_vaddr + adjustment,
-			      pelf->phdr->p_memsz);
-	/* Need an adjustable buffer. */
-	buffer_clone(&binput, input);
-	buffer_seek(&binput, pelf->phdr->p_offset);
-	bputs(&boutput, buffer_get(&binput), pelf->phdr->p_filesz);
+			      memsz);
+	for (phdr = toload; *phdr; phdr++) {
+		/* Need an adjustable buffer. */
+		buffer_clone(&binput, input);
+		buffer_seek(&binput, (*phdr)->p_offset);
+		bputs(&boutput, buffer_get(&binput), (*phdr)->p_filesz);
+	}
 
 	buffer_clone(&boutput, output);
 

@@ -46,20 +46,6 @@ CPPFLAGS_common += -I$(src)/soc/amd/phoenix/acpi
 CPPFLAGS_common += -I$(src)/vendorcode/amd/fsp/phoenix
 CPPFLAGS_common += -I$(src)/vendorcode/amd/fsp/common
 
-# ROMSIG Normally At ROMBASE + 0x20000
-# Overridden by CONFIG_AMD_FWM_POSITION_INDEX
-# +-----------+---------------+----------------+------------+
-# |0x55AA55AA |               |                |            |
-# +-----------+---------------+----------------+------------+
-# |           |  PSPDIR ADDR  |  BIOSDIR ADDR  |
-# +-----------+---------------+----------------+
-
-$(if $(CONFIG_AMD_FWM_POSITION_INDEX), ,\
-     $(error Invalid AMD firmware position index. Check if the board sets a valid ROM size))
-
-# Fixed EFS location
-PHOENIX_FWM_POSITION=0xff020000
-
 # 0x40 accounts for the cbfs_file struct + filename + metadata structs, aligned to 64 bytes
 # Building the cbfs image will fail if the offset isn't large enough
 AMD_FW_AB_POSITION := 0x40
@@ -106,13 +92,11 @@ PSP_WHITELIST_FILE=$(CONFIG_PSP_WHITELIST_FILE)
 endif
 
 # type = 0x55
-ifeq ($(CONFIG_HAVE_SPL_FILE),y)
 SPL_TABLE_FILE=$(CONFIG_SPL_TABLE_FILE)
 ifeq ($(CONFIG_HAVE_SPL_RW_AB_FILE),y)
 SPL_RW_AB_TABLE_FILE=$(CONFIG_SPL_RW_AB_TABLE_FILE)
 else
 SPL_RW_AB_TABLE_FILE=$(CONFIG_SPL_TABLE_FILE)
-endif
 endif
 
 #
@@ -269,7 +253,7 @@ $(obj)/amdfw.rom:	$(call strip_quotes, $(PSP_BIOSBIN_FILE)) \
 		$(OPT_VERSTAGE_SIG_FILE) \
 		$(OPT_SPL_TABLE_FILE) \
 		$(OPT_MANIFEST) \
-		--location $(call _tohex,$(PHOENIX_FWM_POSITION)) \
+		--location $(CONFIG_AMD_FWM_POSITION) \
 		--output $@
 
 ifeq ($(CONFIG_AMDFW_SPLIT),y)

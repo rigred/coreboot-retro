@@ -4,9 +4,11 @@
 #include <assert.h>
 #include <console/console.h>
 #include <bootmode.h>
+#include <ec/google/chromeec/ec.h>
 #include <fmap.h>
 #include <security/tpm/tspi/crtm.h>
 #include <security/tpm/tss/vendor/cr50/cr50.h>
+#include <security/tpm/tss_errors.h>
 #include <security/vboot/misc.h>
 #include <security/vboot/vbnv.h>
 #include <security/vboot/tpm_common.h>
@@ -127,7 +129,7 @@ static vb2_error_t hash_body(struct vb2_context *ctx,
 	const size_t hash_digest_sz = sizeof(hash_digest);
 	size_t block_size = sizeof(block);
 	size_t offset;
-	vb2_error_t rv;
+	vb2_error_t rc;
 
 	/* Clear the full digest so that any hash digests less than the
 	 * max have trailing zeros. */
@@ -146,9 +148,9 @@ static vb2_error_t hash_body(struct vb2_context *ctx,
 	offset = 0;
 
 	/* Start the body hash */
-	rv = vb2api_init_hash(ctx, VB2_HASH_TAG_FW_BODY);
-	if (rv)
-		return rv;
+	rc = vb2api_init_hash(ctx, VB2_HASH_TAG_FW_BODY);
+	if (rc)
+		return rc;
 
 	/* Extend over the body */
 	while (remaining) {
@@ -161,9 +163,9 @@ static vb2_error_t hash_body(struct vb2_context *ctx,
 			return VB2_ERROR_UNKNOWN;
 		load_ts += timestamp_get() - temp_ts;
 
-		rv = vb2api_extend_hash(ctx, block, block_size);
-		if (rv)
-			return rv;
+		rc = vb2api_extend_hash(ctx, block, block_size);
+		if (rc)
+			return rc;
 
 		remaining -= block_size;
 		offset += block_size;
@@ -173,19 +175,22 @@ static vb2_error_t hash_body(struct vb2_context *ctx,
 	timestamp_add_now(TS_HASHING_END);
 
 	/* Check the result (with RSA signature verification) */
-	rv = vb2api_check_hash_get_digest(ctx, hash_digest, hash_digest_sz);
-	if (rv)
-		return rv;
+	rc = vb2api_check_hash_get_digest(ctx, hash_digest, hash_digest_sz);
+	if (rc)
+		return rc;
 
 	timestamp_add_now(TS_HASH_BODY_END);
 
 	return handle_digest_result(hash_digest, hash_digest_sz);
 }
 
-static uint32_t extend_pcrs(struct vb2_context *ctx)
+static tpm_result_t extend_pcrs(struct vb2_context *ctx)
 {
-	return vboot_extend_pcr(ctx, CONFIG_PCR_BOOT_MODE, BOOT_MODE_PCR) ||
-		   vboot_extend_pcr(ctx, CONFIG_PCR_HWID, HWID_DIGEST_PCR);
+	tpm_result_t rc;
+	rc = vboot_extend_pcr(ctx, CONFIG_PCR_BOOT_MODE, BOOT_MODE_PCR);
+	if (rc)
+		return rc;
+	return vboot_extend_pcr(ctx, CONFIG_PCR_HWID, HWID_DIGEST_PCR);
 }
 
 #define EC_EFS_BOOT_MODE_VERIFIED_RW	0x00
@@ -207,11 +212,11 @@ static const char *get_boot_mode_string(uint8_t boot_mode)
 static void check_boot_mode(struct vb2_context *ctx)
 {
 	uint8_t boot_mode;
-	int rv;
+	tpm_result_t rc;
 
-	rv = tlcl_cr50_get_boot_mode(&boot_mode);
-	switch (rv) {
-	case TPM_E_NO_SUCH_COMMAND:
+	rc = tlcl_cr50_get_boot_mode(&boot_mode);
+	switch (rc) {
+	case TPM_CB_NO_SUCH_COMMAND:
 		printk(BIOS_WARNING, "GSC does not support GET_BOOT_MODE.\n");
 		/* Proceed to legacy boot model. */
 		return;
@@ -219,8 +224,8 @@ static void check_boot_mode(struct vb2_context *ctx)
 		break;
 	default:
 		printk(BIOS_ERR,
-		       "Communication error in getting GSC boot mode.\n");
-		vb2api_fail(ctx, VB2_RECOVERY_GSC_BOOT_MODE, rv);
+		       "Communication error(%#x) in getting GSC boot mode.\n", rc);
+		vb2api_fail(ctx, VB2_RECOVERY_GSC_BOOT_MODE, rc);
 		return;
 	}
 
@@ -237,6 +242,7 @@ static void check_boot_mode(struct vb2_context *ctx)
 void verstage_main(void)
 {
 	struct vb2_context *ctx;
+	tpm_result_t tpm_rc;
 	vb2_error_t rv;
 
 	timestamp_add_now(TS_VBOOT_START);
@@ -259,13 +265,30 @@ void verstage_main(void)
 		platform_is_resuming())
 		ctx->flags |= VB2_CONTEXT_S3_RESUME;
 
+	if (!CONFIG(VBOOT_SLOTS_RW_AB))
+		ctx->flags |= VB2_CONTEXT_SLOT_A_ONLY;
+
 	/* Read secdata from TPM. Initialize TPM if secdata not found. We don't
 	 * check the return value here because vb2api_fw_phase1 will catch
 	 * invalid secdata and tell us what to do (=reboot). */
 	timestamp_add_now(TS_TPMINIT_START);
-	if (vboot_setup_tpm(ctx) == TPM_SUCCESS) {
+	rv = vboot_setup_tpm(ctx);
+	if (rv == TPM_SUCCESS) {
 		antirollback_read_space_firmware(ctx);
 		antirollback_read_space_kernel(ctx);
+	} else {
+		vb2api_fail(ctx, VB2_RECOVERY_RO_TPM_S_ERROR, rv);
+		if (CONFIG(TPM_SETUP_HIBERNATE_ON_ERR) &&
+				rv == TPM_CB_COMMUNICATION_ERROR) {
+			printk(BIOS_ERR, "Failed to communicate with TPM\n"
+					"Next reboot will hibernate to reset TPM");
+			/* Command the EC to hibernate on next AP shutdown */
+			if (google_chromeec_reboot(
+					EC_REBOOT_HIBERNATE,
+					EC_REBOOT_FLAG_ON_AP_SHUTDOWN)) {
+				printk(BIOS_ERR, "Failed to get EC to schedule hibernate");
+			}
+		}
 	}
 	timestamp_add_now(TS_TPMINIT_END);
 
@@ -312,7 +335,7 @@ void verstage_main(void)
 		 * For any other error code, save context if needed and reboot.
 		 */
 		if (rv == VB2_ERROR_API_PHASE1_RECOVERY) {
-			printk(BIOS_INFO, "Recovery requested (%x)\n", rv);
+			printk(BIOS_INFO, "Recovery requested (%#x)\n", rv);
 			vboot_save_data(ctx);
 			extend_pcrs(ctx); /* ignore failures */
 			goto verstage_main_exit;
@@ -343,8 +366,7 @@ void verstage_main(void)
 						  vb2_digest_size(metadata_hash->algo));
 	} else {
 		struct region_device fw_body;
-		rv = vboot_locate_firmware(ctx, &fw_body);
-		if (rv)
+		if (vboot_locate_firmware(ctx, &fw_body))
 			die_with_post_code(POSTCODE_INVALID_ROM,
 					   "Failed to read FMAP to locate firmware");
 
@@ -358,10 +380,13 @@ void verstage_main(void)
 	/* Only extend PCRs once on boot. */
 	if (!(ctx->flags & VB2_CONTEXT_S3_RESUME)) {
 		timestamp_add_now(TS_TPMPCR_START);
-		rv = extend_pcrs(ctx);
-		if (rv) {
-			printk(BIOS_WARNING, "Failed to extend TPM PCRs (%#x)\n", rv);
-			vboot_fail_and_reboot(ctx, VB2_RECOVERY_RO_TPM_U_ERROR, rv);
+		tpm_rc = extend_pcrs(ctx);
+		if (tpm_rc) {
+			printk(BIOS_WARNING, "Failed to extend TPM PCRs (%#x)\n",
+				tpm_rc);
+			vboot_fail_and_reboot(ctx,
+				VB2_RECOVERY_RO_TPM_U_ERROR,
+				tpm_rc);
 		}
 		timestamp_add_now(TS_TPMPCR_END);
 	}
@@ -369,19 +394,21 @@ void verstage_main(void)
 	/* Lock TPM */
 
 	timestamp_add_now(TS_TPMLOCK_START);
-	rv = antirollback_lock_space_firmware();
-	if (rv) {
-		printk(BIOS_INFO, "Failed to lock TPM (%x)\n", rv);
+	tpm_rc = antirollback_lock_space_firmware();
+	if (tpm_rc) {
+		printk(BIOS_INFO, "Failed to lock TPM (%#x)\n", tpm_rc);
 		vboot_fail_and_reboot(ctx, VB2_RECOVERY_RO_TPM_L_ERROR, 0);
 	}
 	timestamp_add_now(TS_TPMLOCK_END);
 
 	/* Lock rec hash space if available. */
 	if (CONFIG(VBOOT_HAS_REC_HASH_SPACE)) {
-		rv = antirollback_lock_space_mrc_hash(MRC_REC_HASH_NV_INDEX);
-		if (rv) {
-			printk(BIOS_INFO, "Failed to lock rec hash space(%x)\n", rv);
-			vboot_fail_and_reboot(ctx, VB2_RECOVERY_RO_TPM_REC_HASH_L_ERROR, 0);
+		tpm_rc = antirollback_lock_space_mrc_hash(
+				MRC_REC_HASH_NV_INDEX);
+		if (tpm_rc) {
+			printk(BIOS_INFO, "Failed to lock rec hash space(%#x)\n",
+				tpm_rc);
+			vboot_fail_and_reboot(ctx, VB2_RECOVERY_RO_TPM_REC_HASH_L_ERROR, tpm_rc);
 		}
 	}
 

@@ -70,7 +70,7 @@ int load_stm_image(uintptr_t mseg)
 struct descriptor {
 	uint16_t limit;
 	uintptr_t base;
-} __attribute__((packed));
+} __packed;
 
 static void read_gdtr(struct descriptor *gdtr)
 {
@@ -162,7 +162,6 @@ void stm_setup(uintptr_t mseg, int cpu, uintptr_t smbase,
 	stm_resource_heap = (uint8_t *)addr_calc;
 
 	if (cpu == 0) {
-
 		// need to create the BIOS resource list once
 		printk(BIOS_DEBUG, "STM: stm_resource_heap located at %p\n",
 				stm_resource_heap);

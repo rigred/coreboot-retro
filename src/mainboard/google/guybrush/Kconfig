@@ -2,11 +2,6 @@
 
 config BOARD_GOOGLE_BASEBOARD_GUYBRUSH
 	def_bool n
-
-if BOARD_GOOGLE_BASEBOARD_GUYBRUSH
-
-config BOARD_SPECIFIC_OPTIONS
-	def_bool y
 	select AMD_SOC_CONSOLE_UART
 	select BOARD_ROMSIZE_KB_16384
 	select CONSOLE_CBMEM_DUMP_TO_UART if !CONSOLE_SERIAL
@@ -49,6 +44,19 @@ config BOARD_SPECIFIC_OPTIONS
 	select SOC_AMD_COMMON_BLOCK_PSP_FUSE_SPL
 	select SYSTEM_TYPE_LAPTOP
 	select TPM_GOOGLE_CR50
+	select AMD_FWM_POSITION_C20000_DEFAULT
+
+config BOARD_GOOGLE_GUYBRUSH
+	select BOARD_GOOGLE_BASEBOARD_GUYBRUSH
+
+config BOARD_GOOGLE_NIPPERKIN
+	select BOARD_GOOGLE_BASEBOARD_GUYBRUSH
+	select DRIVERS_GFX_GENERIC
+
+config BOARD_GOOGLE_DEWATT
+	select BOARD_GOOGLE_BASEBOARD_GUYBRUSH
+
+if BOARD_GOOGLE_BASEBOARD_GUYBRUSH
 
 config VBOOT
 	select EC_GOOGLE_CHROMEEC_SWITCHES
@@ -81,12 +89,6 @@ config MAINBOARD_PART_NUMBER
 	default "Nipperkin" if BOARD_GOOGLE_NIPPERKIN
 	default "Dewatt" if BOARD_GOOGLE_DEWATT
 
-config AMD_FWM_POSITION_INDEX
-	int
-	default 3
-	help
-	  TODO: might need to be adapted for better placement of files in cbfs
-
 config DRIVER_TPM_I2C_BUS
 	hex
 	default 0x03
@@ -104,13 +106,12 @@ config AMDFW_CONFIG_FILE
 	string
 	default "src/mainboard/google/guybrush/variants/baseboard/amdfw.cfg"
 
-config HAVE_SPL_FILE
+config PERFORM_SPL_FUSING
 	bool
 	default y
 
 config SPL_TABLE_FILE
 	string
-	depends on HAVE_SPL_FILE
 	default "3rdparty/blobs/mainboard/google/guybrush/TypeId0x55_SplTable_Prod_CZN_Chrome.sbin"
 
 if !EM100	# EM100 defaults in soc/amd/common/blocks/spi/Kconfig

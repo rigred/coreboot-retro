@@ -17,17 +17,26 @@
 /* CPU CrashLog Mailbox commands */
 #define CPU_CRASHLOG_CMD_DISABLE		0
 #define CPU_CRASHLOG_CMD_CLEAR			2
-#define CPU_CRASHLOG_MAILBOX_WAIT_STALL		1
-#define CPU_CRASHLOG_MAILBOX_WAIT_TIMEOUT	1000
+#define CPU_CRASHLOG_WAIT_STALL			1
+#define CPU_CRASHLOG_WAIT_TIMEOUT		1000
 #define CPU_CRASHLOG_DISC_TAB_GUID_VALID	0x1600
 
 #define CRASHLOG_SIZE_DEBUG_PURPOSE		0x640
 
 #define INVALID_CRASHLOG_RECORD			0xdeadbeef
 
-/* Tag field definitions */
+/*
+ * Tag field definitions.
+ * Each region pointed by the descriptor table contains TAG information. This TAG information
+ * is used to identify the type of SRAM the region belongs to, for example:
+ * - TAG 0 represents the SoC PMC region
+ * - TAG 1 represents the IOE PMC region
+ * - TAG 7 represents a special case aka metadata information. This metadata information can be
+ *   SoC specific too.
+ */
 #define CRASHLOG_DESCRIPTOR_TABLE_TAG_SOC	0x0
 #define CRASHLOG_DESCRIPTOR_TABLE_TAG_IOE	0x1
+#define CRASHLOG_DESCRIPTOR_TABLE_TAG_META	0x7
 
 /* PMC crashlog discovery structs */
 typedef union {
@@ -120,15 +129,20 @@ typedef struct {
 
 typedef union {
 	struct {
-		u64 access_type	:4;
-		u64 crash_type	:4;
-		u64 count	:8;
-		u64 reserved	:16;
-		u64 guid	:32;
+		u64 access_type		:4;
+		u64 crash_type		:4;
+		u64 count		:8;
+		u64 reserved1		:4;
+		u64 clr_support		:1;
+		u64 storage_off_support	:1;
+		u64 reserved2		:2;
+		u64 storage_off_status	:1;
+		u64 re_arm_status	:1;
+		u64 reserved3		:6;
+		u64 guid		:32;
 	} fields;
 	u64 data;
 } __packed cpu_crashlog_header_t;
-
 
 /* Structures for CPU CrashLog mailbox interface */
 typedef union {
@@ -183,6 +197,8 @@ u32 cl_gen_cpu_bar_addr(void);
 int cpu_cl_poll_mailbox_ready(u32 cl_mailbox_addr);
 int cpu_cl_mailbox_cmd(u8 cmd, u8 param);
 int cpu_cl_clear_data(void);
+void cpu_cl_rearm(void);
+void cpu_cl_cleanup(void);
 int pmc_cl_gen_descriptor_table(u32 desc_table_addr,
 				pmc_crashlog_desc_table_t *descriptor_table);
 bool pmc_cl_discovery(void);

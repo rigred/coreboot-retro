@@ -64,11 +64,6 @@ $(1)-S-ccopts += -I.
 $$(objcbfs)/$(1).debug: $$$$($(1)-libs) $$$$($(1)-objs)
 	@printf "    LINK       $$(subst $$(obj)/,,$$(@))\n"
 	$$(LD_$(1)) $$(LDFLAGS_$(1)) -o $$@ -L$$(obj) $$(COMPILER_RT_FLAGS_$(1)) --whole-archive --start-group $$(filter-out %.ld,$$($(1)-objs)) $$($(1)-libs) --no-whole-archive $$(COMPILER_RT_$(1)) --end-group -T $(call src-to-obj,$(1),$(CONFIG_MEMLAYOUT_LD_FILE)) --oformat $(2)
-	-LANG=C LC_ALL= $$(OBJCOPY_$(1)) --only-section .illegal_globals $$(@) $$(objcbfs)/$(1)_null.offenders >/dev/null 2>&1
-	if [ -z "$$$$($$(NM_$(1)) $$(objcbfs)/$(1)_null.offenders 2>&1 | grep 'no symbols')" ];then \
-		echo "Forbidden global variables in $(1):"; \
-		$$(NM_$(1)) $$(objcbfs)/$(1)_null.offenders; false; \
-	fi
 endef
 
 ###############################################################################
@@ -253,7 +248,6 @@ $(CONFIG_CBFS_PREFIX)/postcar-compression := none
 ifeq ($(CONFIG_ARCH_RAMSTAGE_X86_32)$(CONFIG_ARCH_RAMSTAGE_X86_64),y)
 
 ramstage-y += acpi.c
-ramstage-$(CONFIG_HAVE_ACPI_TABLES) += ../../acpi/acpi_apic.c ../../acpi/acpi_hpet.c ../../acpi/acpi_dmar.c
 ramstage-$(CONFIG_HAVE_ACPI_RESUME) += acpi_s3.c
 ramstage-$(CONFIG_ACPI_BERT) += acpi_bert_storage.c
 ramstage-y += boot.c

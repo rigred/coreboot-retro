@@ -11,28 +11,24 @@ enum devapc_ao_offset {
 	SYS0_D0_APC_0 = 0x00000,
 	SYS1_D0_APC_0 = 0x01000,
 	SYS2_D0_APC_0 = 0x02000,
+	DOM_REMAP_0_0 = 0x00800,
+	DOM_REMAP_0_1 = 0x00804,
+	DOM_REMAP_2_0 = 0x00820,
 	MAS_DOM_0 = 0x00900,
 	MAS_SEC_0 = 0x00A00,
 	AO_APC_CON = 0x00F00,
 };
 
-DEFINE_BIT(MCUPM_SEC, 1)
+enum scp_offset {
+	SCP_DOM0 = 0xA0900,
+	SCP_DOM1 = 0xA0904,
+	SCP_DOM2 = 0xA0908,
+	ONETIME_LOCK = 0xA5104,
+};
 
 /******************************************************************************
  * STRUCTURE DEFINITION
  ******************************************************************************/
-struct apc_infra_peri_dom_16 {
-	unsigned char d_permission[16];
-};
-
-struct apc_infra_peri_dom_8 {
-	unsigned char d_permission[8];
-};
-
-struct apc_infra_peri_dom_4 {
-	unsigned char d_permission[4];
-};
-
 enum devapc_sys_dom_num {
 	DOM_NUM_INFRA_AO_SYS0 = 16,
 	DOM_NUM_INFRA_AO_SYS1 = 4,
@@ -66,6 +62,17 @@ enum devapc_cfg_index {
 /******************************************************************************
  * Bit Field DEFINITION
  ******************************************************************************/
- /* TODO */
+/* INFRA */
+DEFINE_BIT(CPU_EB_SEC, 1)
+DEFINE_BIT(SCP_SSPM_SEC, 2)
+
+DEFINE_BITFIELD(CPU_EB_DOM, 11, 8)	/* 1 */
+DEFINE_BITFIELD(SCP_SSPM_DOM, 19, 16)	/* 2 */
+
+/* PERI */
+DEFINE_BITFIELD(SPM_DOM, 3, 0)		/* 0 */
+
+/* PERI_PAR */
+DEFINE_BITFIELD(PCIE0_DOM, 27, 24)	/* 19 */
 
 #endif /* SOC_MEDIATEK_MT8188_DEVAPC_H */

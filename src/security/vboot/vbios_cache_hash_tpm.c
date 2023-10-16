@@ -12,10 +12,12 @@
 void vbios_cache_update_hash(const uint8_t *data, size_t size)
 {
 	struct vb2_hash hash;
+	tpm_result_t rc = TPM_SUCCESS;
 
 	/* Initialize TPM driver. */
-	if (tlcl_lib_init() != VB2_SUCCESS) {
-		printk(BIOS_ERR, "VBIOS_CACHE: TPM driver initialization failed.\n");
+	rc = tlcl_lib_init();
+	if (rc != TPM_SUCCESS) {
+		printk(BIOS_ERR, "VBIOS_CACHE: TPM driver initialization failed with error %#x.\n", rc);
 		return;
 	}
 
@@ -35,30 +37,32 @@ void vbios_cache_update_hash(const uint8_t *data, size_t size)
 	}
 
 	/* Write hash of data to TPM space. */
-	if (antirollback_write_space_vbios_hash(hash.sha256, sizeof(hash.sha256))
-			!= TPM_SUCCESS) {
-		printk(BIOS_ERR, "VBIOS_CACHE: Could not save hash to TPM.\n");
+	rc = antirollback_write_space_vbios_hash(hash.sha256, sizeof(hash.sha256));
+	if (rc != TPM_SUCCESS) {
+		printk(BIOS_ERR, "VBIOS_CACHE: Could not save hash to TPM with error %#x.\n", rc);
 		return;
 	}
 
-	printk(BIOS_INFO, "VBIOS_CACHE: TPM NV idx 0x%x updated successfully.\n",
+	printk(BIOS_INFO, "VBIOS_CACHE: TPM NV idx %#x updated successfully.\n",
 			VBIOS_CACHE_NV_INDEX);
 }
 
 enum cb_err vbios_cache_verify_hash(const uint8_t *data, size_t size)
 {
 	struct vb2_hash tpm_hash = { .algo = VB2_HASH_SHA256 };
+	tpm_result_t rc = TPM_SUCCESS;
 
 	/* Initialize TPM driver. */
-	if (tlcl_lib_init() != VB2_SUCCESS) {
-		printk(BIOS_ERR, "VBIOS_CACHE: TPM driver initialization failed.\n");
+	rc = tlcl_lib_init();
+	if (rc != TPM_SUCCESS) {
+		printk(BIOS_ERR, "VBIOS_CACHE: TPM driver initialization failed with error %#x.\n", rc);
 		return CB_ERR;
 	}
 
 	/* Read hash of VBIOS data saved in TPM. */
-	if (antirollback_read_space_vbios_hash(tpm_hash.sha256,	sizeof(tpm_hash.sha256))
-			!= TPM_SUCCESS) {
-		printk(BIOS_ERR, "VBIOS_CACHE: Could not read hash from TPM.\n");
+	rc = antirollback_read_space_vbios_hash(tpm_hash.sha256,	sizeof(tpm_hash.sha256));
+	if (rc != TPM_SUCCESS) {
+		printk(BIOS_ERR, "VBIOS_CACHE: Could not read hash from TPM with error %#x.\n", rc);
 		return CB_ERR;
 	}
 
@@ -68,7 +72,7 @@ enum cb_err vbios_cache_verify_hash(const uint8_t *data, size_t size)
 		return CB_ERR;
 	}
 
-	printk(BIOS_INFO, "VBIOS_CACHE: Hash idx 0x%x comparison successful.\n",
+	printk(BIOS_INFO, "VBIOS_CACHE: Hash idx %#x comparison successful.\n",
 			VBIOS_CACHE_NV_INDEX);
 
 	return CB_SUCCESS;

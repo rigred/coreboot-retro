@@ -1,7 +1,5 @@
 # Firmware and Computer Acronyms, Initialisms and Definitions
 
-** Note that this document even more of a work in progress than most **
-** of the coreboot documentation **
 
 ## _0-9
 
@@ -20,24 +18,25 @@ Spec](https://uefi.org/specifications) for details, or run the tool
   initialization that happens from the PSP.  Significantly, Memory
   Initialization.
 * AC - Electricity: [**Alternating Current**](https://en.wikipedia.org/wiki/Alternating_current)
-* Ack - Acknowledgment
+* Ack - Acknowledgment / Acknowledged
 * ACM – [**Authenticated Code Module**](https://doc.coreboot.org/security/intel/acm.html)
 * ACP - [**Average CPU power**](https://en.wikipedia.org/wiki/Thermal_design_power)
 * ACPI - The [**Advanced Configuration and Power
   Interface**](http://en.wikipedia.org/wiki/Advanced_Configuration_and_Power_Interface)
   is an industry standard for letting the OS control power management.
-  * [http://www.acpi.info/](http://www.acpi.info/)
+  * [https://uefi.org/specifications](https://uefi.org/specifications)
   * [http://kernelslacker.livejournal.com/88243.html](http://kernelslacker.livejournal.com/88243.html)
 * ADC - [**Analog-to-Digital Converter**](https://en.wikipedia.org/wiki/Analog-to-digital_converter)
 * ADL - Intel: [**Alder Lake**](https://en.wikichip.org/wiki/intel/microarchitectures/alder_lake)
 * AES - [**Advanced Encryption Standard**](https://en.wikipedia.org/wiki/Advanced_Encryption_Standard)
+* AESKL - Intel: AES Key Locker
 * AGESA - [**AMD Generic Encapsulated Software Architecture**](https://en.wikipedia.org/wiki/AGESA_)
 * AGP - The [**Accelerated Graphics
-  Port**](http://en.wikipedia.org/wiki/Accelerated_Graphics_Port) is an
+  Port**](https://en.wikipedia.org/wiki/Accelerated_Graphics_Port) is an
   older (1997-2004) point-to-point bus for video cards to communicate
   with the processor.
 * AHCI - The [**Advanced Host Controller
-  Interface**](http://en.wikipedia.org/wiki/Advanced_Host_Controller_Interface)
+  Interface**](https://en.wikipedia.org/wiki/Advanced_Host_Controller_Interface)
   is a standard register set for communicating with a SATA controller.
   * [http://www.intel.com/technology/serialata/ahci.htm](http://www.intel.com/technology/serialata/ahci.htm)
   * [http://download.intel.com/technology/serialata/pdf/rev1_3.pdf](http://download.intel.com/technology/serialata/pdf/rev1_3.pdf)
@@ -51,10 +50,11 @@ Spec](https://uefi.org/specifications) for details, or run the tool
   An open standard to connect and manage functional blocks in an SoC
   (System on a Chip)
 * AMD64 - Another name for [**x86-64**](https://en.wikipedia.org/wiki/X86-64)
+* AMD-Vi AMD: The AMD name for their IOMMU implementation
 * AMPL - AMD: [**Advanced Platform Management Link**](https://web.archive.org/web/20220509053546/https://developer.amd.com/wordpress/media/2012/10/419181.pdf) - Also referred to as
   SBI: Sideband Interface
 * AMT - Intel: [**Active Management Technology**](https://en.wikipedia.org/wiki/Intel_Active_Management_Technology)
-* ANSI - [**American National Standards Institute**](American_National_Standards_Institute)
+* ANSI - [**American National Standards Institute**](https://en.wikipedia.org/wiki/American_National_Standards_Institute)
 * AOAC - AMD: Always On, Always Connected
 * AP - Application processor - The main processor on the board (as
   opposed to the embedded controller or other processors that may be on
@@ -63,7 +63,7 @@ Spec](https://uefi.org/specifications) for details, or run the tool
 * APCB - AMD: AMD PSP Customization Block
 * API - [**Application Programming Interface**](https://en.wikipedia.org/wiki/API)
 * APIC - [**Advanced Programmable Interrupt
-  Controller**](http://en.wikipedia.org/wiki/Advanced_Programmable_Interrupt_Controller)
+  Controller**](https://en.wikipedia.org/wiki/Advanced_Programmable_Interrupt_Controller)
   this is an advanced version of a PIC that can handle interrupts from
   and for multiple CPUs. Modern systems usually have several APICs:
   Local APICs (LAPIC) are CPU-bound, IO-APICs are bridge-bound.
@@ -98,7 +98,7 @@ Spec](https://uefi.org/specifications) for details, or run the tool
 
 ## B
 
-* BAR - [**Base Address Register**](http://en.wikipedia.org/wiki/Base_Address_Register) This generally refers to one of the
+* BAR - [**Base Address Register**](https://en.wikipedia.org/wiki/Base_Address_Register) This generally refers to one of the
   base address registers in the PCI config space of a PCI device
 * Baud - [**Baud**](https://en.wikipedia.org/wiki/Baud) - Not an acronym - Symbol rate unit of symbols per second, named
   after Émile Baudot
@@ -117,7 +117,7 @@ Spec](https://uefi.org/specifications) for details, or run the tool
   the entire 4GiB of the 32-bit address space. Also known as flat mode
   or [**Unreal mode**](https://en.wikipedia.org/wiki/Unreal_mode).
 * BIOS - [**Basic Input/Output
-  System**](http://en.wikipedia.org/wiki/BIOS)
+  System**](https://en.wikipedia.org/wiki/BIOS)
 * BIST - The [**Built-in Self Test**](https://en.wikipedia.org/wiki/Built-in_self-test) is a test run by the processor on
   itself when it is first started. Usually, any nonzero value indicates
   that the selftest failed.
@@ -183,7 +183,7 @@ Spec](https://uefi.org/specifications) for details, or run the tool
   generally used to describe a section of NVRAM (Non-volatile RAM), in
   this case a section battery-backed memory in the RTC (Real Time Clock)
   that is typically used to store BIOS settings.
-  *[http://en.wikipedia.org/wiki/Nonvolatile_BIOS_memory](http://en.wikipedia.org/wiki/Nonvolatile_BIOS_memory)
+  *[https://en.wikipedia.org/wiki/Nonvolatile_BIOS_memory](https://en.wikipedia.org/wiki/Nonvolatile_BIOS_memory)
 * CNL - Intel: [**Cannon Lake**](https://en.wikichip.org/wiki/intel/microarchitectures/cannon_lake) (formerly Skymont)
 * CNVi - Intel: [**Connectivity Integration**](https://en.wikipedia.org/wiki/CNVi)
 * CPL - x86: Current Privilege Level - Privilege levels range from 0-3; lower numbers are more privileged.
@@ -191,14 +191,14 @@ Spec](https://uefi.org/specifications) for details, or run the tool
 * CPPC - AMD: Collaborative Processor Performance Controls
 * CPS - Characters Per Second
 * CPU - [**Central Processing
-  Unit**](http://en.wikipedia.org/wiki/Central_processing_unit)
+  Unit**](https://en.wikipedia.org/wiki/Central_processing_unit)
 * CPUID - x86: [**CPU Identification**](https://en.wikipedia.org/wiki/CPUID) opcode
 * Cr50 - Google: The first generation Google Security Chip (GSC) used on
   ChromeOS devices.
 * CRB - Customer Reference Board
 * CRLF - Carriage Return, Line Feed - \\r\\n - The standard window EOL
   (End-of-Line) marker.
-* crt0 - [**C Run Time 0**](http://en.wikipedia.org/wiki/Crt0)
+* crt0 - [**C Run Time 0**](https://en.wikipedia.org/wiki/Crt0)
 * crt0s - crt0 Source code
 * CRT - [**Cathode Ray Tube**](https://en.wikipedia.org/wiki/Cathode-ray_tube)
 * CSE - Intel: Converged Security Engine
@@ -207,6 +207,7 @@ Spec](https://uefi.org/specifications) for details, or run the tool
 * CSME - Intel: Converged Security and Management Engine
 * CTLE - Intel: Continuous Time Linear Equalization
 * CVE - [**Common Vulnerabilities and Exposures**](https://en.wikipedia.org/wiki/Common_Vulnerabilities_and_Exposures)
+* CXMT - ChangXin Memory Technologies
 * CZN - AMD: [**Cezanne**](https://en.wikichip.org/wiki/amd/cores/cezanne) - CPU Family 19h, Model 50h
 
 
@@ -225,8 +226,9 @@ Spec](https://uefi.org/specifications) for details, or run the tool
   still has power.
 * D3 Cold - ACPI Device power state: Power is completely removed from
   the device.
-* DASH - [**Desktop and mobile Architecture for System Hardware**](Desktop_and_mobile_Architecture_for_System_Hardware)
+* DASH - [**Desktop and mobile Architecture for System Hardware**](https://en.wikipedia.org/wiki/Desktop_and_mobile_Architecture_for_System_Hardware)
 * DB - DaughterBoard
+* DbC - USB: Debug Capability on the USB host controller
 * DC - Electricity: Direct Current
 * DCP - Digital Content Protection
 * DCR - **Decode Control Register** This is a way of identifying the
@@ -242,7 +244,7 @@ Spec](https://uefi.org/specifications) for details, or run the tool
 * DIMM - [**Dual Inline Memory Module**](https://en.wikipedia.org/wiki/DIMM)
 * DIP - [**Dual inline package**](https://en.wikipedia.org/wiki/Dual_in-line_package)
 * DMA - [**Direct Memory
-  Access**](http://en.wikipedia.org/wiki/Direct_memory_access) Allows
+  Access**](https://en.wikipedia.org/wiki/Direct_memory_access) Allows
   certain hardware subsystems within a computer to access system memory
   for reading and/or writing independently of the main CPU. Examples of
   systems that use DMA: Hard Disk Controller, Disk Drive Controller,
@@ -250,7 +252,7 @@ Spec](https://uefi.org/specifications) for details, or run the tool
   computers, as it allows devices of different speeds to communicate
   without subjecting the CPU to a massive interrupt load.
 * DMI - Direct Media Interface is a link/bus between CPU and PCH.
-* DMI - [**Desktop Management Interface**](Desktop_Management_Interface)
+* DMI - [**Desktop Management Interface**](https://en.wikipedia.org/wiki/Desktop_Management_Interface)
 * DMIC - Digital Microphone
 * DMTF - [**Distributed Management Task Force**](https://en.wikipedia.org/wiki/Distributed_Management_Task_Force)
 * DMZ - Demilitarized Zone
@@ -259,6 +261,7 @@ Spec](https://uefi.org/specifications) for details, or run the tool
 * DOS - Disk Operating System
 * DP - DisplayPort
 * DPM - Mediatek: DRAM Power Manager
+* DPTC - AMD: Dynamic Power and Thermal Control
 * DPTF - Intel: Dynamic Power and Thermal Framework
 * DRAM - Memory: [**Dynamic Random Access Memory**](https://en.wikipedia.org/wiki/Dynamic_random-access_memory)
 * DRTM - Dynamic Root of Trust for Measurement
@@ -285,6 +288,7 @@ Spec](https://uefi.org/specifications) for details, or run the tool
   vs Integrated TPMs or fTPMs (Firmware TPMs).
 * DTS - U-Boot: Device Tree Source
 * DUT - Device Under Test
+* DvC - USB: Debug Capability on the USB Device (Device Capability)
 * DVFS - ARM: Dynamic Voltage and Frequency Scaling
 * DVI - [**Digital Video Interface**](https://en.wikipedia.org/wiki/Digital_Visual_Interface)
 * DVT - Production Timeline: Design Validation Test
@@ -297,12 +301,13 @@ Spec](https://uefi.org/specifications) for details, or run the tool
 
 ## E
 
+* EAPD - Intel: [**External Amplifier Power Down**](https://web.archive.org/web/20210203194800/https://www.eeweb.com/hd-audio-eapd/)
 * EBDA - Extended BIOS Data Area
 * EBG - Intel: Emmitsburg PCH
 * ECC - [**Error Correction Code**](https://en.wikipedia.org/wiki/Error_correction_code) - Typically used to refer to a type of
   memory that can detect and correct memory errors.
 * EDID - [**Extended Display Identification Data**](https://en.wikipedia.org/wiki/Extended_Display_Identification_Data)
-* edk2 - EFI Development Kit 2
+* EDK2 - EFI Development Kit 2
 * EDO - Memory: [**Extended Data
   Out**](https://en.wikipedia.org/wiki/Dynamic_random-access_memory#Extended_data_out_DRAM)
   - A DRAM standard introduced in 1994 that improved upon, but was
@@ -324,6 +329,7 @@ Spec](https://uefi.org/specifications) for details, or run the tool
 * EOL - End of Life
 * EPP - Intel: Energy-Performance Preference
 * EPROM - Erasable Programmable Read-Only Memory
+* EROFS - Linux: [**Enhanced Read-Only File System**](https://en.wikipedia.org/wiki/EROFS)
 * ESD - Electrostatic discharge
 * eSPI - Enhanced System Peripheral Interface
 * EVT - Production Timeline: Engineering Validation Test
@@ -334,6 +340,7 @@ Spec](https://uefi.org/specifications) for details, or run the tool
 * FADT - ACPI Table: Fixed ACPI Description Table
 * FAE - Field Application Engineer
 * FAT - File Allocation Table
+* FBVDDQ - Nvidia Power: Framebuffer Voltage
 * FCH - AMD: Firmware Control Hub
 * FCS - Production Timeline: First Customer Shipment
 * FDD - Floppy Disk Drive
@@ -351,7 +358,7 @@ Spec](https://uefi.org/specifications) for details, or run the tool
 * FPDT - ACPI: Firmware Performance Data Table
 * FPGA - [**Field-Programmable Gate Array**](https://en.wikipedia.org/wiki/Field-programmable_gate_array)
 * Framebuffer - The
-  [**framebuffer**](http://en.wikipedia.org/wiki/Framebuffer) is a part
+  [**framebuffer**](https://en.wikipedia.org/wiki/Framebuffer) is a part
   of RAM in a computer which is allocated to hold the graphics
   information for one frame or picture. This information typically
   consists of color values for every pixel on the screen. A framebuffer
@@ -363,12 +370,15 @@ Spec](https://uefi.org/specifications) for details, or run the tool
 * FPM - Memory: [**Fast Page Mode**](https://en.wikipedia.org/wiki/Dynamic_random-access_memory#Page_mode_DRAM) - A DRAM standard introduced in 1990.
 * FPU - [**Floating-Point Unit**](https://en.wikipedia.org/wiki/Floating-point_unit)
 * FSB - [**Front-Side Bus**](https://en.wikipedia.org/wiki/Front-side_bus)
+* FSM - Finite State Machine
 * FSP - Intel: Firmware Support Package
 * FSR - Intel: Firmware Status Register
 * FTP - Network Protocol: [**File Transfer Protocol**](https://en.wikipedia.org/wiki/File_Transfer_Protocol)
 * fTPM - Firmware TPM (Trusted Platform Module).  This is a TPM that is
   based in firmware instead of actual hardware.  It typically runs in
   some sort of TEE (Trusted Execution Environment).
+* FWCM Intel: firmware Connection Manager
+* FWID - Firmware Identifier
 
 
 ## G
@@ -389,6 +399,7 @@ Spec](https://uefi.org/specifications) for details, or run the tool
 * GMA - Intel: [**Graphics Media
   Accelerator**](https://en.wikipedia.org/wiki/Intel_GMA)
 * GNB - Graphics NorthBridge
+* GND - Power: Ground
 * GNVS - Global Non-Volatile Storage
 * GPD - PCH GPIO in Deep Sleep well (D5 power)
 * GPE - ACPI: General Purpose Event
@@ -405,23 +416,28 @@ Spec](https://uefi.org/specifications) for details, or run the tool
 * GSC - Google Security Chip - Typically Cr50/Ti50, though could also refer to the titan chips
 * GSPI - Generic SPI - These are SPI controllers available for general
   use, not dedicated to flash, for example.
+* GTDT - ACPI: Generic Timer Description Table
+* GTT - [**Graphics Translation Table**](https://en.wikipedia.org/wiki/Graphics_address_remapping_table)
 * GUID - UEFI: [**Globally Unique IDentifier**](https://en.wikipedia.org/wiki/Universally_unique_identifier)
 
 
 ## H
 
+* HBP - Graphics: [**Horizontal Back Porch**](https://en.wikipedia.org/wiki/Horizontal_blanking_interval) In the Horizontal blanking interval, this is the blank area past the end of the scanline
 * HDA - [**High Definition Audio**](https://en.wikipedia.org/wiki/Intel_High_Definition_Audio)
 * HDCP - [**High-bandwidth Digital Content Protection**](https://en.wikipedia.org/wiki/High-bandwidth_Digital_Content_Protection)
 * HDD - Hard Disk Drive
 * HDMI - [**High-Definition Multimedia Interface**](https://en.wikipedia.org/wiki/HDMI)
 * HDR - [**High Dynamic Range**](https://en.wikipedia.org/wiki/High_dynamic_range)
 * HECI - Intel: [**Host Embedded Controller Interface**](https://en.wikipedia.org/wiki/Host_Embedded_Controller_Interface) (Replaced by MEI)
+* HFP - Graphics: [**Horizontal Front Porch**](https://en.wikipedia.org/wiki/Horizontal_blanking_interval) In the Horizontal blanking interval, this is the blank before the start of the next scanline.
 * HID - [**Human Interface
   Device**](https://en.wikipedia.org/wiki/Human_interface_device)
 * HOB - UEFI: Hand-Off Block
 * HPD - Hot-Plug Detect
 * HPET - [**High Precision Event Timer**](https://en.wikipedia.org/wiki/High_Precision_Event_Timer)
 * HSP - AMD: Hardware Security Processor
+* HSPHY - USB: USB3 High-Speed PHY
 * HSTI - Hardware Security Test Interface
 * HSW - Intel: Haswell
 * Hybrid S3 - System Power State:  This is where the operating system
@@ -430,7 +446,7 @@ Spec](https://uefi.org/specifications) for details, or run the tool
   resume quickly from S3 if the system stays powered, and resume from
   the disk if power is lost.
 * Hypertransport - AMD: The
-  [**Hypertransport**](http://en.wikipedia.org/wiki/Hypertransport) bus
+  [**Hypertransport**](https://en.wikipedia.org/wiki/Hypertransport) bus
   is an older (2001-2017) high-speed electrical interconnection protocol
   specification between CPU, Memory, and (occasionally) peripheral
   devices.  This was originally called the Lightning Data Transport
@@ -451,6 +467,7 @@ Spec](https://uefi.org/specifications) for details, or run the tool
   - Also known as SenseWire
 * IA - Intel Architecture
 * IA-64 - Intel Itanium 64-bit architecture
+* IAFC - RISC-V: [**RISC-V Base Integer instruction set**](https://en.wikipedia.org/wiki/RISC-V), plus atomic instructions, single precision floating point instructions, and compressed instructions
 * IBB – Initial Boot Block
 * IBV - Independent BIOS Vendor
 * IC - Integrated Circuit
@@ -468,6 +485,7 @@ Spec](https://uefi.org/specifications) for details, or run the tool
   Fabric**](https://en.wikipedia.org/wiki/HyperTransport#Infinity_Fabric)
   is a superset of AMD's earlier Hypertransport interconnect.
 * IFD - Intel: Intel Flash Descriptor
+* IMAFC - RISC-V: [**RISC-V Base Integer instruction set**](https://en.wikipedia.org/wiki/RISC-V), plus integer multiply & divide, atomic instructions, single precision floating point instructions, and compressed instructions
 * IMC - AMD: Integrated micro-controller - An 8051 microcontroller built
   into some AMD FCHs (Fusion Controller Hubs) and Southbridge chips.
   This never worked well for anything beyond fan control and caused
@@ -479,6 +497,7 @@ Spec](https://uefi.org/specifications) for details, or run the tool
 * IoC - Security: Indicator of Compromise
 * IOC - Intel: I/O Cache
 * IOE - Intel: I/O Expander
+* IOHC - AMD: I/O Hub Controller
 * IOM - Intel: I/O Manager
 * IOMMU - [**I/O Memory Management Unit**](https://en.wikipedia.org/wiki/Input%E2%80%93output_memory_management_unit)
 * IOMUX - AMD: The I/O Mux block controls how each GPIO is configured.
@@ -579,12 +598,14 @@ Spec](https://uefi.org/specifications) for details, or run the tool
 * MBR - Master Boot Record
 * MCA - [**Machine Check Architecture**](https://en.wikipedia.org/wiki/Machine_Check_Architecture)
 * MCR - Machine Check Registers
+* MCTP - [**Management Component Transport Protocol**](https://en.wikipedia.org/wiki/Management_Component_Transport_Protocol)
 * MCU - Memory Control Unit
 * MCU - [**MicroController
   Unit**](https://en.wikipedia.org/wiki/Microcontroller)
-* MCTP - [**Management Component Transport Protocol**](https://en.wikipedia.org/wiki/Management_Component_Transport_Protocol)
+* MCUPM - Mediatek: MCUPM is a hardware module which is used for MCUSYS Power Management. MCUPM firmware (mcupm.bin) is loaded into MCUPM SRAM at system initialization.
 * MDFIO - Intel: Multi-Die Fabric IO
 * MDN - AMD: Mendocino
+* mDP - Mini DisplayPort connector
 * ME - Intel: Management Engine
 * MEI - Intel: ME Interface (Previously known as HECI)
 * Memory training - the process of finding the best speeds, voltages,
@@ -601,7 +622,7 @@ Spec](https://uefi.org/specifications) for details, or run the tool
 * MKBP - Matrix Keyboard Protocol
 * MMC - [**MultiMedia
   Card**](https://en.wikipedia.org/wiki/MultiMediaCard)
-* MMIO - [**Memory Mapped I/O**](http://en.wikipedia.org/wiki/MMIO)
+* MMIO - [**Memory Mapped I/O**](https://en.wikipedia.org/wiki/MMIO)
   allows peripherals' memory or registers to be accessed directly
   through the memory bus.  When the memory bus size was very small, this
   was initially done by hiding any memory at that address, effectively
@@ -628,16 +649,17 @@ Spec](https://uefi.org/specifications) for details, or run the tool
 * MSB - Most Significant Bit
 * MSI - Message Signaled Interrupt
 * MSR - Machine-Specific Register
-* MT/s - MegaTransfers per second
+* MTS or MT/s - MegaTransfers per second
 * MTL - Intel: Meteor Lake
 * MTL - ARM: MHU Transport Layer
-* MTRR - [**Memory Type and Range Register**](http://en.wikipedia.org/wiki/MTRR)
+* MTRR - [**Memory Type and Range Register**](https://en.wikipedia.org/wiki/MTRR)
   allows to set the cache behaviour on memory access in x86. Basically,
   it tells the CPU how to cache certain ranges of memory
   (e.g. write-through, write-combining, write-back...). Memory ranges
   are specified over physical address ranges. In Linux, they are visible
   over `/proc/mtrr` and they can be modified there. For further
   information, see the [**Linux documentation**](https://www.kernel.org/doc/html/v5.19/x86/pat.html).
+* MXM - PCIe: [**Mobile PCI Express Module**](https://en.wikipedia.org/wiki/Mobile_PCI_Express_Module)
 
 
 ## N
@@ -663,6 +685,7 @@ Spec](https://uefi.org/specifications) for details, or run the tool
 * NVME - Non-Volatile Memory Express - An SSD interface that allows
   access to the flash memory through a PCIe bus.
 * NVPCF - Nvidia Platform and Control Framework
+* NVVDD - Nvidia Power: Core voltage
 * NX - No Execute
 
 
@@ -708,17 +731,17 @@ Spec](https://uefi.org/specifications) for details, or run the tool
 * PCD - UEFI: Platform Configuration Database
 * PCH - Intel: [**Platform Controller Hub**](https://en.wikipedia.org/wiki/Platform_Controller_Hub)
 * PCI - [**Peripheral Control
-  Interconnect**](http://en.wikipedia.org/wiki/Peripheral_Component_Interconnect)
+  Interconnect**](https://en.wikipedia.org/wiki/Peripheral_Component_Interconnect)
   - Replaced generally by PCIe (PCI Express)
 * PCI Configuration Space - The [**PCI Config
-  space**](http://en.wikipedia.org/wiki/PCI_Configuration_Space) is an
+  space**](https://en.wikipedia.org/wiki/PCI_Configuration_Space) is an
   [address space](https://en.wikipedia.org/wiki/Address_space) for all
   PCI devices.  Originally, this address space was accessed through an
   index/data pair by writing the address that you wanted to read/write
   into the I/O address 0xCF8, then reading or writing I/O Address 0xCFC.
   This has been updated to an MMIO method which increases each PCI
   function's configuration space from 256 bytes to 4K.
-* PCIe - [**PCI Express**](http://en.wikipedia.org/wiki/Pci_express)
+* PCIe - [**PCI Express**](https://en.wikipedia.org/wiki/Pci_express)
 * PCMCIA: Personal Computer Memory Card International Association
 * PCO - AMD: [**Picasso**](https://en.wikichip.org/wiki/amd/cores/picasso)
 * PCR: TPM: Platform Configuration Register
@@ -732,8 +755,9 @@ Spec](https://uefi.org/specifications) for details, or run the tool
 * PEI - UEFI: Pre-EFI Initialization
 * PEIM - UEFI: PEI Module
 * PEP - Intel: Power Engine Plug-in
+* PEXVDD - Nvidia Power: PCIExpress Voltage
 * PHX - AMD: Phoenix SoC
-* PHY - [**PHYsical layer**](http://en.wikipedia.org/wiki/PHY) - The
+* PHY - [**PHYsical layer**](https://en.wikipedia.org/wiki/PHY) - The
   hardware that implements the send/receive functionality of a
   communication protocol.
 * PI - Platform Initialization
@@ -752,7 +776,7 @@ Spec](https://uefi.org/specifications) for details, or run the tool
 * PIT - Generally refers to the 8253/8254 [**Programmable Interval
   Timer**](https://en.wikipedia.org/wiki/Programmable_interval_timer).
 * PLCC - [**Plastic leaded chip
-  carrier**](http://en.wikipedia.org/wiki/Plastic_leaded_chip_carrier)
+  carrier**](https://en.wikipedia.org/wiki/Plastic_leaded_chip_carrier)
 * PLL - [**Phase-Locked
   Loop**](https://en.wikipedia.org/wiki/Phase-locked_loop)
 * PM - Platform Management
@@ -783,6 +807,8 @@ Spec](https://uefi.org/specifications) for details, or run the tool
 * PSF - Intel: Primary Sideband Fabric
 * PSP - AMD: Platform Security Processor
 * PSPP - AMD: PCIE Speed Power Policy
+* PSR - Intel: Platform Service Record
+* PSR - Graphics: Panel Self-Refresh - This is a power-savings feature specified in eDP
 * PTT - Intel: Platform Trust Technology - Intel's firmware based TPM.
 * PU - GPIOs: Pull-Up - Drives the pin to reference voltage through a
   resistor. The resistor allows the signal to still be set to ground
@@ -809,6 +835,7 @@ Spec](https://uefi.org/specifications) for details, or run the tool
   a set of 3 or 4 GPIOs to allow 8 to 16 different memory chips to be
   used.
 * RAPL - Running Average Power Limit
+* RCB - PCIe: Read Completion Boundary - Sets the address alignment on which a read request may be serviced with multiple completions
 * RCS - [**Revision control
   system**](https://en.wikipedia.org/wiki/Revision_Control_System)
 * Real mode - The original 20-bit addressing mode of the 8086 & 8088
@@ -816,7 +843,7 @@ Spec](https://uefi.org/specifications) for details, or run the tool
   Segment:Offset index pair.  In 2022, this is still the mode that
   x86-64 processors are in at the reset vector!
 * RDMA - [**Remote Direct Memory
-  Access**](http://en.wikipedia.org/wiki/Remote_Direct_Memory_Access) is
+  Access**](https://en.wikipedia.org/wiki/Remote_Direct_Memory_Access) is
   a concept whereby two or more computers communicate via DMA directly
   from main memory of one system to the main memory of another.
 * RFC - Request for Comment
@@ -829,6 +856,7 @@ Spec](https://uefi.org/specifications) for details, or run the tool
 * ROM - Read Only Memory
 * RoT - Root of Trust
 * RPL - Intel: [**Raptor Lake**](https://en.wikipedia.org/wiki/Raptor_Lake)
+* RPP - Intel: Raptor Point PCH
 * RRG - AMD (ATI): Register Reference Guide
 * RSDP - Root System Description Pointer
 * RTC - Real Time Clock
@@ -920,6 +948,7 @@ Spec](https://uefi.org/specifications) for details, or run the tool
 * SMBus -  [**System Management
   Bus**](https://en.wikipedia.org/wiki/System_Management_Bus)
   * [http://www.smbus.org/](http://www.smbus.org/)
+* SME - AMD: Secure Memory Encryption
 * SMI - System management interrupt
 * SMM - [**System management
   mode**](https://en.wikipedia.org/wiki/System_Management_Mode)
@@ -933,7 +962,7 @@ Spec](https://uefi.org/specifications) for details, or run the tool
 * SO-DIMM: Small Outline Dual In-Line Memory Module
 * SoC - System on a Chip
 * SOIC - [**Small-Outline Integrated
-  Circuit**](http://en.wikipedia.org/wiki/Small-outline_integrated_circuit)
+  Circuit**](https://en.wikipedia.org/wiki/Small-outline_integrated_circuit)
 * SPD - [**Serial Presence
   Detect**](https://en.wikipedia.org/wiki/Serial_presence_detect)
 * SPI - [**Serial Peripheral
@@ -958,6 +987,7 @@ Spec](https://uefi.org/specifications) for details, or run the tool
 * SSI-TEB - Physical board format: [**SSI Thin Electronics
   Bay**](https://en.wikipedia.org/wiki/SSI_CEB)
 * SSP - [**Speech Signal Processor**](https://en.wikipedia.org/wiki/Speech_processing)
+* SSPHY - USB: USB3 Super-Speed PHY
 * STAPM - AMD: Skin Temperature Aware Power Management
 * STB - AMD: Smart Trace Buffer
 * SuperIO - The [**Super I/O**](https://en.wikipedia.org/wiki/Super_I/O)
@@ -965,13 +995,16 @@ Spec](https://uefi.org/specifications) for details, or run the tool
   peripherals.  Most common are: A PS/2 Keyboard and mouse port, LPT
   Ports, UARTS, Watchdog Timers, Floppy drive Controllers, GPIOs, or any
   of a number of various other devices.
+* SVC - ARM: Supervisor Call
 * SVI2/3 - Serial VID (Voltage Identification) Interface 2.0 / 3.0
+* SWCM - Intel: Software Connection Manager
 
 
 ## T
 
 * TBT - Thunderbolt
 * TBT - Intel: Turbo Boost Technology
+* tBUF - I2C: The bus free time between a STOP and START condition
 * TCC - Intel: Thermal Control Circuit
 * TCP - Transmission Control Protocol
 * TCPC - Type C Port Controller
@@ -1013,6 +1046,7 @@ Spec](https://uefi.org/specifications) for details, or run the tool
 * uCode - [**Microcode**](https://en.wikipedia.org/wiki/Microcode)
 * UDK - UEFI: UEFI Development Kit
 * UDP - User Datagram Protocol
+* UDMA - ATA: [**Ultra DMA**](https://en.wikipedia.org/wiki/UDMA) - The fastest transfer mode for ATA Hard Drives
 * UEFI - Unified Extensible Firmware Interface
 * UFC - User Facing Camera
 * UFP - USB: Upstream Facing Port
@@ -1030,6 +1064,7 @@ Spec](https://uefi.org/specifications) for details, or run the tool
 * UPS - Uninterruptible Power Supply
 * USART - Universal Synchronous/Asynchronous Receiver/Transmitter
 * USB - Universal Serial Bus
+* USF - Intel: Universal Scalable Firmware
 
 
 ## V
@@ -1038,6 +1073,7 @@ Spec](https://uefi.org/specifications) for details, or run the tool
 * VBNV - Vboot Non-Volatile storage
 * VBT - [**Video BIOS
   Table**](https://www.kernel.org/doc/html/latest/gpu/i915.html#video-bios-table-vbt)
+* VDDQ Memory/Power: The supply voltage to the output buffers of a memory chip.
 * VESA - Video Electronics Standards Association
 * VGA: Video Graphics Array
 * VID: Vendor Identifier
@@ -1045,12 +1081,17 @@ Spec](https://uefi.org/specifications) for details, or run the tool
 * VLB - VESA Local Bus
 * VOIP - Voice over IP
 * Voodoo mode - a silly name for Big Real mode.
+* VMX - Intel: CPU flag for Hardware Virtualization
 * VPD - Vital Product Data
 * VPN - Virtual Private Network
+* VPU - Intel: Versatile Processor Unit
 * VR - Voltage Regulator
 * VRAM - Video Random Access Memory
+* VREF Memory/Power: Reference voltage for the input lines of a chip that determines the voltage level at which the threshold between a logical 1 and a logical 0 occurs. Usually 1/2 VDDQ.
 * VRM - Voltage Regulator Module
 * VT-d - Intel: Virtualization Technology for Directed I/O
+* VTT Memory/Power: Tracking Termination Voltage
+* vUART - Virtual UART
 
 
 ## W
@@ -1068,6 +1109,7 @@ Spec](https://uefi.org/specifications) for details, or run the tool
 * WLAN - Wireless LAN (Local Area Network)
 * WWAN - Telecommunication: Wireless WAN (Wide Area Network)
 * WP - Cache policy: [**Write-Protected**](https://en.wikipedia.org/wiki/Cache_%28computing%29)
+* WPT - Intel: Wildcat Point - PCH for Broadwell
 * WO - Write-only
 * WOL - [**Wake-on-LAN**](https://en.wikipedia.org/wiki/Wake-on-LAN)
 * WT - Cache Policy: [**Write Through**](https://en.wikipedia.org/wiki/Cache_%28computing%29)
@@ -1088,8 +1130,9 @@ Spec](https://uefi.org/specifications) for details, or run the tool
   supporting 1.x, 2.0, and 3.x devices.
 
 
-
 ## Y
+
+* YCC - Color Space: [**YCbCr**](https://en.wikipedia.org/wiki/YCbCr) - A family of color spaces used in video
 
 
 ## Z

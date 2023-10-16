@@ -3,11 +3,29 @@
 config BOARD_GOOGLE_BASEBOARD_SKYRIM
 	def_bool n
 
-if BOARD_GOOGLE_BASEBOARD_SKYRIM
+config BOARD_GOOGLE_SKYRIM
+	select BOARD_GOOGLE_BASEBOARD_SKYRIM
+	select SOC_AMD_COMMON_BLOCK_ACPI_DPTC
 
-config AMD_FWM_POSITION_INDEX
-	int
-	default 3
+config BOARD_GOOGLE_WINTERHOLD
+	select BOARD_GOOGLE_BASEBOARD_SKYRIM
+	select SOC_AMD_COMMON_BLOCK_ACPI_DPTC
+	select FEATURE_DYNAMIC_DPTC
+
+config BOARD_GOOGLE_FROSTFLOW
+	select BOARD_GOOGLE_BASEBOARD_SKYRIM
+	select DRIVERS_GENESYSLOGIC_GL9755
+	select FEATURE_TABLET_MODE_DPTC
+	select SOC_AMD_COMMON_BLOCK_ACPI_DPTC
+
+config BOARD_GOOGLE_CRYSTALDRIFT
+	select BOARD_GOOGLE_BASEBOARD_SKYRIM
+
+config BOARD_GOOGLE_MARKARTH
+	select BOARD_GOOGLE_BASEBOARD_SKYRIM
+	select SOC_AMD_COMMON_BLOCK_ACPI_DPTC
+
+if BOARD_GOOGLE_BASEBOARD_SKYRIM
 
 config BOARD_SPECIFIC_OPTIONS
 	def_bool y
@@ -43,12 +61,14 @@ config BOARD_SPECIFIC_OPTIONS
 	select SOC_AMD_MENDOCINO
 	select SOC_AMD_COMMON_BLOCK_I2C3_TPM_SHARED_WITH_PSP
 	select SOC_AMD_COMMON_BLOCK_USE_ESPI
+	select SOC_AMD_GFX_CACHE_VBIOS_IN_FMAP if CHROMEOS && RUN_FSP_GOP
 	select SYSTEM_TYPE_LAPTOP
 	select TPM_GOOGLE_TI50
 	select PCIEXP_ASPM
 	select PCIEXP_CLK_PM
 	select PCIEXP_COMMON_CLOCK
 	select PCIEXP_L1_SUB_STATE
+	select AMD_FWM_POSITION_C20000_DEFAULT
 
 config DEVICETREE
 	default "variants/baseboard/devicetree.cb"
@@ -74,15 +94,14 @@ config AMDFW_CONFIG_FILE
 config PSP_LOAD_MP2_FW
 	prompt "Load MP2 Firmware"
 	depends on CHROMEOS
-	default n
+	default y
 
-config HAVE_SPL_FILE
+config PERFORM_SPL_FUSING
 	bool
 	default y
 
 config SPL_TABLE_FILE
 	string
-	depends on HAVE_SPL_FILE
 	default "3rdparty/blobs/mainboard/google/skyrim/TypeId0x55_SplTableBl_MDN_CHROME_RO.sbin"
 
 config HAVE_SPL_RW_AB_FILE
@@ -91,13 +110,13 @@ config HAVE_SPL_RW_AB_FILE
 
 config SPL_RW_AB_TABLE_FILE
 	string
-	depends on HAVE_SPL_RW_AB_FILE
 	default "3rdparty/blobs/mainboard/google/skyrim/TypeId0x55_SplTableBl_MDN_CHROME.sbin"
 
 config SOC_AMD_COMMON_BLOCK_PSP_FUSE_SPL
 	default y if BOARD_GOOGLE_WINTERHOLD
 	default y if BOARD_GOOGLE_FROSTFLOW
 	default y if BOARD_GOOGLE_MARKARTH
+	default y if BOARD_GOOGLE_CRYSTALDRIFT
 	default n
 
 config FMDFILE
@@ -137,6 +156,9 @@ config USE_VARIANT_DXIO_DESCRIPTOR
 	help
 	  Enable this to allow a variant to override the dxio descriptor values
 	  in port_descriptors.c
+
+config USE_SELECTIVE_GOP_INIT
+	default y if CHROMEOS && RUN_FSP_GOP && BOARD_GOOGLE_SKYRIM
 
 config VBOOT
 	select EC_GOOGLE_CHROMEEC_SWITCHES

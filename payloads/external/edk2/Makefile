@@ -38,7 +38,7 @@ endif
 endif
 
 #
-# EDK II has the following build options relevant to coreboot:
+# EDK II (edk2/master) has the following build options relevant to coreboot:
 #
 #
 # OPTION			= DEFAULT_VALUE
@@ -66,10 +66,6 @@ endif
 # DISABLE_SERIAL_TERMINAL	= FALSE
 ifneq ($(CONFIG_EDK2_SERIAL_SUPPORT),y)
 BUILD_STR += -D DISABLE_SERIAL_TERMINAL=TRUE
-endif
-# FOLLOW_BGRT_SPEC		= FALSE
-ifeq ($(CONFIG_EDK2_FOLLOW_BGRT_SPEC),y)
-BUILD_STR += -D FOLLOW_BGRT_SPEC=TRUE
 endif
 # MAX_VARIABLE_SIZE		= 0x10000
 ifeq ($(CONFIG_SMMSTORE_V2),y)
@@ -118,6 +114,30 @@ endif
 # PCIEXP_SUPPORT_RESIZABLE_BARS = FALSE
 ifeq ($(CONFIG_PCIEXP_SUPPORT_RESIZABLE_BARS), y)
 BUILD_STR += --pcd gEfiMdeModulePkgTokenSpaceGuid.PcdPcieResizableBarSupport=TRUE
+endif
+
+#
+# The MrChromebox repository has the following addition options:
+#
+ifeq ($(CONFIG_EDK2_REPO_MRCHROMEBOX),y)
+
+# FOLLOW_BGRT_SPEC		= FALSE
+ifeq ($(CONFIG_EDK2_FOLLOW_BGRT_SPEC),y)
+BUILD_STR += -D FOLLOW_BGRT_SPEC=TRUE
+endif
+# GOP_DRIVER			= FALSE
+ifeq ($(CONFIG_EDK2_GOP_DRIVER), y)
+BUILD_STR += -D USE_PLATFORM_GOP=TRUE
+endif
+# PRIORITIZE_INTERNAL		= FALSE
+ifeq ($(CONFIG_EDK2_PRIORITIZE_INTERNAL),y)
+BUILD_STR += -D PRIORITIZE_INTERNAL=TRUE
+endif
+# TPM_ENABLE			= TRUE
+ifeq ($(CONFIG_EDK2_DISABLE_TPM),y)
+BUILD_STR += -D TPM_ENABLE=FALSE
+endif
+
 endif
 
 #
@@ -174,9 +194,10 @@ $(EDK2_PATH): $(WORKSPACE)
 			echo "    $(CONFIG_EDK2_TAG_OR_REV) is not a valid git reference"; \
 			exit 1; \
 		fi; \
-		if git status --ignore-submodules=dirty | grep -q clean; then \
+		if git status --ignore-submodules=dirty | grep -q -e clean -e "nothing added"; then \
 			echo "    Checking out $(project_name) revision $(CONFIG_EDK2_TAG_OR_REV)"; \
 			git checkout --detach $(CONFIG_EDK2_TAG_OR_REV) -f; \
+			git submodule update --checkout --recursive; \
 		else \
 			echo "    Working directory not clean; will not overwrite"; \
 		fi; \
@@ -190,6 +211,13 @@ logo: $(EDK2_PATH)
 		*) convert -background None $(top)/$(CONFIG_EDK2_BOOTSPLASH_FILE) \
 			BMP3:$(EDK2_PATH)/MdeModulePkg/Logo/Logo.bmp;; \
 	esac \
+
+gop_driver:
+	if [ -n "$(CONFIG_EDK2_GOP_DRIVER)" ]; then \
+		echo "Using GOP driver $(CONFIG_EDK2_GOP_FILE)"; \
+		cp $(top)/$(CONFIG_EDK2_GOP_FILE) $(EDK2_PATH)/UefiPayloadPkg/IntelGopDriver.efi; \
+		cp $(top)/$(CONFIG_INTEL_GMA_VBT_FILE) $(EDK2_PATH)/UefiPayloadPkg/vbt.bin; \
+	fi; \
 
 checktools:
 	echo -n "EDK2: Checking uuid-dev:"
@@ -228,7 +256,7 @@ print:
 		-e 's/s /Build:          Silent/' \
 		-e 's/t /Toolchain:      /'
 
-prep: $(EDK2_PATH) $(EDK2_PLATFORMS_PATH) clean checktools logo
+prep: $(EDK2_PATH) $(EDK2_PLATFORMS_PATH) clean checktools logo gop_driver
 	cd $(WORKSPACE); \
 		source $(EDK2_PATH)/edksetup.sh; \
 		unset CC; $(MAKE) -C $(EDK2_PATH)/BaseTools 2>&1; \

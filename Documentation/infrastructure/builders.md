@@ -24,8 +24,7 @@ issues.
 
 Currently active Jenkins admins:
 *   Patrick Georgi:
-    *   Email: [patrick@georgi-clan.de](mailto:patrick@georgi-clan.de)
-    *   IRC: pgeorgi
+    *   Email: [patrick@coreboot.org](mailto:patrick@coreboot.org)
 *   Martin Roth:
     *   Email: [gaumless@gmail.com](mailto:gaumless@gmail.com)
     *   IRC: martinr
@@ -74,7 +73,7 @@ These times are taken from the week of Feb 21 - Feb 28, 2022
 
 There are a number of builds handled by the coreboot jenkins builders,
 for a number of different projects - coreboot, flashrom, memtest86+,
-em100, etc.  Many of these have builders for their current master branch
+em100, etc.  Many of these have builders for their current main branch
 as well as Gerrit and [Coverity](coverity.md) builds.
 
 
@@ -91,14 +90,14 @@ machines.  These tasks run overnight in the US timezones.
 You can see all the builds in the main jenkins interface:
 [https://qa.coreboot.org/](https://qa.coreboot.org/)
 
-Most of the time on the builders is taken up by the coreboot master and
+Most of the time on the builders is taken up by the coreboot main and
 coreboot gerrit builds.
 
 * [coreboot gerrit build](https://qa.coreboot.org/job/coreboot-gerrit/)
 ([Time trend](https://qa.coreboot.org/job/coreboot-gerrit/buildTimeTrend))
 
 
-* [coreboot master build](https://qa.coreboot.org/job/coreboot/)
+* [coreboot main build](https://qa.coreboot.org/job/coreboot/)
  ([Time trend](https://qa.coreboot.org/job/coreboot/buildTimeTrend))
 
 

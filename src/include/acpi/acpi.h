@@ -217,8 +217,7 @@ typedef struct acpi_tpm2 {
 } __packed acpi_tpm2_t;
 
 typedef struct acpi_mcfg_mmconfig {
-	u32 base_address;
-	u32 base_reserved;
+	u64 base_address;
 	u16 pci_segment_group_number;
 	u8 start_bus_number;
 	u8 end_bus_number;
@@ -454,7 +453,8 @@ typedef struct acpi_lpi_desc_hdr {
 	uint16_t reserved;
 } __packed acpi_lpi_desc_hdr_t;
 
-#define ACPI_LPIT_CTR_FREQ_TSC 0
+#define ACPI_LPIT_CTR_FREQ_TSC	0
+#define ACPI_LPIT_SLP_S0_FREQ	0
 
 /* LPIT: Native C-state instruction based LPI structure */
 typedef struct acpi_lpi_desc_ncst {
@@ -467,6 +467,8 @@ typedef struct acpi_lpi_desc_ncst {
 	uint64_t counter_frequency;	/* Frequency in cycles per second - 0 means TSC freq */
 } __packed acpi_lpi_desc_ncst_t;
 
+#define VFCT_VBIOS_CHECKSUM_OFFSET  0x21
+
 /* VFCT image header */
 typedef struct acpi_vfct_image_hdr {
 	u32 PCIBus;
@@ -478,7 +480,7 @@ typedef struct acpi_vfct_image_hdr {
 	u16 SSID;
 	u32 Revision;
 	u32 ImageLength;
-	u8  VbiosContent;	// dummy - copy VBIOS here
+	u8  VbiosContent[];	// dummy - copy VBIOS here
 } __packed acpi_vfct_image_hdr_t;
 
 /* VFCT (VBIOS Fetch Table) */
@@ -854,7 +856,7 @@ typedef struct acpi_dbg2_header {
 	acpi_header_t header;
 	uint32_t devices_offset;
 	uint32_t devices_count;
-} __attribute__((packed)) acpi_dbg2_header_t;
+} __packed acpi_dbg2_header_t;
 
 /* DBG2: Microsoft Debug Port Table 2 device entry */
 typedef struct acpi_dbg2_device {
@@ -870,7 +872,7 @@ typedef struct acpi_dbg2_device {
 	uint8_t  reserved[2];
 	uint16_t base_address_offset;
 	uint16_t address_size_offset;
-} __attribute__((packed)) acpi_dbg2_device_t;
+} __packed acpi_dbg2_device_t;
 
 /* FADT (Fixed ACPI Description Table) */
 typedef struct acpi_fadt {
@@ -1427,7 +1429,7 @@ _Static_assert(sizeof(acpi_spcr_t) == 88, "acpi_spcr_t must have an 88 byte size
 /* GTDT - Generic Timer Description Table (ACPI 5.1) Version 2 */
 typedef struct acpi_table_gtdt {
 	acpi_header_t header;	/* Common ACPI table header */
-	u64 counter_block_addresss;
+	u64 counter_block_address;
 	u32 reserved;
 	u32 secure_el1_interrupt;
 	u32 secure_el1_flags;
@@ -1565,6 +1567,9 @@ unsigned long acpi_create_madt_one_lapic(unsigned long current, u32 cpu, u32 api
 
 unsigned long acpi_create_madt_lapic_nmis(unsigned long current);
 
+uintptr_t platform_get_gicd_base(void);
+uintptr_t platform_get_gicr_base(void);
+
 int acpi_create_srat_lapic(acpi_srat_lapic_t *lapic, u8 node, u8 apic);
 int acpi_create_srat_x2apic(acpi_srat_x2apic_t *x2apic, u32 node, u32 apic);
 int acpi_create_srat_mem(acpi_srat_mem_t *mem, u8 node, u32 basek, u32 sizek,
@@ -1622,7 +1627,10 @@ unsigned long acpi_write_hpet(const struct device *device, unsigned long start,
 void generate_cpu_entries(const struct device *device);
 
 unsigned long acpi_write_dbg2_pci_uart(acpi_rsdp_t *rsdp, unsigned long current,
-				const struct device *dev, uint8_t access_size);
+				       const struct device *dev, uint8_t access_size);
+unsigned long acpi_pl011_write_dbg2_uart(acpi_rsdp_t *rsdp, unsigned long current,
+					 uint64_t base, const char *name);
+
 void acpi_create_dmar(acpi_dmar_t *dmar, enum dmar_flags flags,
 		      unsigned long (*acpi_fill_dmar)(unsigned long));
 unsigned long acpi_create_dmar_drhd(unsigned long current, u8 flags,

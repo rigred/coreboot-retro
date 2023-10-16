@@ -114,13 +114,13 @@ int cpu_cl_poll_mailbox_ready(u32 cl_mailbox_addr)
 
 	do {
 		cl_mailbox_interface.data = read32((u32 *)cl_mailbox_addr);
-		udelay(CPU_CRASHLOG_MAILBOX_WAIT_STALL);
+		udelay(CPU_CRASHLOG_WAIT_STALL);
 		stall_cnt++;
 	} while ((cl_mailbox_interface.fields.busy == 1)
-		 && stall_cnt < CPU_CRASHLOG_MAILBOX_WAIT_TIMEOUT);
+		 && stall_cnt < CPU_CRASHLOG_WAIT_TIMEOUT);
 
 	if ((cl_mailbox_interface.fields.busy == 1)
-	    && (stall_cnt >= CPU_CRASHLOG_MAILBOX_WAIT_TIMEOUT)) {
+	    && (stall_cnt >= CPU_CRASHLOG_WAIT_TIMEOUT)) {
 		printk(BIOS_ERR, "CPU crashlog mailbox timed out.\n");
 		return 0;
 	}
@@ -149,9 +149,19 @@ int cpu_cl_mailbox_cmd(u8 cmd, u8 param)
 	return 1;
 }
 
-int cpu_cl_clear_data(void)
+int __weak cpu_cl_clear_data(void)
 {
 	return cpu_cl_mailbox_cmd(CPU_CRASHLOG_CMD_CLEAR, 0);
+}
+
+void __weak cpu_cl_rearm(void)
+{
+	/* empty implementation */
+}
+
+void __weak cpu_cl_cleanup(void)
+{
+	/* empty implementation */
 }
 
 int pmc_cl_gen_descriptor_table(u32 desc_table_addr,
@@ -466,6 +476,10 @@ void cl_get_cpu_sram_data(void)
 
 	/* clear telemetry SRAM region */
 	cpu_cl_clear_data();
+	/* perform any SOC specific cleanup */
+	cpu_cl_cleanup();
+	/* rearm crashlog */
+	cpu_cl_rearm();
 }
 
 void collect_pmc_and_cpu_crashlog_from_srams(void)

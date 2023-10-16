@@ -19,7 +19,7 @@ static void *nc_fpga_bar0;
 		dst = ((typeof(dst))var); \
 }
 
-static void init_temp_mon (void *base_adr)
+static void init_temp_mon(void *base_adr)
 {
 	uint32_t cc[5], i = 0;
 	uint8_t num = 0;
@@ -31,7 +31,7 @@ static void init_temp_mon (void *base_adr)
 	if ((hwilib_get_field(FANSensorNum, &num, 1) != 1) ||
 	    (num == 0) || (num > MAX_NUM_SENSORS))
 		return;
-	for (i = 0; i < num; i ++) {
+	for (i = 0; i < num; i++) {
 		if (hwilib_get_field(FANSensorCfg0 + i, (uint8_t *)&cc[0],
 		    sizeof(cc)) == sizeof(cc)) {
 			ctrl->sensorcfg[cc[0]].rmin = cc[1] & 0xffff;
@@ -48,7 +48,7 @@ static void init_temp_mon (void *base_adr)
 	FPGA_SET_PARAM(T_Crit, ctrl->t_crit);
 }
 
-static void init_fan_ctrl (void *base_adr)
+static void init_fan_ctrl(void *base_adr)
 {
 	uint8_t mask = 0, freeze_disable = 0, fan_req = 0;
 	volatile fan_ctrl_t *ctrl = (fan_ctrl_t *)base_adr;

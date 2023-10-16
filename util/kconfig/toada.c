@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
+#include <stdlib.h>
 
 static void print_bool(const char *const name, const bool val)
 {
@@ -103,12 +104,13 @@ int main(int argc, char *argv[])
 				print_bool(name, true);
 			} else if (strncmp(val, "0x", 2) == 0) {
 				print_hex(name, val + 2);
-			} else if (isdigit(val[0])) {
+			} else if (isdigit(val[0]) || (val[0] == '-' && isdigit(val[1]))) {
 				print_dec(name, val);
 			} else {
 				fprintf(stderr,
-					"couldn't parse value '%s' for '%s'\n",
+					"toada: Error: Couldn't parse value '%s' for '%s'\n",
 					val, name);
+				exit(1);
 			}
 			continue;
 		default:

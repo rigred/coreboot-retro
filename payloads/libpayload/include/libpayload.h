@@ -68,6 +68,7 @@
 #include <sysinfo.h>
 #include <pci.h>
 #include <archive.h>
+#include <delay.h>
 
 #define BIT(x)	(1ul << (x))
 
@@ -278,6 +279,7 @@ void video_console_clear(void);
 void video_console_cursor_enable(int state);
 void video_console_get_cursor(unsigned int *x, unsigned int *y, unsigned int *en);
 void video_console_set_cursor(unsigned int cursorx, unsigned int cursory);
+void video_console_move_cursor(int x, int y);
 /*
  * print characters on video console with colors. note that there is a size
  * restriction for the internal buffer. so, output string can be truncated.
@@ -412,6 +414,13 @@ void mouse_cursor_add_input_driver(struct mouse_cursor_input_driver *in);
  * @{
  */
 int exec(long addr, int argc, char **argv);
+
+/*
+ * reboot() handles reboot requests made by libpayload. It has weak implementation
+ * which should be overridden by payload.
+ */
+void __noreturn reboot(void);
+
 /** @} */
 
 /**
@@ -510,52 +519,10 @@ void lib_sysinfo_get_memranges(struct memrange **ranges,
 
 /* Timer functions. */
 /* Defined by each architecture. */
-unsigned int get_cpu_speed(void);
 uint64_t timer_hz(void);
 uint64_t timer_raw_value(void);
 uint64_t timer_us(uint64_t base);
-void arch_ndelay(uint64_t n);
 /* Generic. */
-
-/**
- * Delay for a specified number of nanoseconds.
- *
- * @param ns Number of nanoseconds to delay for.
- */
-static inline void ndelay(unsigned int ns)
-{
-	arch_ndelay((uint64_t)ns);
-}
-
-/**
- * Delay for a specified number of microseconds.
- *
- * @param us Number of microseconds to delay for.
- */
-static inline void udelay(unsigned int us)
-{
-	arch_ndelay((uint64_t)us * NSECS_PER_USEC);
-}
-
-/**
- * Delay for a specified number of milliseconds.
- *
- * @param ms Number of milliseconds to delay for.
- */
-static inline void mdelay(unsigned int ms)
-{
-	arch_ndelay((uint64_t)ms * NSECS_PER_MSEC);
-}
-
-/**
- * Delay for a specified number of seconds.
- *
- * @param s Number of seconds to delay for.
- */
-static inline void delay(unsigned int s)
-{
-	arch_ndelay((uint64_t)s * NSECS_PER_SEC);
-}
 
 /**
  * @defgroup readline Readline functions

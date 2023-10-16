@@ -14,6 +14,9 @@
 #define  CPUID_6_ENGERY_PERF_PREF	(1 << 10)
 #define  CPUID_6_HWP			(1 << 7)
 
+/* Structured Extended Feature Flags */
+#define CPUID_EXT_FEATURE_TME_SUPPORTED (1 << 13)
+
 void set_vmx_and_lock(void)
 {
 	set_feature_ctrl_vmx();
@@ -226,4 +229,37 @@ void set_energy_perf_pref(u8 pref)
 {
 	msr_unset_and_set(IA32_HWP_REQUEST, IA32_HWP_REQUEST_EPP_MASK,
 		(uint64_t)pref << IA32_HWP_REQUEST_EPP_SHIFT);
+}
+
+bool is_tme_supported(void)
+{
+	struct cpuid_result cpuid_regs;
+
+	cpuid_regs = cpuid_ext(CPUID_STRUCT_EXTENDED_FEATURE_FLAGS, 0x0);
+	return (cpuid_regs.ecx & CPUID_EXT_FEATURE_TME_SUPPORTED);
+}
+
+/*
+ * Get number of address bits used by Total Memory Encryption (TME)
+ *
+ * Returns TME_ACTIVATE[MK_TME_KEYID_BITS] (MSR 0x982 Bits[32-35]).
+ *
+ * NOTE: This function should be called after MK-TME features has been
+ * configured in the MSRs according to the capabilities and platform
+ * configuration. For instance, after FSP-M.
+ */
+static unsigned int get_tme_keyid_bits(void)
+{
+	msr_t msr;
+
+	msr = rdmsr(MSR_TME_ACTIVATE);
+	return msr.hi & TME_ACTIVATE_HI_KEYID_BITS_MASK;
+}
+
+unsigned int get_reserved_phys_addr_bits(void)
+{
+	if (!is_tme_supported())
+		return 0;
+
+	return get_tme_keyid_bits();
 }

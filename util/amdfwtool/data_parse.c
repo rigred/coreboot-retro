@@ -115,6 +115,8 @@ static enum platform identify_platform(char *soc_name)
 		return PLATFORM_PHOENIX;
 	else if (!strcasecmp(soc_name, "Glinda"))
 		return PLATFORM_GLINDA;
+	else if (!strcasecmp(soc_name, "Genoa"))
+		return PLATFORM_GENOA;
 	else
 		return PLATFORM_UNKNOWN;
 }
@@ -173,6 +175,9 @@ static uint8_t find_register_fw_filename_psp_dir(char *fw_name, char *filename,
 		}
 	} else if (strcmp(fw_name, "AMD_PUBKEY_FILE") == 0) {
 		fw_type = AMD_FW_PSP_PUBKEY;
+		subprog = 0;
+	} else if (strcmp(fw_name, "AMD_FUSE_CHAIN") == 0) {
+		fw_type = AMD_PSP_FUSE_CHAIN;
 		subprog = 0;
 	} else if (strcmp(fw_name, "PSPRCVR_FILE") == 0) {
 		fw_type = AMD_FW_PSP_RECOVERY;
@@ -497,11 +502,13 @@ static uint8_t find_register_fw_filename_psp_dir(char *fw_name, char *filename,
 			/* instance are not used in PSP table */
 			if (psp_tableptr->type == fw_type && psp_tableptr->subprog == subprog
 				&& psp_tableptr->inst  == instance) {
-				psp_tableptr->filename = filename;
+				if (psp_tableptr->type != AMD_PSP_FUSE_CHAIN) {
+					psp_tableptr->filename = filename;
+					psp_tableptr->hash_tbl_id = hash_tbl_id;
+					psp_tableptr->fwid_type = fwid_type;
+				}
 				SET_LEVEL(psp_tableptr, level_to_set, PSP,
 					cb_config->recovery_ab);
-				psp_tableptr->hash_tbl_id = hash_tbl_id;
-				psp_tableptr->fwid_type = fwid_type;
 				break;
 			}
 			psp_tableptr++;
@@ -733,6 +740,7 @@ static bool is_second_gen(enum platform platform_type)
 	case PLATFORM_MENDOCINO:
 	case PLATFORM_PHOENIX:
 	case PLATFORM_GLINDA:
+	case PLATFORM_GENOA:
 		return true;
 	case PLATFORM_UNKNOWN:
 	default:

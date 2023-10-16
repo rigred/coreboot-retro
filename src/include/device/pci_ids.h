@@ -3608,6 +3608,7 @@
 #define PCI_DID_INTEL_MTL_IOE_M_PMC		0x7ebe
 #define PCI_DID_INTEL_MTL_IOE_P_PMC		0x7ece
 #define PCI_DID_INTEL_RPP_P_PMC			0x51a1
+#define PCI_DID_INTEL_RPP_S_PMC			0x7a21
 
 /* Intel I2C device Ids */
 #define PCI_DID_INTEL_LPT_LP_I2C0		0x9c61
@@ -4059,9 +4060,13 @@
 #define PCI_DID_INTEL_RPL_P_GT1				0xa720
 #define PCI_DID_INTEL_RPL_P_GT2				0xa7a8
 #define PCI_DID_INTEL_RPL_P_GT3				0xa7a0
-#define PCI_DID_INTEL_RPL_P_GT4				0xa7a9
-#define PCI_DID_INTEL_RPL_P_GT5				0xa7a1
-#define PCI_DID_INTEL_RPL_P_GT6				0xa721
+#define PCI_DID_INTEL_RPL_P_GT4				0xa7aa
+#define PCI_DID_INTEL_RPL_P_GT5				0xa7ab
+#define PCI_DID_INTEL_RPL_U_GT1				0xa7a9
+#define PCI_DID_INTEL_RPL_U_GT2				0xa7a1
+#define PCI_DID_INTEL_RPL_U_GT3				0xa721
+#define PCI_DID_INTEL_RPL_U_GT4				0xa7ac
+#define PCI_DID_INTEL_RPL_U_GT5				0xa7ad
 
 /* Intel Northbridge Ids */
 #define PCI_DID_INTEL_APL_NB			0x5af0
@@ -4292,6 +4297,7 @@
 #define PCI_DID_INTEL_MTL_IOE_M_P2SB		0x7eb8
 #define PCI_DID_INTEL_MTL_IOE_P_P2SB		0x7ec8
 #define PCI_DID_INTEL_RPP_P_P2SB		0x51a0
+#define PCI_DID_INTEL_RPP_S_P2SB		0x7a20
 
 /* Intel SRAM device Ids */
 #define PCI_DID_INTEL_APL_SRAM			0x5aec
@@ -4510,8 +4516,9 @@
 #define PCI_DID_SFP_8260_SERIES_2_WIFI		0x24f4
 #define PCI_DID_WSP_8275_SERIES_1_WIFI		0x24fd
 #define PCI_DID_TP_9260_SERIES_WIFI		0x2526
-#define PCI_DID_CyP_6SERIES_WIFI		0x2723
-#define PCI_DID_TyP_6SERIES_WIFI		0x2725
+#define PCI_DID_CP_6SERIES_WIFI		0x2723
+#define PCI_DID_TP_6SERIES_WIFI		0x2725
+#define PCI_DID_MP_7SERIES_WIFI		0x272b
 
 #define PCI_DID_INTEL_TGL_IPU			0x9a19
 #define PCI_DID_INTEL_TGL_H_IPU			0x9a39

@@ -11,7 +11,8 @@ Field (DPME, AnyAcc, NoLock, Preserve)
 	, 6,
 	PMES, 1,        /* 15, PME_STATUS */
 	Offset(0xC8),   /* 0xC8, TBT NVM FW Revision */
-	,     31,
+	,     30,
+	IF30,  1,       /* ITBT FW Version Bit30 */
 	INFR,  1,       /* TBT NVM FW Ready */
 	Offset(0xEC),   /* 0xEC, TBT TO PCIE Register */
 	TB2P, 32,       /* TBT to PCIe */
@@ -95,13 +96,6 @@ Method (D3CE, 0, Serialized)
  * TCSS D3 Cold and TBT RTD3 is only available when system power state is in S0.
  */
 Name (SD3C, 0)
-Method (_PS0, 0, Serialized)
-{
-}
-
-Method (_PS3, 0, Serialized)
-{
-}
 
 Method (_DSW, 3)
 {

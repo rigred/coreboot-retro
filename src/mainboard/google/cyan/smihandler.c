@@ -5,9 +5,7 @@
 #include <console/console.h>
 #include <cpu/x86/smm.h>
 #include "ec.h"
-#include <ec/google/chromeec/ec.h>
 #include <ec/google/chromeec/smm.h>
-#include <soc/nvs.h>
 #include <soc/pm.h>
 #include <soc/gpio.h>
 
@@ -34,31 +32,14 @@ void mainboard_smi_sleep(uint8_t slp_typ)
 	uint32_t	mask;
 
 	/* Disable USB charging if required */
+	chromeec_set_usb_charge_mode(slp_typ);
+
 	switch (slp_typ) {
 	case ACPI_S3:
-		if (gnvs->s3u0 == 0)
-			google_chromeec_set_usb_charge_mode(
-				0, USB_CHARGE_MODE_DISABLED);
-		if (gnvs->s3u1 == 0)
-			google_chromeec_set_usb_charge_mode(
-				1, USB_CHARGE_MODE_DISABLED);
-
-		/* Enable wake events */
-		google_chromeec_set_wake_mask(MAINBOARD_EC_S3_WAKE_EVENTS);
 		/* Enable wake pin in GPE block. */
 		enable_gpe(WAKE_GPIO_EN);
 		break;
 	case ACPI_S5:
-		if (gnvs->s5u0 == 0)
-			google_chromeec_set_usb_charge_mode(
-				0, USB_CHARGE_MODE_DISABLED);
-		if (gnvs->s5u1 == 0)
-			google_chromeec_set_usb_charge_mode(
-				1, USB_CHARGE_MODE_DISABLED);
-
-		/* Enable wake events */
-		google_chromeec_set_wake_mask(MAINBOARD_EC_S5_WAKE_EVENTS);
-
 		/* Disabling wake from SUS_GPIO1 (TOUCH INT) and
 		 * SUS_GPIO7 (TRACKPAD INT) in North bank as they are not
 		 * valid S5 wake sources
@@ -67,17 +48,10 @@ void mainboard_smi_sleep(uint8_t slp_typ)
 			GPIO_WAKE_MASK_REG0);
 		mask = ~(GPIO_SUS1_WAKE_MASK | GPIO_SUS7_WAKE_MASK);
 		write32(addr, read32(addr) & mask);
-
 		break;
 	}
 
-	/* Disable SCI and SMI events */
-	google_chromeec_set_smi_mask(0);
-	google_chromeec_set_sci_mask(0);
-
-	/* Clear pending events that may trigger immediate wake */
-	while (google_chromeec_get_event() != EC_HOST_EVENT_NONE)
-		;
+	chromeec_smi_sleep(slp_typ, MAINBOARD_EC_S3_WAKE_EVENTS, MAINBOARD_EC_S5_WAKE_EVENTS);
 
 	/* Set LPC lines to low power in S3/S5. */
 	if ((slp_typ == ACPI_S3) || (slp_typ == ACPI_S5)) {

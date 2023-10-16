@@ -3,6 +3,11 @@
 ifeq ($(CONFIG_HAVE_ACPI_TABLES),y)
 
 ramstage-y += acpi.c
+ifeq ($(CONFIG_ARCH_RAMSTAGE_X86_32)$(CONFIG_ARCH_RAMSTAGE_X86_64),y)
+ramstage-y += acpi_apic.c
+ramstage-y += acpi_dmar.c
+ramstage-y += acpi_hpet.c
+endif
 ramstage-y += acpigen.c
 ramstage-y += acpigen_dptf.c
 ramstage-y += acpigen_dsm.c
@@ -15,6 +20,7 @@ ramstage-y += pld.c
 ramstage-y += sata.c
 ramstage-y += soundwire.c
 ramstage-y += fadt_filler.c
+ramstage-$(CONFIG_ACPI_COMMON_MADT_GICC_V3) += acpi_gic.c
 
 all-y += acpi_pm.c
 smm-y += acpi_pm.c

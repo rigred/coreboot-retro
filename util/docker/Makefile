@@ -42,17 +42,19 @@ test-docker-login: test-docker
 
 coreboot-sdk: test-docker
 	@echo "Building coreboot SDK $(crossgcc_version) from commit $(DOCKER_COMMIT)"
-	cat coreboot-sdk/Dockerfile | \
-		sed "s/{{DOCKER_COMMIT}}/$(DOCKER_COMMIT)/g" | \
-		sed "s/{{SDK_VERSION}}/$(COREBOOT_IMAGE_TAG)/g" | \
-		sed "s/{{CROSSGCC_PARAM}}/$(COREBOOT_CROSSGCC_PARAM)/g" | \
-		$(DOCKER) build -t coreboot/coreboot-sdk:$(COREBOOT_IMAGE_TAG) -
+	$(DOCKER) build \
+		--tag coreboot/coreboot-sdk:$(COREBOOT_IMAGE_TAG) \
+		--build-arg=SDK_VERSION="$(COREBOOT_IMAGE_TAG)" \
+		--build-arg=DOCKER_COMMIT="$(DOCKER_COMMIT)" \
+		--build-arg=CROSSGCC_PARAM="$(COREBOOT_CROSSGCC_PARAM)" \
+		coreboot-sdk
 
 coreboot-jenkins-test: test-docker
 	@echo "Testing coreboot SDK and jenkins node version $(crossgcc_version), built from commit $(DOCKER_COMMIT)"
-	cat coreboot-jenkins-test/Dockerfile | \
-		sed "s/{{SDK_VERSION}}/$(COREBOOT_IMAGE_TAG)/g" | \
-		$(DOCKER) build -t coreboot/coreboot-jenkins-test:$(COREBOOT_IMAGE_TAG) -
+	$(DOCKER) build \
+		--tag coreboot/coreboot-jenkins-test:$(COREBOOT_IMAGE_TAG) \
+		--build-arg=SDK_VERSION="$(COREBOOT_IMAGE_TAG)" \
+		coreboot-jenkins-test
 
 upload-coreboot-sdk: test-docker-login
 	$(DOCKER) push coreboot/coreboot-sdk:$(COREBOOT_IMAGE_TAG)
@@ -205,7 +207,9 @@ help:
 	@echo "  docker-abuild                - Run abuild under coreboot-sdk"
 	@echo "      <ABUILD_ARGS='-a -B'>"
 	@echo "  docker-what-jenkins-does     - Run 'what-jenkins-does' target"
-	@echo "  docker-shell                 - Bash prompt in coreboot-jenkins-node"
+	@echo "  docker-jenkins-shell         - Bash prompt in coreboot-jenkins-node"
+	@echo "      <USER=root or USER=coreboot>"
+	@echo "  docker-shell                 - Bash prompt in coreboot-sdk"
 	@echo "      <USER=root or USER=coreboot>"
 	@echo "  docker-jenkins-server        - Run coreboot-jenkins-node image (for server)"
 	@echo "  docker-jenkins-attach        - Open shell in running jenkins server"
@@ -225,6 +229,7 @@ help:
 .PHONY: doc.coreboot.org
 .PHONY: clean-coreboot-containers clean-coreboot-images docker-cleanall
 .PHONY: docker-abuild
-.PHONY: docker-what-jenkins-does docker-shell docker-jenkins-server docker-jenkins-attach
+.PHONY: docker-shell docker-jenkins-shell
+.PHONY: docker-what-jenkins-does docker-jenkins-server docker-jenkins-attach
 .PHONY: docker-build-docs docker-livehtml-docs
 .PHONY: help

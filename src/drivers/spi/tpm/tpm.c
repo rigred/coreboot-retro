@@ -333,7 +333,7 @@ static uint8_t tpm2_read_access_reg(void)
 static void tpm2_write_access_reg(uint8_t cmd)
 {
 	/* Writes to access register can set only 1 bit at a time. */
-	assert (!(cmd & (cmd - 1)));
+	assert(!(cmd & (cmd - 1)));
 
 	tpm2_write_reg(TPM_ACCESS_REG, &cmd, sizeof(cmd));
 }
@@ -394,7 +394,7 @@ static const uint32_t supported_did_vids[] = {
 	0x0000104a   /* ST33HTPH2E32 */
 };
 
-int tpm2_init(struct spi_slave *spi_if)
+tpm_result_t tpm2_init(struct spi_slave *spi_if)
 {
 	uint32_t did_vid, status, intf_id;
 	uint8_t cmd;
@@ -433,7 +433,7 @@ int tpm2_init(struct spi_slave *spi_if)
 	if (!retries) {
 		printk(BIOS_ERR, "\n%s: Failed to connect to the TPM\n",
 		       __func__);
-		return -1;
+		return TPM_CB_FAIL;
 	}
 
 	printk(BIOS_INFO, " done!\n");
@@ -444,11 +444,11 @@ int tpm2_init(struct spi_slave *spi_if)
 		if (tpm2_read_reg(TPM_INTF_ID_REG, &intf_id, sizeof(intf_id)) != CB_SUCCESS) {
 			printk(BIOS_ERR, "\n%s: Failed to read interface ID register\n",
 			       __func__);
-			return -1;
+			return TPM_CB_FAIL;
 		}
 		if ((be32toh(intf_id) & 0xF) == 0xF) {
 			printk(BIOS_DEBUG, "\n%s: Not a TPM2 device\n", __func__);
-			return -1;
+			return TPM_CB_FAIL;
 		}
 	}
 
@@ -459,16 +459,16 @@ int tpm2_init(struct spi_slave *spi_if)
 		 * initialization after reset.
 		 */
 		if (tpm2_claim_locality() != CB_SUCCESS)
-			return -1;
+			return TPM_CB_FAIL;
 
 	if (read_tpm_sts(&status) != CB_SUCCESS) {
 		printk(BIOS_ERR, "Reading status reg failed\n");
-		return -1;
+		return TPM_CB_FAIL;
 	}
 	if ((status & TPM_STS_FAMILY_MASK) != TPM_STS_FAMILY_TPM_2_0) {
 		printk(BIOS_ERR, "unexpected TPM family value, status: %#x\n",
 		       status);
-		return -1;
+		return TPM_CB_FAIL;
 	}
 
 	/*
@@ -492,7 +492,7 @@ int tpm2_init(struct spi_slave *spi_if)
                         cr50_set_board_cfg();
 		}
 	}
-	return 0;
+	return TPM_SUCCESS;
 }
 
 /*
@@ -509,7 +509,7 @@ static enum cb_err wait_for_status(uint32_t status_mask, uint32_t status_expecte
 	do {
 		udelay(1000);
 		if (stopwatch_expired(&sw)) {
-			printk(BIOS_ERR, "failed to get expected status %x\n",
+			printk(BIOS_ERR, "failed to get expected status %#x\n",
 			       status_expected);
 			return CB_ERR;
 		}

@@ -8,6 +8,7 @@
 #include <commonlib/bsd/cbfs_private.h>
 #include <commonlib/bsd/fmap_serialized.h>
 #include <libpayload.h>
+#include <lp_vboot.h>
 #include <lz4.h>
 #include <lzma.h>
 #include <string.h>
@@ -89,8 +90,11 @@ static bool cbfs_file_hash_mismatch(const void *buffer, size_t size,
 		ERROR("'%s' does not have a file hash!\n", mdata->h.filename);
 		return true;
 	}
-	if (vb2_hash_verify(cbfs_hwcrypto_allowed(), buffer, size, hash) != VB2_SUCCESS) {
+	vb2_error_t rv = vb2_hash_verify(cbfs_hwcrypto_allowed(), buffer, size, hash);
+	if (rv != VB2_SUCCESS) {
 		ERROR("'%s' file hash mismatch!\n", mdata->h.filename);
+		if (CONFIG(LP_VBOOT_CBFS_INTEGRATION) && !vboot_recovery_mode_enabled())
+			vboot_fail_and_reboot(vboot_get_context(), VB2_RECOVERY_FW_BODY, rv);
 		return true;
 	}
 
@@ -151,6 +155,7 @@ static void *do_load(union cbfs_mdata *mdata, ssize_t offset, void *buf, size_t 
 		     bool skip_verification)
 {
 	bool malloced = false;
+	size_t buf_size = 0;
 	size_t out_size;
 	uint32_t compression = CBFS_COMPRESS_NONE;
 	const struct cbfs_file_attr_compression *cattr =
@@ -162,8 +167,13 @@ static void *do_load(union cbfs_mdata *mdata, ssize_t offset, void *buf, size_t 
 		out_size = be32toh(mdata->h.len);
 	}
 
+	if (size_inout) {
+		buf_size = *size_inout;
+		*size_inout = out_size;
+	}
+
 	if (buf) {
-		if (!size_inout || *size_inout < out_size) {
+		if (!size_inout || buf_size < out_size) {
 			ERROR("'%s' buffer too small\n", mdata->h.filename);
 			return NULL;
 		}
@@ -183,8 +193,6 @@ static void *do_load(union cbfs_mdata *mdata, ssize_t offset, void *buf, size_t 
 			free(buf);
 		return NULL;
 	}
-	if (size_inout)
-		*size_inout = out_size;
 
 	return buf;
 }
@@ -228,5 +236,9 @@ void *_cbfs_unverified_area_load(const char *area, const char *name, void *buf,
    policy on using HW crypto. */
 __weak bool cbfs_hwcrypto_allowed(void)
 {
-	return true;
+	/* Avoid compiling vboot calls to prevent linker errors. */
+	if (!CONFIG(LP_CBFS_VERIFICATION))
+		return true;
+
+	return vb2api_hwcrypto_allowed(vboot_get_context());
 }

@@ -16,6 +16,7 @@ romstage-y += memory_init.c
 romstage-$(CONFIG_MMA) += mma_core.c
 romstage-y += cbmem.c
 romstage-$(CONFIG_ENABLE_FSP_ERROR_INFO) += fsp_error_info_hob.c
+romstage-$(CONFIG_CACHE_MRC_SETTINGS) += save_mrc_data.c
 
 ramstage-y += debug.c
 ramstage-$(CONFIG_FSP_USES_CB_DEBUG_EVENT_HANDLER) += fsp_debug_event.c
@@ -30,7 +31,7 @@ ramstage-y += notify.c
 ramstage-y += silicon_init.c
 ramstage-$(CONFIG_DISPLAY_UPD_DATA) += upd_display.c
 ramstage-y += util.c
-ramstage-$(CONFIG_CACHE_MRC_SETTINGS) += save_mrc_data.c
+ramstage-$(CONFIG_FSP_NVS_DATA_POST_SILICON_INIT) += save_mrc_data.c
 ramstage-$(CONFIG_MMA) += mma_core.c
 ramstage-$(CONFIG_ENABLE_FSP_ERROR_INFO) += fsp_error_info_hob.c
 ramstage-$(CONFIG_BMP_LOGO) += fsp_gop_blt.c
@@ -68,8 +69,7 @@ $(FSP_M_CBFS)-options := --xip $(TXTIBB)
 endif
 ifeq ($(CONFIG_FSP_COMPRESS_FSP_M_LZMA),y)
 $(FSP_M_CBFS)-compression := LZMA
-endif
-ifeq ($(CONFIG_FSP_COMPRESS_FSP_M_LZ4),y)
+else ifeq ($(CONFIG_FSP_COMPRESS_FSP_M_LZ4),y)
 $(FSP_M_CBFS)-compression := LZ4
 endif
 ifneq ($(CONFIG_FSP_ALIGNMENT_FSP_M),)
@@ -81,8 +81,7 @@ $(FSP_S_CBFS)-file := $(call strip_quotes,$(CONFIG_FSP_S_FILE))
 $(FSP_S_CBFS)-type := fsp
 ifeq ($(CONFIG_FSP_COMPRESS_FSP_S_LZMA),y)
 $(FSP_S_CBFS)-compression := LZMA
-endif
-ifeq ($(CONFIG_FSP_COMPRESS_FSP_S_LZ4),y)
+else ifeq ($(CONFIG_FSP_COMPRESS_FSP_S_LZ4),y)
 $(FSP_S_CBFS)-compression := LZ4
 endif
 ifneq ($(CONFIG_FSP_ALIGNMENT_FSP_S),)
@@ -104,7 +103,11 @@ endif
 cbfs-files-$(CONFIG_BMP_LOGO) += logo.bmp
 logo.bmp-file := $(call strip_quotes,$(CONFIG_FSP2_0_LOGO_FILE_NAME))
 logo.bmp-type := raw
+ifeq ($(CONFIG_BMP_LOGO_COMPRESS_LZMA),y)
 logo.bmp-compression := LZMA
+else ifeq ($(CONFIG_BMP_LOGO_COMPRESS_LZ4),y)
+logo.bmp-compression := LZ4
+endif
 
 ifneq ($(call strip_quotes,$(CONFIG_FSP_HEADER_PATH)),)
 CPPFLAGS_common+=-I$(CONFIG_FSP_HEADER_PATH)

@@ -16,6 +16,8 @@ enum _spkr_tplg {
 	max98390,
 	rt1011,
 	rt1015,
+	rt1019,
+	rt5650_sp,
 };
 
 /* Jack topology */
@@ -23,6 +25,7 @@ enum _jack_tplg {
 	cs42l42 = 1,
 	da7219,
 	nau8825,
+	rt5650_hp,
 	rt5682,
 };
 

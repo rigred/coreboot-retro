@@ -34,6 +34,7 @@ static void mipi_panel_power_on(void)
 		gpio_output(GPIO_EN_PP3300_DISP_X, 1);
 		mdelay(2);
 		gpio_output(GPIO_EN_PP3300_SDBRDG_X, 1);
+		mdelay(3);
 	} else if (tps65132s_setup(&cfg) != CB_SUCCESS) {
 		printk(BIOS_ERR, "Failed to setup tps65132s\n");
 	}
@@ -49,13 +50,13 @@ static void mipi_panel_power_on(void)
 static struct panel_description starmie_panels[] = {
 	/* K&D panel vendor and ILI9882T chip,
 	   K&D and STA panel are identical except manufacturer_name. */
-	[3] = {
+	[6] = {
 		.power_on = mipi_panel_power_on,
 		.name = "STA_ILI9882T",
 		.orientation = LB_FB_ORIENTATION_LEFT_UP,
 	},
 	/* STA panel vendor and ILI9882T chip */
-	[8] = {
+	[9] = {
 		.power_on = mipi_panel_power_on,
 		.name = "STA_ILI9882T",
 		.orientation = LB_FB_ORIENTATION_LEFT_UP,

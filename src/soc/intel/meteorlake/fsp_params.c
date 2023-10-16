@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 
 #include <assert.h>
+#include <bootmode.h>
 #include <bootsplash.h>
 #include <cbfs.h>
 #include <console/console.h>
@@ -392,7 +393,7 @@ static void fill_fsps_cpu_params(FSP_S_CONFIG *s_cfg,
 	 * This would avoid APs from getting hijacked by FSP while coreboot
 	 * decides to set SkipMpInit UPD.
 	 */
-	s_cfg->CpuMpPpi = (uintptr_t) mp_fill_ppi_services_data();
+	s_cfg->CpuMpPpi = (uintptr_t)mp_fill_ppi_services_data();
 
 	/*
 	 * Fill `2nd microcode loading FSP UPD` if FSP is running CPU feature
@@ -411,7 +412,7 @@ static void fill_fsps_igd_params(FSP_S_CONFIG *s_cfg,
 
 	/* Check if IGD is present and fill Graphics init param accordingly */
 	s_cfg->PeiGraphicsPeimInit = CONFIG(RUN_FSP_GOP) && is_devfn_enabled(PCI_DEVFN_IGD);
-	s_cfg->LidStatus = CONFIG(RUN_FSP_GOP);
+	s_cfg->LidStatus = CONFIG(VBOOT_LID_SWITCH) ? get_lid_switch() : CONFIG(RUN_FSP_GOP);
 	s_cfg->PavpEnable = CONFIG(PAVP);
 }
 
@@ -665,6 +666,7 @@ static void fill_fsps_misc_power_params(FSP_S_CONFIG *s_cfg,
 	s_cfg->C1StateUnDemotion = !config->disable_c1_state_auto_demotion;
 	s_cfg->C1StateAutoDemotion = !config->disable_c1_state_auto_demotion;
 	s_cfg->PkgCStateDemotion = !config->disable_package_c_state_demotion;
+	s_cfg->PkgCStateUnDemotion = !config->disable_package_c_state_demotion;
 	s_cfg->PmcV1p05PhyExtFetControlEn = 1;
 
 	/* Enable PCH to CPU energy report feature. */
