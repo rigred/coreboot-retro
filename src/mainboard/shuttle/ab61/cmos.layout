@@ -25,7 +25,7 @@ entries
 
 # -----------------------------------------------------------------
 # TODO: raminit config options
-414	1	e	1	ecc_memory
+414	1	e	14	ecc_memory
 415	1	e	6	ram_timing
 416	1	e	5	srp_timing
 417	1	e	5	srcd_timing
@@ -34,7 +34,20 @@ entries
 420	1	e	1	pipeline_leadoff_delay
 421	1	e	8	dram_leadoff_timing
 422	1	e	9	dram_idle_timer
-422	1	e	10	agp_aperture
+
+423	1	e	1	agp_enable
+424	1	e	10	agp_aperture
+425	1	e	11	agp_speed
+426	1	e	1	agp_sba
+
+427	1	e	1	overclocking
+428	1	e	1	spread_spectrum
+429	1	e	13	spread_factor
+430	1	e	12	bus_clock
+
+# Pentium Pro and Klamath CPU ratio setting
+431	1	e	15	cpu_ratio
+
 
 enumerations
 #ID	value	text
@@ -99,6 +112,44 @@ enumerations
 10  4	64MB
 10  5	128MB
 10  6	256MB
+
+11	0	Auto
+11	1	1x
+11	2	2x
+
+12	0	66/33MHz
+12	1	75/37.5MHz
+12	2	83.3/41.6MHz
+12	3	100/33MHz
+12	4	103/34.3MHz
+12	5	105/35MHz
+12	6	110/36.6MHz
+12	7	112/37.3Mhz
+12	8	115/38.3MHz
+12	9	120/40MHz
+12	10	124/31MHz
+12	11	124/41.33MHz
+12	12	133/33.2MHz
+12	13	133/44.3MHz
+12	14	140/35MHz
+12	15	150/37.5MHz
+
+13	0	0.25%
+13	1	0.5%
+
+14	0	Non-ECC
+14	1	EC
+14	2	ECC
+14	3	ECC-Scrubbing
+
+15	0	Auto
+15	1	2x
+15	2	2.5x
+15	3	3x
+15	4	3.5x
+15	5	4x
+15	6	4.5x
+
 
 checksums
 
