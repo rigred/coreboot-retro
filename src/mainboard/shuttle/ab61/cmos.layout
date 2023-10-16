@@ -24,17 +24,17 @@ entries
 411	1	e	1	udma_enable
 
 # -----------------------------------------------------------------
-# p2b-[ld]s config options: onboard SCSI termination
-# Controls PIIX4 GPO22 (Ultra2-68) and GPO23 (SCSI-50)
-#412	1	e	1	scsi_se_term
-#413	1	e	2	scsi_lvd_term
-
-# -----------------------------------------------------------------
 # TODO: raminit config options
+414	1	e	1	ecc_memory
 415	1	e	6	ram_timing
 416	1	e	5	srp_timing
 417	1	e	5	srcd_timing
 418	1	e	5	cas_latency
+419 1	e	7	refresh_period
+420	1	e	1	pipeline_leadoff_delay
+421	1	e	8	dram_leadoff_timing
+422	1	e	9	dram_idle_timer
+422	1	e	10	agp_aperture
 
 enumerations
 #ID	value	text
@@ -61,11 +61,44 @@ enumerations
 4	7	Debug
 4	8	Spew
 
+# dram timings
 5	0	3
 5	1	2
 
+# dram manual/auto timings
 6	0	Auto
 6	1	Manual
+
+# dram  refresh period
+7	0	disabled
+7	1	15.6us
+7	2	31.2us
+7	3	62.4us
+7	4	124.8us
+7	5	249.6us
+
+# dram leadoff
+8	0	3
+8	1	4
+
+# dram idle timer
+9	0	0
+9	1	2
+9	2	4
+9	3	8
+9	4	10
+9	5	12
+9	6	16
+9	7	32
+
+# agp aperture size
+10  0	4MB
+10  1	8MB
+10  2	16MB
+10  3	32MB
+10  4	64MB
+10  5	128MB
+10  6	256MB
 
 checksums
 
