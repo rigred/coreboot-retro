@@ -12,16 +12,16 @@
 static void model_67x_init(struct device *cpu)
 {
 	char processor_name[49];
-	
+
+	/* Print processor name */
+	fill_processor_name(processor_name);
+	printk(BIOS_INFO, "CPU: %s.\n", processor_name);
+
 	/* Update the microcode */
 	intel_update_microcode_from_cbfs();
 
 	/* Initialize L2 cache */
 	p6_configure_l2_cache();
-
-	/* Print processor name */
-	fill_processor_name(processor_name);
-	printk(BIOS_INFO, "CPU: %s.\n", processor_name);
 
 	/* Turn on caching if we haven't already */
 	enable_cache();
