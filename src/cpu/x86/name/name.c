@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 
 #include <cpu/cpu.h>
+#include <arch/cpuid.h>
 #include <cpu/x86/name.h>
 #include <stdint.h>
 #include <string.h>
@@ -31,14 +32,10 @@ void fill_processor_name(char *processor_name)
 
 	name_as_ints[12] = 0;
 
-	// Skip leading spaces and copy the name to the provided buffer.
-    for (i = 0; i < 13; i++) {
-        if (name_as_ints[i] == ' ')
-            continue;
-        *processor_name_start = (char)name_as_ints[i];
-        processor_name_start++;
-    }
+	/* Skip leading spaces. */
+	processor_name_start = (char *)name_as_ints;
+	while (*processor_name_start == ' ')
+		processor_name_start++;
 
-	// Null-terminate the processor name.
-    *processor_name_start = '\0';
+	strcpy(processor_name, processor_name_start);
 }
