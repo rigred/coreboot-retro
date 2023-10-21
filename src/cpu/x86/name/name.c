@@ -12,6 +12,15 @@ void fill_processor_name(char *processor_name)
 	uint32_t name_as_ints[13];
 	int i;
 
+	// Check if the CPUID leaf is supported.
+    regs = cpuid(0x80000000);
+    if (regs.eax < 0x80000004) {
+        // The required CPUID leaves are not supported.
+        strcpy(processor_name, "Unknown Processor");
+        return;
+    }
+
+
 	for (i = 0; i < 3; i++) {
 		regs = cpuid(0x80000002 + i);
 		name_as_ints[i * 4 + 0] = regs.eax;
@@ -22,10 +31,14 @@ void fill_processor_name(char *processor_name)
 
 	name_as_ints[12] = 0;
 
-	/* Skip leading spaces. */
-	processor_name_start = (char *)name_as_ints;
-	while (*processor_name_start == ' ')
-		processor_name_start++;
+	// Skip leading spaces and copy the name to the provided buffer.
+    for (i = 0; i < 13; i++) {
+        if (name_as_ints[i] == ' ')
+            continue;
+        *processor_name_start = (char)name_as_ints[i];
+        processor_name_start++;
+    }
 
-	strcpy(processor_name, processor_name_start);
+	// Null-terminate the processor name.
+    *processor_name_start = '\0';
 }
