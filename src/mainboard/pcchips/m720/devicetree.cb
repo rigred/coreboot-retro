@@ -5,7 +5,7 @@ chip northbridge/intel/i440lx		# Northbridge
     device pci 1.0 on end		# PCI/AGP bridge
     chip southbridge/intel/i82371eb	# Southbridge
       device pci 7.0 on			# ISA bridge
-        chip superio/ite/ite8679f	# Super I/O
+        chip superio/ite/it8679f	# Super I/O
           device pnp 3f0.0 on		# Floppy
             io 0x60 = 0x3f0
             irq 0x70 = 6
