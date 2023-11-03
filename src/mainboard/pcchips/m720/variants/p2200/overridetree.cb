@@ -1,0 +1,13 @@
+chip northbridge/intel/i440lx		# Northbridge
+  device cpu_cluster 0 on		# (L)APIC cluster
+  end
+  device domain 0 on		# PCI domain
+    chip southbridge/intel/i82371eb	# Southbridge
+      device pci 7.0 on			# ISA bridge
+        chip superio/ite/8679	# Super I/O
+          
+        end
+      end
+    end
+  end
+end

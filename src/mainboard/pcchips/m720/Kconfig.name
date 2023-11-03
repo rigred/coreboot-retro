@@ -1,0 +1,5 @@
+config BOARD_PCCHIPS_M720
+	bool "M720"
+
+config BOARD_PCCHIPS_P2200
+	bool "P2200"

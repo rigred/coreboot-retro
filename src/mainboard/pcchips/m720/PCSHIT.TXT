@@ -1,0 +1,190 @@
+Craig Hart's PCI+AGP bus sniffer, version 0.48vk, freeware made in 1996-2003.
+
+PCI BIOS Version 2.10 found!
+Number of PCI Busses : 2
+PCI Characteristics  : Config Mechanism 1 
+
+Searching for PCI Devices using the System BIOS
+
+ Bus 0 (PCI), Device Number 0, Device Function 0
+ Vendor 8086h Intel Corporation
+ Device 7180h 82443LX/EX 440LX/EX CPU to PCI Bridge
+ Command 0106h (Memory Access, BusMaster, System Errors)
+ Status 2290h (Has Capabilities List, Supports Back-To-Back Trans., Received Master Abort, Medium Timing)
+ Revision 03h, Header Type 00h, Bus Latency 40h
+ Self test 00h (Self test not supported)
+ PCI Class Bridge, type PCI to HOST
+ Address 0 is a Memory Address (anywhere in 0-4Gb, Prefetchable) : E4000000h
+ New Capabilities List Present:
+   AGP Capability, Version 1.0 (AGP 1x and/or 2x support)
+     AGP Speed(s) Supported : 1x 2x 
+     FW Transfers Supported : No
+     >4Gb Address Space Supported : No
+     Sideband Addressing Supported : Yes
+     Maximum Command Queue Length : 32 bytes
+     AGP Speed Selected : None Selected
+     FW Transfers Enabled : No
+     >4Gb Address Space Enabled : No
+     AGP Enabled : No
+     Sideband Addressing Enabled : No
+     Current Command Queue Length : 1 byte
+
+ Bus 0 (PCI), Device Number 1, Device Function 0
+ Vendor 8086h Intel Corporation
+ Device 7181h 82443LX/EX 440LX/EX PCI to AGP Bridge
+ Command 010Fh (I/O Access, Memory Access, BusMaster, Special Cycles, System Errors)
+ Status 02A0h (Supports 66MHz, Supports Back-To-Back Trans., Medium Timing)
+ Revision 03h, Header Type 01h, Bus Latency 40h
+ Self test 00h (Self test not supported)
+ PCI Class Bridge, type PCI to PCI
+ PCI Bridge Information:
+   Primary Bus Number 0, Secondary Bus Number 1, Subordinate bus number 1
+   Secondary Bus Command 0007h (parity detection, ISA mapping)
+   Secondary Bus Status 22A0h (Supports 66MHz, Supports Back-To-Back Trans., Received Master Abort, Medium Timing)
+   Secondary Bus Latency 40h
+   I/O Port Range Passed to Secondary Bus : C000h to CFFFh (16-bit)
+   Memory   Range Passed to Secondary Bus : EFD00000h to EFDFFFFFh
+   Prefectchable Memory Range Passed to Secondary Bus : DFB00000h to DFBFFFFFh
+
+ Bus 0 (PCI), Device Number 7, Device Function 0
+ Vendor 8086h Intel Corporation
+ Device 7110h 82371AB PIIX4 ISA Bridge
+ Command 000Fh (I/O Access, Memory Access, BusMaster, Special Cycles)
+ Status 0280h (Supports Back-To-Back Trans., Medium Timing)
+ Revision 01h, Header Type 80h, Bus Latency 00h
+ Self test 00h (Self test not supported)
+ PCI Class Bridge, type PCI to ISA
+
+ Bus 0 (PCI), Device Number 7, Device Function 1
+ Vendor 8086h Intel Corporation
+ Device 7111h 82371AB/EB/MB PIIX4/E/M EIDE Controller
+ Command 0005h (I/O Access, BusMaster)
+ Status 0280h (Supports Back-To-Back Trans., Medium Timing)
+ Revision 01h, Header Type 00h, Bus Latency 40h
+ Self test 00h (Self test not supported)
+ PCI Class Storage, type IDE
+ PCI EIDE Controller Features :
+   BusMaster EIDE is supported
+   Primary   Channel is at I/O Port 01F0h and IRQ 14
+   Secondary Channel is at I/O Port 0170h and IRQ 15
+ Address 4 is an I/O Port : 0000FFA0h
+
+ Bus 0 (PCI), Device Number 7, Device Function 2
+ Vendor 8086h Intel Corporation
+ Device 7112h 82371AB/EB/MB PIIX4/E/M USB Controller
+ Command 0005h (I/O Access, BusMaster)
+ Status 0280h (Supports Back-To-Back Trans., Medium Timing)
+ Revision 01h, Header Type 00h, Bus Latency 40h
+ Self test 00h (Self test not supported)
+ PCI Class Serial, type USB (UHCI)
+ Address 4 is an I/O Port : 0000DD80h
+ System IRQ 9, INT# D
+
+ Bus 0 (PCI), Device Number 7, Device Function 3
+ Vendor 8086h Intel Corporation
+ Device 7113h 82371AB PIIX4 Power Management Controller
+ Command 0003h (I/O Access, Memory Access)
+ Status 0280h (Supports Back-To-Back Trans., Medium Timing)
+ Revision 01h, Header Type 00h, Bus Latency 00h
+ Self test 00h (Self test not supported)
+ PCI Class Bridge, type PCI to Other
+
+ Bus 0 (PCI), Device Number 8, Device Function 0
+ Vendor 1002h ATI Technologies
+ Device 5144h Radeon 7200 QD DDR/SDR
+ Command 0187h (I/O Access, Memory Access, BusMaster, Wait Cycles, System Errors)
+ Status 0290h (Has Capabilities List, Supports Back-To-Back Trans., Medium Timing)
+ Revision 00h, Header Type 00h, Bus Latency 40h
+ Self test 00h (Self test not supported)
+ Cache line size 32 Bytes (8 DWords)
+ PCI Class Display, type VGA
+ Subsystem ID 00291002h All-in-Wonder Radeon PCI
+ Subsystem Vendor 1002h ATI Technologies
+ Address 0 is a Memory Address (anywhere in 0-4Gb, Prefetchable) : E8000000h
+ Address 1 is an I/O Port : 0000DE00h
+ Address 2 is a Memory Address (anywhere in 0-4Gb) : EFF80000h
+ Expansion ROM of 128Kb decoded by this card
+ New Capabilities List Present:
+   Power Management Capability
+     Supports power state D1
+     Current Power State : D0 (Device operational, no power saving)
+
+
+PCI slot IRQ mapping information
+ PCI slot mapping information read successfully
+
+ PCI slot IRQ availability listing
+
+  PCI Bus 0, Device 0, Slot 00
+   INTA# can be connected to IRQs None
+   INTB# can be connected to IRQs None
+   INTC# can be connected to IRQs None
+   INTD# can be connected to IRQs None
+
+  PCI Bus 0, Device 1, Slot 00
+   INTA# can be connected to IRQs 3,4,5,6,7,9,10,11,12,14,15 
+   INTB# can be connected to IRQs 3,4,5,6,7,9,10,11,12,14,15 
+   INTC# can be connected to IRQs 3,4,5,6,7,9,10,11,12,14,15 
+   INTD# can be connected to IRQs 3,4,5,6,7,9,10,11,12,14,15 
+
+  PCI Bus 0, Device 7, Slot 00
+   INTA# can be connected to IRQs 3,4,5,6,7,9,10,11,12,14,15 
+   INTB# can be connected to IRQs 3,4,5,6,7,9,10,11,12,14,15 
+   INTC# can be connected to IRQs 3,4,5,6,7,9,10,11,12,14,15 
+   INTD# can be connected to IRQs 3,4,5,6,7,9,10,11,12,14,15 
+
+  PCI Bus 0, Device 8, Slot 01
+   INTA# can be connected to IRQs 3,4,5,6,7,9,10,11,12,14,15 
+   INTB# can be connected to IRQs 3,4,5,6,7,9,10,11,12,14,15 
+   INTC# can be connected to IRQs 3,4,5,6,7,9,10,11,12,14,15 
+   INTD# can be connected to IRQs 3,4,5,6,7,9,10,11,12,14,15 
+
+  PCI Bus 0, Device 9, Slot 02
+   INTA# can be connected to IRQs 3,4,5,6,7,9,10,11,12,14,15 
+   INTB# can be connected to IRQs 3,4,5,6,7,9,10,11,12,14,15 
+   INTC# can be connected to IRQs 3,4,5,6,7,9,10,11,12,14,15 
+   INTD# can be connected to IRQs 3,4,5,6,7,9,10,11,12,14,15 
+
+  PCI Bus 0, Device 10, Slot 03
+   INTA# can be connected to IRQs 3,4,5,6,7,9,10,11,12,14,15 
+   INTB# can be connected to IRQs 3,4,5,6,7,9,10,11,12,14,15 
+   INTC# can be connected to IRQs 3,4,5,6,7,9,10,11,12,14,15 
+   INTD# can be connected to IRQs 3,4,5,6,7,9,10,11,12,14,15 
+
+  PCI Bus 0, Device 11, Slot 04
+   INTA# can be connected to IRQs 3,4,5,6,7,9,10,11,12,14,15 
+   INTB# can be connected to IRQs 3,4,5,6,7,9,10,11,12,14,15 
+   INTC# can be connected to IRQs 3,4,5,6,7,9,10,11,12,14,15 
+   INTD# can be connected to IRQs 3,4,5,6,7,9,10,11,12,14,15 
+
+  PCI Bus 0, Device 12, Slot 05
+   INTA# can be connected to IRQs 3,4,5,6,7,9,10,11,12,14,15 
+   INTB# can be connected to IRQs 3,4,5,6,7,9,10,11,12,14,15 
+   INTC# can be connected to IRQs 3,4,5,6,7,9,10,11,12,14,15 
+   INTD# can be connected to IRQs 3,4,5,6,7,9,10,11,12,14,15 
+
+
+ PCI slot INTx to IRQ-router mappings
+
+  SLOT BUS DEV  INTA INTB INTC INTD
+   00   0   0    00   00   00   00  82443LX/EX 440LX/EX CPU to PCI Bridge
+   00   0   1    60   61   62   63  82443LX/EX 440LX/EX PCI to AGP Bridge
+   00   0   7    60   61   62   63  82371AB PIIX4 ISA Bridge
+   01   0   8    60   61   62   63  Radeon 7200 QD DDR/SDR
+   02   0   9    61   62   63   60  No Device Detected
+   03   0  10    62   63   60   61  No Device Detected
+   04   0  11    63   60   61   62  No Device Detected
+   05   0  12    60   61   62   63  No Device Detected
+
+ IRQ's dedicated to PCI : None
+
+ROM PCI IRQ routing table Windows 9x Compatibility Tests....
+ ROM IRQ routing table found at F000h:8110h
+ Table Version 1.0 - OK
+ Table size 160 bytes - OK
+ Table Checksum A0h - OK
+ IRQ's dedicated to PCI : None
+ The ROM PCI IRQ routing table appears to be OK.
+
+IRQ Summary: IRQs 9,14,15 are used by PCI devices
+Shared IRQs: There are no shared PCI IRQs
