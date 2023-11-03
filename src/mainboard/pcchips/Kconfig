@@ -1,0 +1,17 @@
+## SPDX-License-Identifier: GPL-2.0-only
+
+if VENDOR_PCCHIPS
+
+choice
+	prompt "Mainboard model"
+
+source "src/mainboard/pcchips/*/Kconfig.name"
+
+endchoice
+
+source "src/mainboard/pcchips/*/Kconfig"
+
+config MAINBOARD_VENDOR
+	default "PCChips"
+
+endif # VENDOR_PCCHIPS
