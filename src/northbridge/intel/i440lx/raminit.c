@@ -26,7 +26,7 @@
 #define DUMPNORTH()
 #endif
 
-/* SDRAMC[7:5] - SDRAM Mode Select (SMS). */
+/* DRAMXC[7:5] - SDRAM Mode Select (SMS). */
 #define RAM_COMMAND_NORMAL	0x0
 #define RAM_COMMAND_NOP		0x1
 #define RAM_COMMAND_PRECHARGE	0x2
