@@ -1,2 +1,2 @@
-config VENDOR_PCChips
+config VENDOR_PCCHIPS
 	bool "PCChips"
