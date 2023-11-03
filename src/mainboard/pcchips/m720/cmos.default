@@ -4,5 +4,3 @@ boot_option=Fallback
 debug_level=Debug
 nmi=Enable
 udma_enable=Enable
-scsi_lvd_term=Enable
-scsi_se_term=Enable

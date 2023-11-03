@@ -5,7 +5,6 @@ chip northbridge/intel/i440lx		# Northbridge
     chip southbridge/intel/i82371eb	# Southbridge
       device pci 7.0 on			# ISA bridge
         chip superio/ite/ite8679	# Super I/O
-          
         end
       end
     end
