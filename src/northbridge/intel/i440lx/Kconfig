@@ -11,7 +11,7 @@ config SDRAMPWR_4DIMM
 	depends on NORTHBRIDGE_INTEL_I440LX
 	default n
 	help
-	  This option affects how the SDRAMC register is programmed.
+	  This option affects how the MSBC register and  is programmed.
 	  Memory clock signals will not be routed properly if this option
 	  is set wrong.
 

@@ -698,7 +698,6 @@ static void sdram_enable(void)
 
 	/* 6. Finally enable refresh. */
 	PRINT_DEBUG("RAM Enable %d: %s\n", 6, "Enable refresh");
-	pci_write_config8(NB, PMCR, 0x10);
 	spd_enable_refresh();
 	udelay(1);
 
