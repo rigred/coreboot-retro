@@ -59,6 +59,18 @@ void pnp_enter_conf_mode_870155aa(struct device *dev)
 		outb(0x55, dev->path.pnp.port);
 }
 
+void pnp_enter_conf_mode_868055aa(struct device *dev)
+{
+	outb(0x86, dev->path.pnp.port);
+	outb(0x80, dev->path.pnp.port);
+	outb(0x55, dev->path.pnp.port);
+
+	if (dev->path.pnp.port == 0x3bd)
+		outb(0xaa, dev->path.pnp.port);
+	else
+		outb(0x55, dev->path.pnp.port);
+}
+
 void pnp_exit_conf_mode_0202(struct device *dev)
 {
 	pnp_write_config(dev, 0x02, (1 << 1));
@@ -152,6 +164,29 @@ static void pnp_ssdt_enter_conf_mode_870155aa(struct device *dev,
 	acpigen_emit_namestring(idx);
 }
 
+static void pnp_ssdt_enter_conf_mode_868055aa(struct device *dev,
+					      const char *idx, const char *data)
+{
+	acpigen_write_store();
+	acpigen_write_byte(0x86);
+	acpigen_emit_namestring(idx);
+
+	acpigen_write_store();
+	acpigen_write_byte(0x80);
+	acpigen_emit_namestring(idx);
+
+	acpigen_write_store();
+	acpigen_write_byte(0x55);
+	acpigen_emit_namestring(idx);
+
+	acpigen_write_store();
+	if (dev->path.pnp.port == 0x3bd)
+		acpigen_write_byte(0xaa);
+	else
+		acpigen_write_byte(0x55);
+	acpigen_emit_namestring(idx);
+}
+
 static void pnp_ssdt_exit_conf_mode_aa(struct device *dev, const char *idx, const char *data)
 {
 	acpigen_write_store();
@@ -231,6 +266,15 @@ const struct pnp_mode_ops pnp_conf_mode_870155_aa = {
 	.exit_conf_mode  = pnp_exit_conf_mode_0202,
 #if CONFIG(HAVE_ACPI_TABLES)
 	.ssdt_enter_conf_mode = pnp_ssdt_enter_conf_mode_870155aa,
+	.ssdt_exit_conf_mode = pnp_ssdt_exit_conf_mode_0202,
+#endif
+};
+
+const struct pnp_mode_ops pnp_conf_mode_868055_aa = {
+	.enter_conf_mode = pnp_enter_conf_mode_868055aa,
+	.exit_conf_mode  = pnp_exit_conf_mode_0202,
+#if CONFIG(HAVE_ACPI_TABLES)
+	.ssdt_enter_conf_mode = pnp_ssdt_enter_conf_mode_868055aa,
 	.ssdt_exit_conf_mode = pnp_ssdt_exit_conf_mode_0202,
 #endif
 };
