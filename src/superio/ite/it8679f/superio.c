@@ -35,7 +35,7 @@ static struct device_operations ops = {
 	.enable_resources = pnp_enable_resources,
 	.enable           = pnp_alt_enable,
 	.init             = it8679f_init,
-	.ops_pnp_mode     = &pnp_conf_mode_868055_aa,
+	.ops_pnp_mode     = &pnp_conf_mode_86805555,
 };
 
 static struct pnp_info pnp_dev_info[] = {

@@ -59,16 +59,30 @@ void pnp_enter_conf_mode_870155aa(struct device *dev)
 		outb(0x55, dev->path.pnp.port);
 }
 
-void pnp_enter_conf_mode_868055aa(struct device *dev)
+void pnp_enter_conf_mode_86805555(struct device *dev)
 {
+    /* PNP Seqeuence      IO Address Port	Data Port    
+	 * 86, 80, 55, 55  -> 0x3F0	  			0x3F1
+	 * 86, 80, 55, AA  -> 0x3BD				0x3BF
+	 * 86, 80, AA, 55  -> 0x370				0x371
+	*/
+
 	outb(0x86, dev->path.pnp.port);
 	outb(0x80, dev->path.pnp.port);
 	outb(0x55, dev->path.pnp.port);
+	outb(0x55, dev->path.pnp.port);
 
-	if (dev->path.pnp.port == 0x3bd)
-		outb(0xaa, dev->path.pnp.port);
-	else
-		outb(0x55, dev->path.pnp.port);
+	/* Write the other 32 bytes to hardcoded 3f0 I/O port */
+    unsigned char data[] = { 	
+		0x6A, 0xB5, 0xDA, 0xED, 0xF6, 0xFB, 0x7D, 0xBE, 0xDF, 0x6F,
+        0x37, 0x1B, 0x0D, 0x86, 0xC3, 0x61, 0xB0, 0x58, 0x2C, 0x16,
+		0x8B, 0x45, 0xA2, 0xD1, 0xE8, 0x74, 0x3A, 0x9D, 0xCE, 0xE7,
+		0x73, 0x39
+	};
+
+	for (int i = 0; i < 32; i++) {
+        outb(data[i], 0x3f0);
+    }
 }
 
 void pnp_exit_conf_mode_0202(struct device *dev)
@@ -164,7 +178,7 @@ static void pnp_ssdt_enter_conf_mode_870155aa(struct device *dev,
 	acpigen_emit_namestring(idx);
 }
 
-static void pnp_ssdt_enter_conf_mode_868055aa(struct device *dev,
+static void pnp_ssdt_enter_conf_mode_86805555(struct device *dev,
 					      const char *idx, const char *data)
 {
 	acpigen_write_store();
@@ -180,10 +194,7 @@ static void pnp_ssdt_enter_conf_mode_868055aa(struct device *dev,
 	acpigen_emit_namestring(idx);
 
 	acpigen_write_store();
-	if (dev->path.pnp.port == 0x3bd)
-		acpigen_write_byte(0xaa);
-	else
-		acpigen_write_byte(0x55);
+	acpigen_write_byte(0x55);
 	acpigen_emit_namestring(idx);
 }
 
@@ -270,11 +281,11 @@ const struct pnp_mode_ops pnp_conf_mode_870155_aa = {
 #endif
 };
 
-const struct pnp_mode_ops pnp_conf_mode_868055_aa = {
-	.enter_conf_mode = pnp_enter_conf_mode_868055aa,
+const struct pnp_mode_ops pnp_conf_mode_86805555 = {
+	.enter_conf_mode = pnp_enter_conf_mode_86805555,
 	.exit_conf_mode  = pnp_exit_conf_mode_0202,
 #if CONFIG(HAVE_ACPI_TABLES)
-	.ssdt_enter_conf_mode = pnp_ssdt_enter_conf_mode_868055aa,
+	.ssdt_enter_conf_mode = pnp_ssdt_enter_conf_mode_86805555,
 	.ssdt_exit_conf_mode = pnp_ssdt_exit_conf_mode_0202,
 #endif
 };
