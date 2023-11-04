@@ -94,7 +94,7 @@ unsigned long write_pirq_routing_table(unsigned long addr)
 	pirq_info++;
 	slot_num++;
 
-	/* 82443BX/ZX 440BX/ZX PCI to AGP Bridge  */
+	/* 82443LX/EX 440LX/EX PCI to AGP Bridge  */
 	write_pirq_info(pirq_info, 0, PCI_DEVFN(0x01, 0),
 			0x60, 0xdeb8, 0x61, 0xdeb8, 0x62, 0xdeb8, 0x63, 0xdeb8, 0, 0);
 	pirq_info++;

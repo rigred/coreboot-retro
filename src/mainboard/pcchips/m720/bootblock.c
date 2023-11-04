@@ -2,15 +2,15 @@
 
 #include <bootblock_common.h>
 
-/* 
-#include <superio/winbond/common/winbond.h>
-#include <superio/winbond/w83977tf/w83977tf.h>
+ 
+#include <superio/ite/common/ite.h>
+#include <superio/ite/it8679f/it8679f.h>
 
-#define SERIAL_DEV PNP_DEV(0x3f0, W83977TF_SP1)
+#define SERIAL_DEV PNP_DEV(0x3f0, IT8679F_SP1)
 
-*/
+
 
 void bootblock_mainboard_early_init(void)
 {
-	// winbond_enable_serial(SERIAL_DEV, CONFIG_TTYS0_BASE);
+	 ite_enable_serial(SERIAL_DEV, CONFIG_TTYS0_BASE);
 }
