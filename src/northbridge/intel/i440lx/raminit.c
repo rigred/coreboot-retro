@@ -378,7 +378,7 @@ struct dimm_size {
 static struct dimm_size spd_get_dimm_size(unsigned int device)
 {
 	struct dimm_size sz;
-	int i, module_density, dimm_banks, drt;
+	int i, module_density, dimm_banks;
 	sz.side1 = 0;
 	module_density = smbus_read_byte(device, SPD_DENSITY_OF_EACH_ROW_ON_MODULE);
 	dimm_banks = smbus_read_byte(device, SPD_NUM_DIMM_BANKS);
@@ -448,7 +448,7 @@ static struct dimm_size spd_get_dimm_size(unsigned int device)
 static void set_dram_row_attributes(void)
 {
 	int i, dra, drb, col, width, value, rps;
-	u16 drt;
+	u16 drt = 0;
 	u8 bpr; /* Top 8 bits of PGPOL (Useless for 440LX) */
 	u8 nbxecc = 0; /* PACCFG[Not Used] */
 	u8 edo, sd, regsd; /* EDO, SDRAM, registered SDRAM */
@@ -476,7 +476,6 @@ static void set_dram_row_attributes(void)
 				edo = 1;
 			} else if (value == SPD_MEMORY_TYPE_SDRAM) {
 				sd = 1;
-				drt = 0x02;
 			}
 			PRINT_DEBUG("Found DIMM in slot %d\n", i);
 
@@ -640,8 +639,11 @@ static void set_dram_row_attributes(void)
 		} else {
 			/* If there's no DIMM in the slot, set dra to 0x00. and drt to empty row */
 			dra = 0x00;
-			drt += 0x03;
 			
+			// Set DRT bits for both rows to 11 for an empty DIMM
+    		drt |= (0x3 << (i * 2));
+    		drt |= (0x3 << ((i * 2) + 1));
+    			
 			/* Still have to propagate DRB over. */
 			drb &= 0xff;
 			drb |= (drb << 8);
