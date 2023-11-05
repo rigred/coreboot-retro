@@ -396,7 +396,7 @@ static void northbridge_init(void)
 
 	uint16_t reg16;
 	reg16 = pci_read_config16(NB, PACCFG);
-	printk(BIOS_DEBUG, "CPU Host Freq: 6%C MHz\n", (reg16 & 0x4000) ? '0' : '6');
+	printk(BIOS_DEBUG, "CPU Host Freq: 6%d MHz\n", (reg16 & 0x4000) ? 0 : 6);
 
 }
 
@@ -704,7 +704,9 @@ static void set_dram_row_attributes(void)
 		rps |= (dra & 0x0f) << (i * 4);
 	}
 
-	pci_write_config16(NB, DRT, drt);
+	pci_write_config8(NB, DRT, drt);
+	pci_write_config8(NB, DRT + 1, drt >> 8);
+
 
 	drt = pci_read_config16(NB, DRT);
 
@@ -714,6 +716,8 @@ static void set_dram_row_attributes(void)
 static void sdram_enable(void)
 {
 	int i;
+	PRINT_DEBUG("Northbridge %s SDRAM enable:\n", "prior to");
+	DUMPNORTH();
 
 	/* 0. Wait until power/voltages and clocks are stable (200us). */
 	udelay(200);
@@ -750,7 +754,7 @@ static void sdram_enable(void)
 	spd_enable_refresh();
 	udelay(1);
 
-	PRINT_DEBUG("Northbridge %s SDRAM init:\n", "following");
+	PRINT_DEBUG("Northbridge %s SDRAM enable:\n", "following");
 	DUMPNORTH();
 }
 
