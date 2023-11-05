@@ -315,25 +315,18 @@ static void do_ram_command(u32 command)
 		addr_offset = 0;
 		caslatency = 3; /* TODO: Dynamically get CAS latency later. */
 		if (command == RAM_COMMAND_MRS) {
-			/*
-			 * MAA[12:11,9:0] must be inverted when sent to DIMM
-			 * 2 or 3 (no inversion if sent to DIMM 0 or 1).
-			 */
-			if ((i >= 0 && i <= 3) && caslatency == 3)
+			if (caslatency == 3)
 				addr_offset = 0x1d0;
-			if ((i >= 4 && i <= 7) && caslatency == 3)
-				addr_offset = 0x1e28;
-			if ((i >= 0 && i <= 3) && caslatency == 2)
+			if (caslatency == 2)
 				addr_offset = 0x150;
-			if ((i >= 4 && i <= 7) && caslatency == 2)
-				addr_offset = 0x1ea8;
 		}
 
 		dimm_end = pci_read_config8(NB, DRB + i);
 
 		addr = (void *)((dimm_start * 8 * 1024 * 1024) + addr_offset);
 		if (dimm_end > dimm_start) {
-#if 0
+
+#if CONFIG_DEBUG_RAM_SETUP
 			PRINT_DEBUG("    Sending RAM command 0x");
 			PRINT_DEBUG_HEX16(reg16);
 			PRINT_DEBUG(" to 0x");
@@ -707,8 +700,11 @@ static void set_dram_row_attributes(void)
 	pci_write_config8(NB, DRT, drt);
 	pci_write_config8(NB, DRT + 1, drt >> 8);
 
+	drt = pci_read_config(NB, DRT+1);
+	drt <<=8;
+	drt |= pci_read_config8(NB, DRT);
 
-	drt = pci_read_config16(NB, DRT);
+	drt = pci_read_config8(NB, DRT);
 
 	PRINT_DEBUG("%s has been set to 0x%02x\n", "DRT", drt);
 }
