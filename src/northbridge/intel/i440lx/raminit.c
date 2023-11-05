@@ -325,15 +325,6 @@ static void do_ram_command(u32 command)
 
 		addr = (void *)((dimm_start * 8 * 1024 * 1024) + addr_offset);
 		if (dimm_end > dimm_start) {
-
-#if CONFIG_DEBUG_RAM_SETUP
-			PRINT_DEBUG("    Sending RAM command 0x");
-			PRINT_DEBUG_HEX16(reg16);
-			PRINT_DEBUG(" to 0x");
-			PRINT_DEBUG_HEX32(addr);
-			PRINT_DEBUG("\n");
-#endif
-
 			read32(addr);
 		}
 
