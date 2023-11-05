@@ -700,11 +700,9 @@ static void set_dram_row_attributes(void)
 	pci_write_config8(NB, DRT, drt);
 	pci_write_config8(NB, DRT + 1, drt >> 8);
 
-	drt = pci_read_config(NB, DRT+1);
+	drt = pci_read_config8(NB, DRT+1);
 	drt <<=8;
 	drt |= pci_read_config8(NB, DRT);
-
-	drt = pci_read_config8(NB, DRT);
 
 	PRINT_DEBUG("%s has been set to 0x%02x\n", "DRT", drt);
 }
