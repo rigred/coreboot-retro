@@ -1,0 +1,13 @@
+chip northbridge/intel/i440lx		# Northbridge
+  device domain 0 on		# PCI domain
+    chip southbridge/intel/i82371eb	# Southbridge
+      device pci 7.0 on			# ISA bridge
+      register "gpo" = "0x7fffbbff"
+      register "gpo22_enable" = "1"	# No idea why, but this board uses this
+      register "gpo24_enable" = "1"
+      register "gpo25_enable" = "1"
+      register "gpo26_enable" = "1"
+      end
+    end
+  end
+end
