@@ -46,8 +46,10 @@ uintptr_t cbmem_top_chipset(void)
 	int tseg = pci_read_config8(NB, ESMRAMC) & 0x7;
 	if ((tseg & 0x1) && gsmrame) {
 		int tseg_size = 128 * KiB * (1 << (tseg >> 1));
+		printk(BIOS_DEBUG, "Setting TSEG size to %ld\n", tseg_size);
 		tom -= tseg_size;
 	}
+	printk(BIOS_DEBUG, "Setting TOM size to %ld\n", tom);
 	return tom;
 }
 

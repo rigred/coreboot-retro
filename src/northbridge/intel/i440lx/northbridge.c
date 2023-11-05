@@ -54,7 +54,7 @@ static void i440lx_domain_read_resources(struct device *dev)
 		/* Compute the top of low memory. */
 		tolmk = pci_tolm / 1024;
 
-		printk(BIOS_DEBUG, "Top of Low Memory: %ld KB\n", tolmk * KiB);
+		printk(BIOS_DEBUG, "Top of Low Memory: %ld bytes \n", tolmk);
 
 		if (tolmk >= tomk) {
 			/* The PCI hole does not overlap the memory. */
