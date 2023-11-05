@@ -339,6 +339,11 @@ static void set_dram_buffer_strength(void)
 	pci_write_config32(NB, MBSC, 0x00000000);
 }
 
+static void set_chipset_regs(void) {
+	/* TODO? */
+	pci_write_config8(NB, PCI_LATENCY_TIMER, 0x40);
+}
+
 /*-----------------------------------------------------------------------------
 DIMM-independent configuration functions.
 -----------------------------------------------------------------------------*/
@@ -696,6 +701,12 @@ static void set_dram_row_attributes(void)
 	drt |= pci_read_config8(NB, DRT);
 
 	PRINT_DEBUG("%s has been set to 0x%02x\n", "DRT", drt);
+
+	/* Set DRAMC. Don't enable refresh for now. */
+	pci_write_config8(NB, DRAMC, 0x00);
+
+	/* Cas latency 3, and other shouldbe properly from spd too */
+	pci_write_config8(NB, DRAMT, 0xAC);
 }
 
 static void sdram_enable(void)
@@ -759,6 +770,7 @@ void sdram_initialize(int s3resume)
 	set_dram_row_attributes();
 	/* Set up DRAM buffer strength. */
 	set_dram_buffer_strength();
+	set_chipset_regs();
 	sdram_enable();
 
 	/* Clear any errors reported during raminit. */
