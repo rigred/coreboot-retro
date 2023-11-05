@@ -35,20 +35,6 @@
 
 /* Table format: register, value. */
 static const u8 register_values[] = {
-	/* DBC - Data Buffer Control Register 
-	 * 0x53
-	 *
-	 * [7:7] Reserved
-	 * [6:6] CPU-to-PCI IDE Posting Enable
-	 *       1 = Enable
-	 *       0 = Disable
-	 * [5:5] WC Write Post During I/O Bridge Access Enable
-	 *       1 = Enable
-	 *       0 = Disable
-	 * [4:0] Reserved
-	 */
-	DBC, 0x60, /* Enable Posting and WC Write*/
-
 	/* PACCFG - PAC Configuration Register
 	 * 0x50 - 0x51
 	 *
@@ -84,10 +70,25 @@ static const u8 register_values[] = {
 	 * [04:00] Reserved
 	 */
 #if CONFIG(SMP)
-	PACCFG + 1, 0x00,
+	PACCFG + 1, 0x0C,
 #else
-	PACCFG + 1, 0x80,
+	PACCFG + 1, 0x8C,
 #endif
+
+	/* DBC - Data Buffer Control Register 
+	 * 0x53
+	 *
+	 * [7:7] Reserved
+	 * [6:6] CPU-to-PCI IDE Posting Enable
+	 *       1 = Enable
+	 *       0 = Disable
+	 * [5:5] WC Write Post During I/O Bridge Access Enable
+	 *       1 = Enable
+	 *       0 = Disable
+	 * [4:0] Reserved
+	 */
+	DBC, 0xC3, /* The absolute basics*/
+
 
 
 	/* DRT DRAM Row Type (must be set)
@@ -108,6 +109,8 @@ static const u8 register_values[] = {
 	 * [13:12]  DRB[6], row 6
 	 * [15:14]  DRB[7], row 7
 	 */
+	DRT,   0xFF,
+	DRT+1, 0xFF,
 	
 
 	/* DRAMC - DRAM Control Register
@@ -157,6 +160,7 @@ static const u8 register_values[] = {
 	 *       0 = SLOW (Default)
 	 */
 	/* Set timings later */
+	DRAMT, 0x00,
 
 	/*
 	 * PAM[6:0] - Programmable Attribute Map Registers
@@ -323,6 +327,14 @@ static void do_ram_command(u32 command)
 
 		addr = (void *)((dimm_start * 8 * 1024 * 1024) + addr_offset);
 		if (dimm_end > dimm_start) {
+#if 0
+			PRINT_DEBUG("    Sending RAM command 0x");
+			PRINT_DEBUG_HEX16(reg16);
+			PRINT_DEBUG(" to 0x");
+			PRINT_DEBUG_HEX32(addr);
+			PRINT_DEBUG("\n");
+#endif
+
 			read32(addr);
 		}
 
@@ -333,7 +345,8 @@ static void do_ram_command(u32 command)
 
 static void set_dram_buffer_strength(void)
 {
-
+	// set drive strength
+	pci_write_config32(NB, MBSC, 0x00000000);
 }
 
 /*-----------------------------------------------------------------------------
@@ -355,6 +368,32 @@ static void spd_enable_refresh(void)
 /*-----------------------------------------------------------------------------
 Public interface.
 -----------------------------------------------------------------------------*/
+
+
+static void northbridge_init(void)
+{
+	uint32_t reg32;
+
+	reg32 = pci_read_config32(NB, APBASE);
+	reg32 &= 0xe8000000U;
+	pci_write_config32(NB, APBASE, reg32);
+
+#if CONFIG_DEBUG_RAM_SETUP
+	/*
+	 * apbase likely problematic
+	 */
+	reg32 = pci_read_config32(NB, APBASE);
+	PRINT_DEBUG("APBASE ");
+	PRINT_DEBUG_HEX32(reg32);
+	PRINT_DEBUG("\n");
+#endif
+
+	uint16_t reg16;
+	reg16 = pci_read_config16(NB, PACCFG);
+	printk(BIOS_DEBUG, "CPU Host Freq: 6%C MHz\n", (reg16 & 0x4000) ? '0' : '6');
+
+}
+
 
 static void sdram_set_registers(void)
 {
@@ -614,16 +653,16 @@ static void set_dram_row_attributes(void)
 
 			// Set DRT bits for side1
 			if (sz.side1 > 0) {
-				drt |= (0x2 << (i * 2));  // SDRAM: Set the corresponding DRT bits to 10
+				drt |= (0x2 << (i * 4));  // SDRAM: Set the corresponding DRT bits to 10
 			} else {
-				drt |= (0x3 << (i * 2));  // Empty row: Set the corresponding DRT bits to 11
+				drt |= (0x3 << (i * 4));  // Empty row: Set the corresponding DRT bits to 11
 			}
 
 			// Set DRT bits for side2
 			if (sz.side2 > 0) {
-				drt |= (0x2 << ((i * 2) + 1));  // SDRAM: Set the corresponding DRT bits to 10
+				drt |= (0x2 << ((i * 4) + 2));  // SDRAM: Set the corresponding DRT bits to 10
 			} else {
-				drt |= (0x3 << ((i * 2) + 1));  // Empty row: Set the corresponding DRT bits to 11
+				drt |= (0x3 << ((i * 4) + 2));  // Empty row: Set the corresponding DRT bits to 11
 			}
 			
 			/* Divide size by 8 to set up the DRB registers. */
@@ -641,8 +680,8 @@ static void set_dram_row_attributes(void)
 			dra = 0x00;
 			
 			// Set DRT bits for both rows to 11 for an empty DIMM
-    		drt |= (0x3 << (i * 2));
-    		drt |= (0x3 << ((i * 2) + 1));
+    		drt |= (0x3 << (i * 4));
+    		drt |= (0x3 << ((i * 4) + 2));
     			
 			/* Still have to propagate DRB over. */
 			drb &= 0xff;
@@ -660,6 +699,8 @@ static void set_dram_row_attributes(void)
 	}
 
 	pci_write_config16(NB, DRT, drt);
+
+	drt = pci_read_config16(NB, DRT);
 
 	PRINT_DEBUG("%s has been set to 0x%02x\n", "DRT", drt);
 }
@@ -714,6 +755,8 @@ void sdram_initialize(int s3resume)
 {
 	timestamp_add_now(TS_INITRAM_START);
 	enable_spd();
+
+	northbridge_init();
 
 	dump_spd_registers();
 	sdram_set_registers();

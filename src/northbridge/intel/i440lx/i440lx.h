@@ -10,6 +10,7 @@
  * Reserved or Intel Reserved and should not be touched.
  */
 
+#define APBASE  0x10 /* Aperture Base Address (0x10->0x13) (0x00000008) */
 #define PACCFG  0x50 /* 440LX Configuration (0x0000:0s00_s000_0000_0s00b). */
 #define DBC		0x53 /* Data Buffer control register */
 #define DRT		0x55 /* DRAM Row Type on 440LX, is part of [4:3] DRAMC on 440BX*/
