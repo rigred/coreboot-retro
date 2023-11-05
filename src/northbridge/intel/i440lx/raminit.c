@@ -23,12 +23,14 @@
 #define PRINT_DEBUG_HEX8(x)	printk(BIOS_DEBUG, "%02x", x)
 #define PRINT_DEBUG_HEX16(x)	printk(BIOS_DEBUG, "%04x", x)
 #define PRINT_DEBUG_HEX32(x)	printk(BIOS_DEBUG, "%08x", x)
+#define PRINT_DEBUG_HEX32_POINTER(x)	printk(BIOS_DEBUG, "%08p", x)
 #define DUMPNORTH()		dump_pci_device(NB)
 #else
 #define PRINT_DEBUG(x...)
 #define PRINT_DEBUG_HEX8(x)
 #define PRINT_DEBUG_HEX16(x)
 #define PRINT_DEBUG_HEX32(x)
+#define PRINT_DEBUG_HEX32_POINTER(x)
 #define DUMPNORTH()
 #endif
 
@@ -330,7 +332,7 @@ static void do_ram_command(u32 command)
 			PRINT_DEBUG("    Sending RAM command 0x");
 			PRINT_DEBUG_HEX16(reg16);
 			PRINT_DEBUG(" to 0x");
-			PRINT_DEBUG_HEX32(addr);
+			PRINT_DEBUG_HEX32_POINTER(addr);
 			PRINT_DEBUG("\n");
 #endif
 
@@ -652,6 +654,9 @@ static void set_dram_row_attributes(void)
 
 			// Set DRT bits for side1
 			if (sz.side1 > 0) {
+#if CONFIG_DEBUG_RAM_SETUP
+			printk("DIMM %d side 1: %d MB", i, sz.side1);
+#endif
 				drt |= (0x2 << (i * 4));  // SDRAM: Set the corresponding DRT bits to 10
 			} else {
 				drt |= (0x3 << (i * 4));  // Empty row: Set the corresponding DRT bits to 11
@@ -659,6 +664,9 @@ static void set_dram_row_attributes(void)
 
 			// Set DRT bits for side2
 			if (sz.side2 > 0) {
+#if CONFIG_DEBUG_RAM_SETUP
+			printk("DIMM %d side 2: %d MB", i, sz.side1);
+#endif
 				drt |= (0x2 << ((i * 4) + 2));  // SDRAM: Set the corresponding DRT bits to 10
 			} else {
 				drt |= (0x3 << ((i * 4) + 2));  // Empty row: Set the corresponding DRT bits to 11
