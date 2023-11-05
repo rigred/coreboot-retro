@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include <bootblock_common.h>
-
  
 #include <superio/ite/common/ite.h>
 #include <superio/ite/it8679f/it8679f.h>
