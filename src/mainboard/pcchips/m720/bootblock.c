@@ -12,5 +12,5 @@
 
 void bootblock_mainboard_early_init(void)
 {
-	 //ite_enable_serial(SERIAL_DEV, CONFIG_TTYS0_BASE);
+	 it8679f_enable_serial(SERIAL_DEV, CONFIG_TTYS0_BASE);
 }

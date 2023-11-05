@@ -12,4 +12,7 @@
 #define IT8679F_KBCM 0x06 /* Mouse */
 #define IT8679F_GPIO 0x07 /* GPIO */
 
+void it8679f_48mhz_clkin(void);
+void it8679f_enable_serial(pnp_devfn_t dev, u16 iobase);
+
 #endif /* SUPERIO_ITE_IT8679F_H */
