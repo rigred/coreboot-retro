@@ -13,20 +13,20 @@ static void it8679f_init(struct device *dev)
 	if (!dev->enabled)
 		return;
 
-	switch (dev->path.pnp.device) {
-	case IT8679F_FDC: /* TODO. */
-		break;
-	case IT8679F_PP: /* TODO. */
-		break;
-	case IT8679F_APC: /* TODO. */
-		break;
-	case IT8679F_KBCK:
-		set_kbc_ps2_mode();
-		pc_keyboard_init(NO_AUX_DEVICE);
-		break;
-	case IT8679F_KBCM: /* TODO. */
-		break;
-	}
+//	switch (dev->path.pnp.device) {
+//	case IT8679F_FDC: /* TODO. */
+//		break;
+//	case IT8679F_PP: /* TODO. */
+//		break;
+//	case IT8679F_APC: /* TODO. */
+//		break;
+//	case IT8679F_KBCK:
+//		set_kbc_ps2_mode();
+//		pc_keyboard_init(NO_AUX_DEVICE);
+//		break;
+//	case IT8679F_KBCM: /* TODO. */
+//		break;
+//	}
 }
 
 static struct device_operations ops = {
@@ -42,12 +42,12 @@ static struct pnp_info pnp_dev_info[] = {
 	{ NULL, IT8679F_FDC, PNP_IO0 | PNP_IRQ0 | PNP_DRQ0, 0x07f8, },
 	{ NULL, IT8679F_SP1, PNP_IO0 | PNP_IRQ0, 0x07f8, },
 	{ NULL, IT8679F_SP2, PNP_IO0 | PNP_IRQ0, 0x07f8, },
-	{ NULL, IT8679F_PP, PNP_IO0 | PNP_IRQ0 | PNP_DRQ0, 0x07f8, },
+	/* { NULL, IT8679F_PP, PNP_IO0 | PNP_IRQ0 | PNP_DRQ0, 0x07f8, },
 	{ NULL, IT8679F_APC, PNP_IO0 | PNP_IO1 | PNP_IRQ0, 0x07f8, 0x07f8, },
 	{ NULL, IT8679F_KBCK, PNP_IO0 | PNP_IO1 | PNP_IRQ0, 0x07ff, 0x07ff, },
 	{ NULL, IT8679F_KBCM, PNP_IRQ0, },
 	{ NULL, IT8679F_GPIO, PNP_IO0 | PNP_IO1 | PNP_IO2 | PNP_IRQ0,
-		0x0fff, 0x0ff8, 0x0ff8, },
+		0x0fff, 0x0ff8, 0x0ff8, }, */
 };
 
 static void enable_dev(struct device *dev)

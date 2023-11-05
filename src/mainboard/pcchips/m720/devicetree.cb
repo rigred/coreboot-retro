@@ -19,23 +19,6 @@ chip northbridge/intel/i440lx		# Northbridge
             io 0x60 = 0x2f8
             irq 0x70 = 3
           end
-          device pnp 3f0.3 on		# Parallel port
-            io 0x60 = 0x378
-            irq 0x70 = 7
-            drq 0x74 = 3
-          end
-          device pnp 3f0.4 on
-          end
-          device pnp 3f0.5 on		# PS/2 keyboard
-            io 0x60 = 0x60
-            io 0x62 = 0x64
-            irq 0x70 = 1		# PS/2 keyboard interrupt
-          end
-          device pnp 3f0.6 on		# PS/2 mouse
-            irq 0x70 = 12		# PS/2 mouse interrupt
-          end
-          device pnp 3f0.7 on		# GPIO 1
-          end
         end
       end
       device pci 7.1 on	end		# IDE

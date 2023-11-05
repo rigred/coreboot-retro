@@ -36,9 +36,10 @@
 #define FDHC    0x68 /* Fixed SDRAM Hole Control (0x00). */
 #define DRAMXC	0x6A /* DRAM Extended Mode Select [6A-6B] (0x0000) */
 #define MBSC    0x6C /* Memory Buffer Strength Control (0x55555555). */
+#define MTT		0x70 /* Multi Transaction Timer Register */
 #define SMRAM   0x72 /* System Management RAM Control (0x02). */
 
-#define ERRCMD  0x90 /* Error Command Register (0x80). */
+#define ERRCMD  0x90 /* Error Command Register (0x00). */
 #define ERRSTS  0x91 /* Error Status (0x0000). */
 // TODO: AGP stuff.
 #define ACAPID  0xa0 /* AGP Capability Identifier (0x00100002 or 0x00000000) */

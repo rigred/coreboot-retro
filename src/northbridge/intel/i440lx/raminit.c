@@ -342,6 +342,7 @@ static void set_dram_buffer_strength(void)
 static void set_chipset_regs(void) {
 	/* TODO? */
 	pci_write_config8(NB, PCI_LATENCY_TIMER, 0x40);
+	pci_write_config8(NB, MTT, 0x20);
 }
 
 /*-----------------------------------------------------------------------------
@@ -370,7 +371,7 @@ static void northbridge_init(void)
 	uint32_t reg32;
 
 	reg32 = pci_read_config32(NB, APBASE);
-	reg32 &= 0xe8000000U;
+	reg32 &= 0xE4000000;
 	pci_write_config32(NB, APBASE, reg32);
 
 #if CONFIG_DEBUG_RAM_SETUP
@@ -775,7 +776,7 @@ void sdram_initialize(int s3resume)
 
 	/* Clear any errors reported during raminit. */
 	pci_write_config8(NB, ERRSTS, 0x11);
-	pci_write_config8(NB, ERRSTS + 1, 0x1f);
+	pci_write_config8(NB, ERRSTS + 1, 0x7);
 
 	timestamp_add_now(TS_INITRAM_END);
 }
