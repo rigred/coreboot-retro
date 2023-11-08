@@ -404,6 +404,8 @@ static void sdram_set_registers(void)
 
 	/* Set registers as specified in the register_values[] array. */
 	for (i = 0; i < max; i += 2) {
+		uint8_t tmp;
+
 		pci_write_config8(NB, register_values[i], register_values[i + 1]);
 
 
