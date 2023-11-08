@@ -411,11 +411,11 @@ static void sdram_set_registers(void)
 		PRINT_DEBUG("    Set register 0x");
 		PRINT_DEBUG_HEX8(register_values[i]);
 		PRINT_DEBUG(" to 0x");
-		PRINT_DEBUG_HEX8(reg);
+		PRINT_DEBUG_HEX8(register_values[i + 1]);
 		tmp = pci_read_config8(NB, register_values[i]);
 		PRINT_DEBUG(" readed 0x");
 		PRINT_DEBUG_HEX8(tmp);
-		if (tmp == reg) {
+		if (tmp == register_values[i + 1]) {
 			PRINT_DEBUG(" OK ");
 		} else {
 			PRINT_DEBUG(" FAIL ");
