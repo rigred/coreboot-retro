@@ -25,7 +25,7 @@ uintptr_t cbmem_top_chipset(void)
 	if (gsmrame) {
 		/* Adjust tom based on TSEG size for the 440LX chipset (no ESMRAMC) */
 		int tseg_size = 128 * KiB;
-		printk(BIOS_DEBUG, "Setting TSEG size to %ld\n", tseg_size);
+		printk(BIOS_DEBUG, "Setting TSEG size to %d\n", tseg_size);
 		tom -= tseg_size;
 	}
 	printk(BIOS_DEBUG, "Setting TOM size to %ld\n", tom);
