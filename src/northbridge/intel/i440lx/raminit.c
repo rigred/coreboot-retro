@@ -75,10 +75,12 @@ static const u8 register_values[] = {
 	 *                     cycles in the MDA range.
 	 * [04:00] Reserved
 	 */
+
+	PACCFG, 0x04,
 #if CONFIG(SMP)
-	PACCFG + 1, 0x0C,
+	PACCFG + 1, 0x08,
 #else
-	PACCFG + 1, 0x8C,
+	PACCFG + 1, 0x88,
 #endif
 
 	/* DBC - Data Buffer Control Register 
@@ -93,7 +95,7 @@ static const u8 register_values[] = {
 	 *       0 = Disable
 	 * [4:0] Reserved
 	 */
-	DBC, 0xC3, /* The absolute basics*/
+	DBC, 0x83, /* The absolute basics*/
 
 
 
@@ -401,8 +403,27 @@ static void sdram_set_registers(void)
 	max = ARRAY_SIZE(register_values);
 
 	/* Set registers as specified in the register_values[] array. */
-	for (i = 0; i < max; i += 2)
+	for (i = 0; i < max; i += 2) {
 		pci_write_config8(NB, register_values[i], register_values[i + 1]);
+
+
+#if CONFIG_DEBUG_RAM_SETUP
+		PRINT_DEBUG("    Set register 0x");
+		PRINT_DEBUG_HEX8(register_values[i]);
+		PRINT_DEBUG(" to 0x");
+		PRINT_DEBUG_HEX8(reg);
+		tmp = pci_read_config8(NB, register_values[i]);
+		PRINT_DEBUG(" readed 0x");
+		PRINT_DEBUG_HEX8(tmp);
+		if (tmp == reg) {
+			PRINT_DEBUG(" OK ");
+		} else {
+			PRINT_DEBUG(" FAIL ");
+		}
+		PRINT_DEBUG("\n");
+#endif
+
+	}
 }
 
 struct dimm_size {
