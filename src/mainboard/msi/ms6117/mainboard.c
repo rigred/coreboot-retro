@@ -9,10 +9,6 @@
 #include <smbios.h>
 #include <string.h>
 
-struct chip_operations mainboard_ops = {
-	.init = mainboard_init
-};
-
 void mainboard_fill_fadt(acpi_fadt_t *fadt)
 {
 	fadt->preferred_pm_profile = PM_DESKTOP;
