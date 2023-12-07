@@ -1,0 +1,21 @@
+## SPDX-License-Identifier: GPL-2.0-only
+
+boot_option=Fallback
+debug_level=Spew
+nmi=Enable
+udma_enable=Enable
+ram_timing=Auto
+srp_timing=3
+srcd_timing=3
+cas_latency=3
+refresh_period=15.6us
+agp_enable=Enable
+agp_aperture=64MB
+agp_speed=Auto
+agp_sba=Enable
+ecc_memory=Non-ECC
+spread_factor=0.25%
+spread_spectrum=Disable
+overclocking=Disable
+bus_clock=66/33MHz
+cpu_ratio=Auto
