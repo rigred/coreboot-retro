@@ -48,6 +48,8 @@
 #define AGPCTRL 0xb0 /* AGP Control Register (0x00000000) */
 #define APSIZE  0xb4 /* Aperture Size Control Register (0x00) */
 #define ATTBASE 0xb8 /* Aperture Translation Table (0x00000000) */
+#define AMTT	0xbc /* AGP MTT Control Register */
+#define LPTT	0xbd /* AGP Low Priority transaction timer register*/
 
 #define NB PCI_DEV(0, 0, 0)
 
