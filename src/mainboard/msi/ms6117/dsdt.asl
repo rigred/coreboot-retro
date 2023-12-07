@@ -148,7 +148,7 @@ DefinitionBlock (
 			#include <southbridge/intel/i82371eb/acpi/isabridge.asl>
 
 			#include <southbridge/intel/i82371eb/acpi/i82371eb.asl>
-			/* #include <superio/ite/it8679f/acpi/superio.asl> */ // TODO FIX 
+		    #include <superio/winbond/w83977tf/acpi/superio.asl>
 		}
 	}
 
