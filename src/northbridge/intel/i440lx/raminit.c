@@ -345,7 +345,7 @@ static void set_chipset_regs(void) {
 	/* TODO? */
 	pci_write_config8(NB, PCI_LATENCY_TIMER, 0x20);
 	pci_write_config8(NB, MTT, 0x20);
-	pci_write_config8(NB, AMTT, 0x20)
+	pci_write_config8(NB, AMTT, 0x20);
 }
 
 /*-----------------------------------------------------------------------------
