@@ -100,6 +100,7 @@ void winbond_read_pnp_reg(pnp_devfn_t dev)
 	u8 reg8;
 
 	pnp_enter_conf_state(dev);
+	pnp_set_logical_device(dev);
 	reg8 = pnp_read_config(dev, 0xf0);
 	outb(0xa, 0x80);
 	outb(reg8, 0x80);

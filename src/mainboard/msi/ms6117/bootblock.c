@@ -4,7 +4,7 @@
 #include <superio/winbond/common/winbond.h>
 #include <superio/winbond/w83977tf/w83977tf.h>
 
-#define SERIAL_DEV PNP_DEV(0x3f0, W83977TF_SP2)
+#define SERIAL_DEV PNP_DEV(0x3f0, W83977TF_SP1)
 
 void bootblock_mainboard_early_init(void)
 {
