@@ -75,6 +75,8 @@ void winbond_set_clksel_48(pnp_devfn_t dev)
 	reg8 = pnp_read_config(dev, 0x24);
 	reg8 |= (1 << 6); /* Set the clock input to 48MHz. */
 	pnp_write_config(dev, 0x24, reg8);
+	reg8 = pnp_read_config(dev, 0x24);
+	outb(reg8, 0x80);
 	pnp_exit_conf_state(dev);
 }
 
@@ -86,6 +88,8 @@ void winbond_set_clksel_24(pnp_devfn_t dev)
 	reg8 = pnp_read_config(dev, 0x24);
 	reg8 &= ~(1 << 6); /* Set the clock input to 24MHz. */
 	pnp_write_config(dev, 0x24, reg8);
+	reg8 = pnp_read_config(dev, 0x24);
+	outb(reg8, 0x80);
 	pnp_exit_conf_state(dev);
 }
 
