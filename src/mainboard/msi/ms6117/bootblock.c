@@ -8,8 +8,6 @@
 
 void bootblock_mainboard_early_init(void)
 {
-	winbond_set_clksel_48(SERIAL_DEV);
-	winbond_read_pnp_reg(SERIAL_DEV);
 	winbond_enable_serial(SERIAL_DEV, CONFIG_TTYS0_BASE);
 	winbond_read_pnp_reg(SERIAL_DEV);
 }
