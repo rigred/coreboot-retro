@@ -23,6 +23,7 @@
 #include <device/pnp_ops.h>
 #include <device/pnp.h>
 #include <stdint.h>
+#include <delay.h>
 #include "winbond.h"
 
 #define WINBOND_ENTRY_KEY 0x87
