@@ -79,6 +79,17 @@ void winbond_set_clksel_48(pnp_devfn_t dev)
 	pnp_exit_conf_state(dev);
 }
 
+void winbond_set_enpll_24(pnp_devfn_t dev)
+{
+	u8 reg8;
+
+	pnp_enter_conf_state(dev);
+	reg8 = pnp_read_config(dev, 0x24);
+	reg8 |= (1 << 5); /* Set the clock input to 24MHz. */
+	pnp_write_config(dev, 0x24, reg8);
+	pnp_exit_conf_state(dev);
+}
+
 void winbond_read_pnp_reg(pnp_devfn_t dev, uint8_t controlregister)
 {
 	u8 reg8;
