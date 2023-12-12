@@ -6,15 +6,37 @@ config NORTHBRIDGE_INTEL_I440LX
 	select HAVE_DEBUG_RAM_SETUP
 	select NO_CBFS_MCACHE
 
-config SDRAMPWR_4DIMM
+config SDRAM_4DIMM
 	bool
 	depends on NORTHBRIDGE_INTEL_I440LX
 	default n
 	help
-	  This option affects how the MSBC register and  is programmed.
-	  Memory clock signals will not be routed properly if this option
-	  is set wrong.
+	  This option affects how the DRB and DRT register and is programmed.
 
-	  If your board has 4 DIMM slots, you must use select this option, in
+	  If your board has 4 DIMM slots, you must select this option, in
 	  your Kconfig file of the board. On boards with 3 DIMM slots,
 	  do _not_ select this option.
+
+config SDRAM_3DIMM
+	bool
+	depends on NORTHBRIDGE_INTEL_I440LX
+	default n
+	help
+	  This option affects how the DRB and DRT register and is programmed.
+
+	  If your board has 3 DIMM slots, and the SMBUS DIMM mapping
+	  is not reversed you must select this option, in
+	  your Kconfig file of the board. On boards with 4 DIMM slots,
+	  do _not_ select this option.
+
+config SDRAM_3DIMM_REVERSE_OFFSET
+	bool
+	depends on NORTHBRIDGE_INTEL_I440LX
+	default n
+	help
+	This option is for very special (MSI) boards where the SMBUS SPD addresses
+	are reverse associated with the DRAM Rows. 
+
+	If your board is an MSI 6117, ATC-6130 or otherwise feels special and
+	has it's SMBUS address for Row (0,1) starting at 0x52 
+	and ending at Row (4,5) with address 0x50, you must pick this option. 

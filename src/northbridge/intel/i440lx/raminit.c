@@ -739,7 +739,7 @@ static void set_dram_row_attributes(void)
 		rps |= (dra & 0x0f) << (i * 4);
 	}
 
-	pci_write_config8(NB, DRT, drt);
+	pci_write_config(NB, DRT, drt);
 	pci_write_config8(NB, DRT + 1, drt >> 8);
 
 	drt = pci_read_config8(NB, DRT+1);
