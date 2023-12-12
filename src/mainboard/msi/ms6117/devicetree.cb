@@ -4,6 +4,7 @@ chip northbridge/intel/i440lx		# Northbridge
     device pci 0.0 on end		# Host bridge
     device pci 1.0 on end		# PCI/AGP bridge
     chip southbridge/intel/i82371eb	# Southbridge
+      register "gpo" = "0x7fffbfff"
       device pci 7.0 on			# ISA bridge
         chip superio/winbond/w83977tf	# Super I/O
           device pnp 3f0.0 on		# Floppy
@@ -20,7 +21,7 @@ chip northbridge/intel/i440lx		# Northbridge
             io 0x60 = 0x3f8
             irq 0x70 = 4
           end
-          device pnp 3f0.3 on		# COM2 / IR
+          device pnp 3f0.3 on		# COM2
             io 0x60 = 0x2f8
             irq 0x70 = 3
           end

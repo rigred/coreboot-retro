@@ -51,7 +51,10 @@ static const u8 register_values[] = {
 	 *         MECC0 pin strap, used to select refresh tick rate and display system bus frequency
 	 *         1 = 60 MHz
 	 *         0 = 66 MHz
-	 * [13:11] Reserved
+	 * [13:12] Reserved
+	 * [11:11] DRAM Configuration Mode (strapped on CKE)
+	 *         1 = Memory Configuration #1
+	 *         0 = Memory Configuration #2 (default)
 	 * [10:10] PCI Agent to Aperture Access Disable
 	 *         1 = Disable
 	 *         0 = Enable (default)
@@ -80,7 +83,7 @@ static const u8 register_values[] = {
 #if CONFIG(SMP)
 	PACCFG + 1, 0x08,
 #else
-	PACCFG + 1, 0x88,
+	PACCFG + 1, 0x82,
 #endif
 
 	/* DBC - Data Buffer Control Register 
@@ -95,9 +98,7 @@ static const u8 register_values[] = {
 	 *       0 = Disable
 	 * [4:0] Reserved
 	 */
-	DBC, 0x83, /* The absolute basics*/
-
-
+	DBC, 0xE3, /* Enable all useful features*/
 
 	/* DRT DRAM Row Type (must be set)
 	 * 0x55 - 0x56
@@ -268,15 +269,41 @@ static const u8 register_values[] = {
 	 *         11 = Reserved
 	 */
 
-		/* MBSC - Memory Buffer Strength Control
+	/* MBSC - Memory Buffer Strength Control
 	 * 0x6c - 0x6f
 	 * [31:30] MAA[1:0] Buffer Strength
 	 *         00 = 48 mA
 	 *         01 = 42 mA
 	 *         10 = 22 mA
 	 *         11 = Reserved
-	 * 
-	 * 
+	 */
+
+	/* APSIZE - Aperture Size
+	 * 0xB4
+	 * [7:6] Reserved
+	 * [5:0] Graphics Aperture Size
+	 *       11 1111 = 4MB
+	 *       11 1110 = 8MB 
+	 *       11 1100 = 16MB 
+	 *       11 1000 = 32MB 
+	 *       11 0000 = 64MB 
+	 *       10 0000 = 128MB 
+	 *       00 0000 = 256MB 
+	 */
+	/* Write default 64MB Aperture size*/
+	APBASE, 0x30,
+
+	/* APBASE - Aperture Base configuration Register
+	 * 0x10-0x13
+	 * [7:6] Reserved
+	 * [5:0] Graphics Aperture Size
+	 *       11 1111 = 4MB
+	 *       11 1110 = 8MB 
+	 *       11 1100 = 16MB 
+	 *       11 1000 = 32MB 
+	 *       11 0000 = 64MB 
+	 *       10 0000 = 128MB 
+	 *       00 0000 = 256MB 
 	 */
 
 };
@@ -374,7 +401,7 @@ static void northbridge_init(void)
 	uint32_t reg32;
 
 	reg32 = pci_read_config32(NB, APBASE);
-	reg32 &= 0xE4000000;
+	reg32 |= 0xE8000000;
 	pci_write_config32(NB, APBASE, reg32);
 
 #if CONFIG_DEBUG_RAM_SETUP
