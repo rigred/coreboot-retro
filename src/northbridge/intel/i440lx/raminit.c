@@ -291,19 +291,9 @@ static const u8 register_values[] = {
 	 *       00 0000 = 256MB 
 	 */
 	/* Write default 64MB Aperture size*/
-	APBASE, 0x30,
 
 	/* APBASE - Aperture Base configuration Register
 	 * 0x10-0x13
-	 * [7:6] Reserved
-	 * [5:0] Graphics Aperture Size
-	 *       11 1111 = 4MB
-	 *       11 1110 = 8MB 
-	 *       11 1100 = 16MB 
-	 *       11 1000 = 32MB 
-	 *       11 0000 = 64MB 
-	 *       10 0000 = 128MB 
-	 *       00 0000 = 256MB 
 	 */
 
 };
@@ -400,8 +390,12 @@ static void northbridge_init(void)
 {
 	uint32_t reg32;
 
+	/* Set default 64MB Aperture size first */
+	pci_write_config8(NB, APSIZE, 0x30);
+	
+	/* Set Aperture base, this should ideally be at top of memory */
 	reg32 = pci_read_config32(NB, APBASE);
-	reg32 |= 0xE8000000;
+	reg32 |= 0xe8000000U;
 	pci_write_config32(NB, APBASE, reg32);
 
 #if CONFIG_DEBUG_RAM_SETUP
