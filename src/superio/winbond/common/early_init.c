@@ -97,10 +97,10 @@ void winbond_read_pnp_reg(pnp_devfn_t dev, uint8_t controlregister)
 	pnp_enter_conf_state(dev);
 	reg8 = pnp_read_config(dev, controlregister);
 	outb(0xff, 0x80);
-	delay(1);
+	udelay(100);
 	outb(controlregister, 0x80);
-	delay(1);
+	udelay(100);
 	outb(reg8, 0x80);
-	delay(1);
+	udelay(100);
 	pnp_exit_conf_state(dev);
 }
