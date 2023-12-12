@@ -14,6 +14,4 @@ void winbond_read_pnp_reg(pnp_devfn_t dev, uint8_t controlregister);
 void pnp_enter_conf_state(pnp_devfn_t dev);
 void pnp_exit_conf_state(pnp_devfn_t dev);
 
-void delay(unsigned long iterations);
-
 #endif /* SUPERIO_WINBOND_COMMON_PRE_RAM_H */

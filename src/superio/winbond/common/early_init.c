@@ -85,18 +85,10 @@ void winbond_read_pnp_reg(pnp_devfn_t dev, uint8_t controlregister)
 	pnp_enter_conf_state(dev);
 	reg8 = pnp_read_config(dev, controlregister);
 	outb(0xff, 0x80);
-	delay(10000);
+	delay(1);
 	outb(controlregister, 0x80);
-	delay(10000);
+	delay(1);
 	outb(reg8, 0x80);
-	delay(10000);
+	delay(1);
 	pnp_exit_conf_state(dev);
-}
-
-// Function to introduce a delay
-void delay(unsigned long iterations) {
-    for (unsigned long i = 0; i < iterations; ++i) {
-        // Adding some non-computational task to consume time
-        asm volatile("nop");
-    }
 }
