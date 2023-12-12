@@ -8,6 +8,6 @@
 
 void bootblock_mainboard_early_init(void)
 {
+	winbond_read_pnp_reg(SERIAL_DEV, 0x24);
 	winbond_enable_serial(SERIAL_DEV, CONFIG_TTYS0_BASE);
-	winbond_read_pnp_reg(SERIAL_DEV);
 }
