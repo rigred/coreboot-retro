@@ -751,7 +751,9 @@ static void set_dram_row_attributes(void)
 	drt |= (0x3 << (DIMM_SOCKETS * 4));
 	drt |= (0x3 << ((DIMM_SOCKETS * 4) + 2));
 
-	drb >>= 8;
+	/* Still have to propagate DRB over. */
+	drb &= 0xff;
+	drb |= (drb << 8);
 
 	pci_write_config16(NB, DRB + (2 * DIMM_SOCKETS), drb);
 #elif CONFIG(SDRAM_3DIMM)
@@ -760,7 +762,9 @@ static void set_dram_row_attributes(void)
 	drt |= (0x3 << (DIMM_SOCKETS * 4));
 	drt |= (0x3 << ((DIMM_SOCKETS * 4) + 2));
 
-	drb >>= 8;
+	/* Still have to propagate DRB over. */
+	drb &= 0xff;
+	drb |= (drb << 8);
 
 	pci_write_config16(NB, DRB + (2 * DIMM_SOCKETS), drb);
 #endif
