@@ -24,30 +24,38 @@ entries
 411	1	e	1	udma_enable
 
 # -----------------------------------------------------------------
-# TODO: raminit config options
-414	1	e	14	ecc_memory
-415	1	e	6	ram_timing
-416	1	e	5	srp_timing
-417	1	e	5	srcd_timing
-418	1	e	5	cas_latency
-419 1	e	7	refresh_period
-420	1	e	1	pipeline_leadoff_delay
-421	1	e	8	dram_leadoff_timing
-422	1	e	9	dram_idle_timer
+# raminit config options
+412	1	e	5	ram_config
+413	1	e	6	cas_latency
+414	1	e	6	ras_to_cas_delay
+415	1	e	6	ras_precharge_time
+416	3	e	7	ma_wait_state
 
-423	1	e	1	agp_enable
-424	1	e	10	agp_aperture
-425	1	e	11	agp_speed
-426	1	e	1	agp_sba
+# ECC Config
+420	2	e	9	ecc_memory
 
-427	1	e	1	overclocking
-428	1	e	1	spread_spectrum
-429	1	e	13	spread_factor
-430	1	e	12	bus_clock
+# -----------------------------------------------------------------
+# agp config options
+422	1	e	1	agp_enable
+423	3	e	10	agp_aperture
+426	2	e	11	agp_speed
+428	1	e	1	agp_sba
+
+# -----------------------------------------------------------------
+# clock config options
+429	1	e	1	overclocking
+430	1	e	1	spread_spectrum
+431	1	e	13	spread_factor
+432	2	e	12	bus_clock
 
 # Pentium Pro and Klamath CPU ratio setting
-431	1	e	15	cpu_ratio
+434	4	e	14	cpu_ratio
 
+
+# coreboot config options: check sums
+984	16	h	0	check_sum
+
+# -----------------------------------------------------------------
 
 enumerations
 #ID	value	text
@@ -74,35 +82,26 @@ enumerations
 4	7	Debug
 4	8	Spew
 
-# dram timings
-5	0	3
-5	1	2
-
 # dram manual/auto timings
-6	0	Auto
-6	1	Manual
+5	0	Auto
+5	1	Manual
 
-# dram  refresh period
-7	0	disabled
-7	1	15.6us
-7	2	31.2us
-7	3	62.4us
-7	4	124.8us
-7	5	249.6us
+# sdram timings
+6	0	3
+6	1	2
 
-# dram leadoff
-8	0	3
-8	1	4
+# ma wait state
+7	0	Slow
+7	1	Fast
 
-# dram idle timer
-9	0	0
-9	1	2
-9	2	4
-9	3	8
-9	4	10
-9	5	12
-9	6	16
-9	7	32
+# edo ras precharge
+8	0	4
+8	1	3
+
+9	0	Non-ECC
+9	1	EC
+9	2	ECC
+9	3	ECC-Scrubbing
 
 # agp aperture size
 10  0	4MB
@@ -113,31 +112,37 @@ enumerations
 10  5	128MB
 10  6	256MB
 
+# agp speed
 11	0	Auto
 11	1	1x
 11	2	2x
 
+# pll fsb clock
 12	0	66/33MHz
 12	1	68/34MHz
 12	2	75/37.5MHz
 
+# pll spread spectrum factor
 13	0	0.25%
 13	1	0.5%
 
-14	0	Non-ECC
-14	1	EC
-14	2	ECC
-14	3	ECC-Scrubbing
-
-15	0	Auto
-15	1	2x
-15	2	2.5x
-15	3	3x
-15	4	3.5x
-15	5	4x
-15	6	4.5x
+# CPU multiplier ratio
+14	0	Auto
+14	1	2x
+14	2	2.5x
+14	3	3x
+14	4	3.5x
+14	5	4x
+14	6	4.5x
+14	7	5x
+14	8	5.5x
+14	9	6x
+14	10	6.5x
+14	11	7x
+14	12	7.5x
+14	13	8x
 
 
 checksums
 
-checksum 592 975 976
+checksum 392 440 984
