@@ -523,7 +523,7 @@ static struct dimm_size spd_get_dimm_size(unsigned int device)
 }
 /*
  * Sets DRAM attributes one DIMM at a time, based on SPD data.
- * Northbridge settings that are set: PACCFG[31:24], DRB0-DRB7, RPS, DRAMC.
+ * Northbridge settings that are set: PACCFG[31:24], DRB0-DRB7, DRT, RPS, DRAMC.
  */
 static void set_dram_row_attributes(void)
 {
@@ -540,9 +540,15 @@ static void set_dram_row_attributes(void)
 	drb = 0;
 	bpr = 0;
 
-	for (i = 0; i < DIMM_SOCKETS; i++) {
+    for (i = 0; i < DIMM_SOCKETS; i++) {
 		unsigned int device;
-		device = DIMM0 + i;
+		/* Logic to handle 3DIMM boards where DIMM0 starts at 0x52 */
+#if CONFIG(SDRAM_3DIMM_REVERSE_OFFSET)
+        device = DIMM0 - i;
+#else
+		/* All other (normal) boards 3DIMM or 4DIMM */
+        device = DIMM0 + i;
+#endif
 		bpr >>= 2;
 		nbxecc >>= 2;
 
