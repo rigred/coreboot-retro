@@ -12,7 +12,13 @@ void dump_spd_registers(void)
 	printk(BIOS_DEBUG, "\n");
 	for (i = 0; i < DIMM_SOCKETS; i++) {
 		unsigned int device;
-		device = DIMM0 + i;
+		/* Logic to handle 3DIMM boards where DIMM0 starts at 0x52 */
+#if CONFIG(SDRAM_3DIMM_REVERSE_OFFSET)
+        device = DIMM0 - i;
+#else
+		/* All other (normal) boards 3DIMM or 4DIMM */
+        device = DIMM0 + i;
+#endif
 		if (device) {
 			int j;
 			printk(BIOS_DEBUG, "DIMM %d: %02x", i, device);

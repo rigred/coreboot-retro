@@ -745,6 +745,26 @@ static void set_dram_row_attributes(void)
 		rps |= (dra & 0x0f) << (i * 4);
 	}
 
+#if CONFIG(SDRAM_3DIMM_REVERSE_OFFSET)
+	/* Set last DRT (Unused Row 6,7) */
+	// Set DRT bits for both rows to 11 for a non existent DIMM slot
+	drt |= (0x3 << (DIMM_SOCKETS * 4));
+	drt |= (0x3 << ((DIMM_SOCKETS * 4) + 2));
+
+	drb >>= 8;
+
+	pci_write_config16(NB, DRB + (2 * DIMM_SOCKETS), drb);
+#elif CONFIG(SDRAM_3DIMM)
+	/* Set last DRT (Unused Row 6,7) */
+	// Set DRT bits for both rows to 11 for a non existent DIMM slot
+	drt |= (0x3 << (DIMM_SOCKETS * 4));
+	drt |= (0x3 << ((DIMM_SOCKETS * 4) + 2));
+
+	drb >>= 8;
+
+	pci_write_config16(NB, DRB + (2 * DIMM_SOCKETS), drb);
+#endif
+
 	pci_write_config8(NB, DRT, drt);
 	pci_write_config8(NB, DRT + 1, drt >> 8);
 
