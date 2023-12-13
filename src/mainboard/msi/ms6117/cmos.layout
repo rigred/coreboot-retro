@@ -11,45 +11,45 @@ entries
 
 # -----------------------------------------------------------------
 # coreboot config options: console
-395	4	e	4	debug_level
+396	4	e	4	debug_level
 
 # -----------------------------------------------------------------
 # coreboot config options: southbridge
 
 # Non Maskable Interrupt(NMI) support, which is an interrupt that may
 # occur on a RAM or unrecoverable error.
-408	1	e	1	nmi
+400	1	e	1	nmi
 
-#409	2	e	5	power_on_after_fail
-411	1	e	1	udma_enable
+#401	2	e	5	power_on_after_fail
+404	1	e	1	udma_enable
 
 # -----------------------------------------------------------------
 # raminit config options
-412	1	e	5	ram_config
-413	1	e	6	cas_latency
-414	1	e	6	ras_to_cas_delay
-415	1	e	6	ras_precharge_time
-416	3	e	7	ma_wait_state
+408	1	e	5	ram_config
+409	1	e	6	cas_latency
+410	1	e	6	ras_to_cas_delay
+411	1	e	6	ras_precharge_time
+412	3	e	7	ma_wait_state
 
 # ECC Config
-420	2	e	9	ecc_memory
+416	2	e	9	ecc_memory
 
 # -----------------------------------------------------------------
 # agp config options
-422	1	e	1	agp_enable
-423	3	e	10	agp_aperture
-426	2	e	11	agp_speed
-428	1	e	1	agp_sba
+424	1	e	1	agp_enable
+425	3	e	10	agp_aperture
+428	2	e	11	agp_speed
+430	1	e	1	agp_sba
 
 # -----------------------------------------------------------------
 # clock config options
-429	1	e	1	overclocking
-430	1	e	1	spread_spectrum
-431	1	e	13	spread_factor
-432	2	e	12	bus_clock
+432	1	e	1	overclocking
+433	1	e	1	spread_spectrum
+434	1	e	13	spread_factor
+435	2	e	12	bus_clock
 
 # Pentium Pro and Klamath CPU ratio setting
-434	4	e	14	cpu_ratio
+440	4	e	14	cpu_ratio
 
 
 # coreboot config options: check sums
@@ -145,4 +145,4 @@ enumerations
 
 checksums
 
-checksum 392 440 984
+checksum 392 448 984
