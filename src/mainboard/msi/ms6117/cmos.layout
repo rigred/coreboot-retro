@@ -51,6 +51,12 @@ entries
 # Pentium Pro and Klamath CPU ratio setting
 440	4	e	14	cpu_ratio
 
+# Boot order
+ 448 4	e	15	boot_first
+ 452 4	e	15	boot_second
+ 456 4	e	15	boot_third
+ 460 4	h	0	boot_index
+ 464 8	h	0	boot_countdown
 
 # coreboot config options: check sums
 984	16	h	0	check_sum
@@ -142,7 +148,17 @@ enumerations
 14	12	7.5x
 14	13	8x
 
+ # boot_first,  boot_second, boot_third
+ 15	0	Network
+ 15	1	HDD
+ 15	2	Floppy
+ 15	4	USB
+ 15	5	CD/DVD
+ 15	8	Fallback_Network
+ 15	9	Fallback_HDD
+ 15	10	Fallback_Floppy
+ 15	3	ROM
 
 checksums
 
-checksum 392 448 984
+checksum 392 983 984
