@@ -52,5 +52,18 @@
 #define LPTT	0xbd /* AGP Low Priority transaction timer register*/
 
 #define NB PCI_DEV(0, 0, 0)
+#define NBP PCI_DEV(0, 1, 0)
+
+enum agp_aperture {
+	AGP_APERTURE_4MB = 0,
+	AGP_APERTURE_8MB = 1,
+	AGP_APERTURE_16MB = 2,
+	AGP_APERTURE_32MB = 3,
+	AGP_APERTURE_64MB = 4,
+	AGP_APERTURE_128MB = 5,
+	AGP_APERTURE_256MB = 6
+};
+
+#define AGP_APERTURE_DEFAULT AGP_APERTURE_64MB
 
 #endif /* NORTHBRIDGE_INTEL_I440LX_I440LX_H */

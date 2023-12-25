@@ -10,8 +10,16 @@
 #include <console/console.h>
 #include <commonlib/console/post_codes.h>
 #include <timestamp.h>
+#include <option.h>
 #include "i440lx.h"
 #include "raminit.h"
+
+#if CONFIG(USE_OPTION_TABLE)
+#include "option_table.h"
+
+#else
+
+#endif
 
 /*
  * Macros and definitions
@@ -24,12 +32,14 @@
 #define PRINT_DEBUG_HEX16(x)	printk(BIOS_DEBUG, "%04x", x)
 #define PRINT_DEBUG_HEX32(x)	printk(BIOS_DEBUG, "%08x", x)
 #define DUMPNORTH()		dump_pci_device(NB)
+#define DUMPBRIDGE()		dump_pci_device(NBP)
 #else
 #define PRINT_DEBUG(x...)
 #define PRINT_DEBUG_HEX8(x)
 #define PRINT_DEBUG_HEX16(x)
 #define PRINT_DEBUG_HEX32(x)
 #define DUMPNORTH()
+#define DUMPBRIDGE()
 #endif
 
 /* DRAMXC[7:5] - SDRAM Mode Select (SMS). */
@@ -83,7 +93,7 @@ static const u8 register_values[] = {
 #if CONFIG(SMP)
 	PACCFG + 1, 0x08,
 #else
-	PACCFG + 1, 0x82,
+	PACCFG + 1, 0x80,
 #endif
 
 	/* DBC - Data Buffer Control Register 
@@ -389,24 +399,6 @@ Public interface.
 static void northbridge_init(void)
 {
 	uint32_t reg32;
-
-	/* Set default 64MB Aperture size first */
-	pci_write_config8(NB, APSIZE, 0x30);
-	
-	/* Set Aperture base, this should ideally be at top of memory */
-	reg32 = pci_read_config32(NB, APBASE);
-	reg32 |= 0xe8000000U;
-	pci_write_config32(NB, APBASE, reg32);
-
-#if CONFIG_DEBUG_RAM_SETUP
-	/*
-	 * apbase likely problematic
-	 */
-	reg32 = pci_read_config32(NB, APBASE);
-	PRINT_DEBUG("APBASE ");
-	PRINT_DEBUG_HEX32(reg32);
-	PRINT_DEBUG("\n");
-#endif
 
 	uint16_t reg16;
 	reg16 = pci_read_config16(NB, PACCFG);
