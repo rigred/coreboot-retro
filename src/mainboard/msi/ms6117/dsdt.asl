@@ -90,10 +90,10 @@ DefinitionBlock (
 	{
 		#include <southbridge/intel/i82371eb/acpi/intx.asl>
 
-		PCI_INTX_DEV(LNKA, \_SB.PCI0.PX40.PIRA, 1)
-		PCI_INTX_DEV(LNKB, \_SB.PCI0.PX40.PIRB, 2)
-		PCI_INTX_DEV(LNKC, \_SB.PCI0.PX40.PIRC, 3)
-		PCI_INTX_DEV(LNKD, \_SB.PCI0.PX40.PIRD, 4)
+		PCI_INTX_DEV(LNKA, \_SB.PCI0.PX70.PIRA, 1)
+		PCI_INTX_DEV(LNKB, \_SB.PCI0.PX70.PIRB, 2)
+		PCI_INTX_DEV(LNKC, \_SB.PCI0.PX70.PIRC, 3)
+		PCI_INTX_DEV(LNKD, \_SB.PCI0.PX70.PIRD, 4)
 
 		/* Top PCI device */
 		Device (PCI0)
@@ -147,7 +147,7 @@ DefinitionBlock (
 			#include <northbridge/intel/i440bx/acpi/sb_pci0_crs.asl>
 			#include <southbridge/intel/i82371eb/acpi/isabridge.asl>
 
-			#include <southbridge/intel/i82371eb/acpi/i82371eb.asl>
+			#include <mainboard/msi/ms6117/i82371ab.asl>
 		    #include <superio/winbond/w83977tf/acpi/superio.asl>
 		}
 	}
