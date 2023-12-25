@@ -41,4 +41,12 @@ config MAINBOARD_SMBIOS_MANUFACTURER
 	string
 	default "Micro-Star International Co., Ltd."
 
+config PAYLOAD_CONFIGFILE
+	string
+	default "\$(top)/src/mainboard/\$(MAINBOARDDIR)/config_seabios" if PAYLOAD_SEABIOS
+
+config SEABIOS_BOOTORDER_FILE
+	string
+	default "\$(top)/src/mainboard/\$(MAINBOARDDIR)/bootorder" if PAYLOAD_SEABIOS
+
 endif
