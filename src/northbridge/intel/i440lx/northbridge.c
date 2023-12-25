@@ -68,6 +68,7 @@ static void i440lx_domain_read_resources(struct device *dev)
 		idx = 10;
 		ram_range(dev, idx++, 0, 0xa0000);
 		ram_from_to(dev, idx++, 0xc0000, tolmk * KiB);
+		printk(BIOS_DEBUG, "Memory Range Index: %d \n", idx);
 	}
 }
 
