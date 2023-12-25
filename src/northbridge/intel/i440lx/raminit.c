@@ -404,6 +404,8 @@ static void northbridge_init(void)
 	reg16 = pci_read_config16(NB, PACCFG);
 	printk(BIOS_DEBUG, "CPU Host Freq: 6%d MHz\n", (reg16 & 0x4000) ? 0 : 6);
 
+	DUMPBRIDGE();
+
 }
 
 
