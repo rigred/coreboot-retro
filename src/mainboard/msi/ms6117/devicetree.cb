@@ -5,6 +5,12 @@ chip northbridge/intel/i440lx		# Northbridge
     device pci 1.0 on end		# PCI/AGP bridge
     chip southbridge/intel/i82371eb	# Southbridge
       register "gpo" = "0x7fffbfff"
+      register "gpi7_enable" = "0"
+      register "reqa_gnta_enable" = "1"
+      register "gpo22_enable" = "0"	# No idea why, but this board uses this
+      register "gpo24_enable" = "0"
+      register "gpo25_enable" = "0"
+      register "gpo26_enable" = "0"
       device pci 7.0 on			# ISA bridge
         chip superio/winbond/w83977tf	# Super I/O
           device pnp 3f0.0 on		# Floppy

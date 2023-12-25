@@ -36,6 +36,12 @@ static void isa_init(struct device *dev)
 	reg32 = pci_read_config32(dev, GENCFG);
 	reg32 |= ISA;	/* Select ISA, not EIO. */
 
+	/* Set the Serial IRQ function/GPI7 function if configured*/
+	reg32 = ONOFF(sb->gpi7_enable, reg32, GPI7SERIRQ);
+
+	/* Enable REQA/GNTA signaling instead of GPI2/GPO7 if configured*/
+	reg32 = ONOFF(sb->reqa_gnta_enable, reg32, REQAGNTA);
+
 	/* Some boards use GPO22/23. Select it if configured. */
 	reg32 = ONOFF(sb->gpo22_enable, reg32, GPO2223);
 

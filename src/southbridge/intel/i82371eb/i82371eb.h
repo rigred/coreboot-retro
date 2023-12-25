@@ -22,6 +22,8 @@ void i82371eb_early_init(void);
 
 #define XBCS		0x4e	/* X-Bus chip select register */
 #define GENCFG		0xb0	/* General configuration register */
+#define REQAGNTA	(1<<8)	/* Select REQA/GNTA or GPI2/GPO9 functionality */
+#define	GPI7SERIRQ	(1<<16) /* Select GPI7 input or Serial IRQ function*/
 #define   GPO2223	(1<<28) /* GPO22/23 */
 #define   GPO24     (1<<29) /* RTCCS/GPO24 */
 #define   GPO25     (1<<30) /* RTCALE/GPO25 */
