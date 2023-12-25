@@ -88,12 +88,10 @@ static const u8 register_values[] = {
 	 *                     cycles in the MDA range.
 	 * [04:00] Reserved
 	 */
-
-	PACCFG, 0x04,
 #if CONFIG(SMP)
-	PACCFG + 1, 0x08,
+	PACCFG + 1, 0x38, 0x0C,
 #else
-	PACCFG + 1, 0x80,
+	PACCFG + 1, 0x38, 0x8C,
 #endif
 
 	/* DBC - Data Buffer Control Register 
@@ -108,7 +106,7 @@ static const u8 register_values[] = {
 	 *       0 = Disable
 	 * [4:0] Reserved
 	 */
-	DBC, 0xE3, /* Enable all useful features*/
+	DBC, 0x00, 0xC3, /* Enable all useful features*/
 
 	/* DRT DRAM Row Type (must be set)
 	 * 0x55 - 0x56
@@ -128,8 +126,8 @@ static const u8 register_values[] = {
 	 * [13:12]  DRB[6], row 6
 	 * [15:14]  DRB[7], row 7
 	 */
-	DRT,   0xFF,
-	DRT+1, 0xFF,
+	DRT,	0x00, 0xFF,
+	DRT+1,	0x00, 0xFF,
 	
 
 	/* DRAMC - DRAM Control Register
@@ -148,7 +146,7 @@ static const u8 register_values[] = {
 	 *       010-111 = Reserved 
 	 */
 	/* Disable refresh for now. */
-	DRAMC, 0x00,
+	DRAMC, 0x00, 0x00,
 
 	/* DRAMT - DRAM Timing Register
 	 * 0x58
@@ -179,7 +177,7 @@ static const u8 register_values[] = {
 	 *       0 = SLOW (Default)
 	 */
 	/* Set timings later */
-	DRAMT, 0x00,
+	DRAMT, 0x00, 0x00,
 
 	/*
 	 * PAM[6:0] - Programmable Attribute Map Registers
@@ -213,13 +211,13 @@ static const u8 register_values[] = {
 	 * registers are not set here appropriately, the RAM in that region
 	 * will not be accessible, thus a RAM check of it will also fail.
 	 */
-	PAM0, 0x30,
-	PAM1, 0x33,
-	PAM2, 0x33,
-	PAM3, 0x33,
-	PAM4, 0x33,
-	PAM5, 0x33,
-	PAM6, 0x33,
+	PAM0, 0x00, 0x30,
+	PAM1, 0x00, 0x33,
+	PAM2, 0x00, 0x33,
+	PAM3, 0x00, 0x33,
+	PAM4, 0x00, 0x33,
+	PAM5, 0x00, 0x33,
+	PAM6, 0x00, 0x33,
 
 	/* DRB[0:7] - DRAM Row Boundary Registers
 	 * 0x60 - 0x67
@@ -237,6 +235,14 @@ static const u8 register_values[] = {
 	 * 0x67 DRB7 = Total memory in row0+1+2+3+4+5+6+7 (in 8 MB)
 	 */
 	/* DRBs will be set later. */
+	DRB0, 0x00, 0x00,
+	DRB1, 0x00, 0x00,
+	DRB2, 0x00, 0x00,
+	DRB3, 0x00, 0x00,
+	DRB4, 0x00, 0x00,
+	DRB5, 0x00, 0x00,
+	DRB6, 0x00, 0x00,
+	DRB7, 0x00, 0x00,
 
 	/* FDHC - Fixed DRAM Hole Control Register
 	 * 0x68
@@ -251,7 +257,7 @@ static const u8 register_values[] = {
 	 * [5:0] Reserved
 	 */
 	/* No memory holes. */
-	FDHC, 0x00,
+	FDHC, 0x00, 0x00,
 
 	/* DRAMXC - SDRAM Control Register
 	 * 0x6a - 0x6b
@@ -418,10 +424,12 @@ static void sdram_set_registers(void)
 	max = ARRAY_SIZE(register_values);
 
 	/* Set registers as specified in the register_values[] array. */
-	for (i = 0; i < max; i += 2) {
-		uint8_t tmp;
-
-		pci_write_config8(NB, register_values[i], register_values[i + 1]);
+	for (i = 0; i < max; i += 3) {
+		uint8_t reg,tmp;
+		reg = pci_read_config8(NB, register_values[i]);
+		reg &= register_values[i + 1];
+		reg |= register_values[i + 2] & ~(register_values[i + 1]);
+		pci_write_config8(NB, register_values[i], reg);
 
 
 #if CONFIG_DEBUG_RAM_SETUP
@@ -430,7 +438,7 @@ static void sdram_set_registers(void)
 		PRINT_DEBUG(" to 0x");
 		PRINT_DEBUG_HEX8(register_values[i + 1]);
 		tmp = pci_read_config8(NB, register_values[i]);
-		PRINT_DEBUG(" readed 0x");
+		PRINT_DEBUG(" read back 0x");
 		PRINT_DEBUG_HEX8(tmp);
 		if (tmp == register_values[i + 1]) {
 			PRINT_DEBUG(" OK ");
@@ -441,6 +449,9 @@ static void sdram_set_registers(void)
 #endif
 
 	}
+
+	PRINT_DEBUG("Northbridge at exit set_sdram_registers()\n");
+	DUMPNORTH();
 }
 
 struct dimm_size {
