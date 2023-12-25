@@ -398,7 +398,6 @@ Public interface.
 
 static void northbridge_init(void)
 {
-	uint32_t reg32;
 
 	uint16_t reg16;
 	reg16 = pci_read_config16(NB, PACCFG);
