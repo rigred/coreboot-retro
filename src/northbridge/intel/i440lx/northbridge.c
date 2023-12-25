@@ -24,7 +24,7 @@ static struct device_operations northbridge_operations = {
 static const struct pci_driver northbridge_driver __pci_driver = {
 	.ops = &northbridge_operations,
 	.vendor = PCI_VID_INTEL,
-	.device = 0x7180,
+	.device = PCI_DID_INTEL_82443LX_0,
 };
 
 static void i440lx_domain_read_resources(struct device *dev)
@@ -35,6 +35,9 @@ static void i440lx_domain_read_resources(struct device *dev)
 	pci_domain_read_resources(dev);
 
 	pci_tolm = find_pci_tolm(dev->link_list);
+	printk(BIOS_SPEW, "Found PCI tolm at           %.8x\n", pci_tolm);
+	printk(BIOS_SPEW, "Found PCI tolm at           %dMB\n", pci_tolm >> 20);
+	
 	mc_dev = dev->link_list->children;
 	if (mc_dev) {
 		unsigned long tomk, tolmk;
