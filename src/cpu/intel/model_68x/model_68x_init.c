@@ -6,6 +6,7 @@
 #include <cpu/x86/mtrr.h>
 #include <cpu/intel/microcode.h>
 #include <cpu/x86/cache.h>
+#include <cpu/intel/l2_cache.h>
 #include <cpu/x86/name.h>
 
 static void model_68x_init(struct device *cpu)
@@ -17,6 +18,9 @@ static void model_68x_init(struct device *cpu)
 
 	/* Update the microcode */
 	intel_update_microcode_from_cbfs();
+
+	/* Initialize L2 cache */
+	p6_configure_l2_cache();
 
 	/* Print processor name */
 	fill_processor_name(processor_name);
