@@ -10,24 +10,8 @@
 
 uintptr_t cbmem_top_chipset(void)
 {
-	/* Base of TSEG is top of usable DRAM */
-	/*
-	 * SMRAM - System Management RAM Control Register
-	 * 0x72
-	 * [7:4] Not relevant to this function.
-	 * [3:3] Global SMRAM Enable (G_SMRAME)
-	 * [2:0] Hardwired to 010.
-	 *
-	 */
+	/* 440LX SMRAM uses the A0000h or C0000h legacy window, not TSEG. */
 	uintptr_t tom = pci_read_config8(NB, DRB7) * 8 * MiB;
-
-	int gsmrame = pci_read_config8(NB, SMRAM) & 0x8;
-	if (gsmrame) {
-		/* Adjust tom based on TSEG size for the 440LX chipset (no ESMRAMC) */
-		int tseg_size = 128 * KiB;
-		printk(BIOS_DEBUG, "Setting TSEG size to %d\n", tseg_size);
-		tom -= tseg_size;
-	}
 	printk(BIOS_DEBUG, "Setting TOM size to %ld\n", tom);
 	return tom;
 }

@@ -7,7 +7,29 @@
 #include <device/pci.h>
 #include <device/pci_ids.h>
 #include <stdint.h>
+#include <option.h>
 #include "i440lx.h"
+
+/* Program APSIZE before the generic PCI code probes the aperture BAR. */
+static void northbridge_read_resources(struct device *dev)
+{
+	static const uint8_t sizes[] = { 0x3f, 0x3e, 0x3c, 0x38, 0x30, 0x20, 0x00 };
+	unsigned int choice = get_uint_option("agp_aperture", AGP_APERTURE_DEFAULT);
+	uint8_t reg;
+
+	if (choice >= ARRAY_SIZE(sizes)) {
+		printk(BIOS_WARNING, "Invalid AGP aperture option %u; using 64 MiB\n", choice);
+		choice = AGP_APERTURE_DEFAULT;
+	}
+
+	reg = pci_read_config8(dev, APSIZE);
+	pci_write_config8(dev, APSIZE, (reg & 0xc0) | sizes[choice]);
+	/* Newly writable APBASE bits have an undefined value after APSIZE changes. */
+	pci_write_config32(dev, APBASE, 0);
+	printk(BIOS_INFO, "440LX AGP aperture: %u MiB (APSIZE=%02x)\n",
+	       4U << choice, pci_read_config8(dev, APSIZE));
+	pci_dev_read_resources(dev);
+}
 
 static void northbridge_init(struct device *dev)
 {
@@ -15,7 +37,7 @@ static void northbridge_init(struct device *dev)
 }
 
 static struct device_operations northbridge_operations = {
-	.read_resources   = pci_dev_read_resources,
+	.read_resources   = northbridge_read_resources,
 	.set_resources    = pci_dev_set_resources,
 	.enable_resources = pci_dev_enable_resources,
 	.init             = northbridge_init,
