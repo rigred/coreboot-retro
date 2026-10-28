@@ -35,8 +35,21 @@ config SDRAM_3DIMM_REVERSE_OFFSET
 	default n
 	help
 	This option is for very special (MSI) boards where the SMBUS SPD addresses
-	are reverse associated with the DRAM Rows. 
+	are reverse associated with the DRAM Rows.
 
 	If your board is an MSI 6117, ATC-6130 or otherwise feels special and
-	has it's SMBUS address for Row (0,1) starting at 0x52 
-	and ending at Row (4,5) with address 0x50, you must pick this option. 
+	has it's SMBUS address for Row (0,1) starting at 0x52
+	and ending at Row (4,5) with address 0x50, you must pick this option.
+config I440LX_SMM
+	bool "Experimental 440LX ASEG SMM (requires hardware validation)"
+	depends on NORTHBRIDGE_INTEL_I440LX && SOUTHBRIDGE_INTEL_I82371EB && PARALLEL_MP
+	depends on BOARD_MSI_MS6117 || BOARD_PCCHIPS_P2200 || BOARD_PCCHIPS_P2200_ACPI || BOARD_PCCHIPS_P2200_TINY
+	depends on ARCH_RAMSTAGE_X86_32
+	select SMM_LEGACY_ASEG
+	select I82371EB_SMM
+	default n
+	help
+	  Install a P6 legacy ASEG handler with separate CPU save areas/stacks.
+	  Only APMC software SMIs and ACPI enable/disable are implemented.
+	  No USB emulation, suspend/resume or Award power management is provided.
+	  Keep disabled until tested on the particular CPU and board revision.

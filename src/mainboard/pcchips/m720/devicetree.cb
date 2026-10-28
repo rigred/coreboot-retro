@@ -22,8 +22,8 @@ chip northbridge/intel/i440lx		# Northbridge
         end
       end
       device pci 7.1 on	end		# IDE
-      device pci 7.2 on	end		# USB
-      device pci 7.3 on end		# ACPI
+      device pci 7.2 alias piix4_usb on end	# USB
+      device pci 7.3 alias piix4_pm on end	# ACPI
       register "ide0_enable" = "true"
       register "ide1_enable" = "true"
       register "ide_legacy_enable" = "true"

@@ -18,6 +18,10 @@ config BOARD_MSI_MS6117
 
 if BOARD_MSI_MS6117
 
+config MAX_CPUS
+	int
+	default 1
+
 config MAINBOARD_DIR
 	default "msi/ms6117"
 
@@ -47,7 +51,7 @@ config PAYLOAD_CONFIGFILE
 
 config SEABIOS_BOOTORDER_FILE
 	string
-	default "\$(top)/src/mainboard/\$(MAINBOARDDIR)/bootorder" if PAYLOAD_SEABIOS
+	default "" if PAYLOAD_SEABIOS
 
 endif
 

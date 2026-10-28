@@ -27,6 +27,10 @@ c_handler:
  * into the table. */
 apic_to_cpu_num:
 .fill CONFIG_MAX_CPUS,2,0xffff
+#if CONFIG(SMM_LEGACY_ASEG)
+smbase_to_cpu:
+.fill CONFIG_MAX_CPUS,4,0
+#endif
 
 .data
 /* Provide fallback stack to use when a valid CPU number cannot be found. */
@@ -45,6 +49,12 @@ fallback_stack_top:
 .global _start
 _start:
 smm_handler_start:
+#if CONFIG(SMM_LEGACY_ASEG)
+	/* Legacy ASEG is below 1 MiB; loader aligns SMBASE to 16 bytes. */
+	xor	%edi, %edi
+	mov	%cs, %di
+	shl	$4, %edi
+#endif
 #if CONFIG(SMM_LAPIC_REMAP_MITIGATION)
 	/* Check if the LAPIC register block overlaps with the stub.
 	 * This block needs to work without data accesses because they
@@ -134,6 +144,28 @@ smm_trampoline32:
 	 * for APIC id (eax). A table is used to handle a discontiguous
 	 * APIC id space.  */
 apic_id:
+#if CONFIG(SMM_LEGACY_ASEG)
+	/* Permanent stubs identify the CPU by its protected relocated SMBASE.
+	 * Do not trust an OS-writable LAPIC ID to choose an SMM stack. */
+	cmp	$0x30000, %edi
+	je	legacy_relocation_id
+	mov	$smbase_to_cpu, %ebx
+	xor	%ecx, %ecx
+legacy_smbase_lookup:
+	cmp	(%ebx, %ecx, 4), %edi
+	je	legacy_cpu_index_ready
+	inc	%ecx
+	cmp	$CONFIG_MAX_CPUS, %ecx
+	jne	legacy_smbase_lookup
+	ud2
+legacy_relocation_id:
+	/* Only used before OS handoff, with serialized reset-SMBASE relocation. */
+	mov	$LAPIC_BASE_MSR, %ecx
+	rdmsr
+	and	$0xfffff000, %eax
+	mov	LAPIC_ID(%eax), %eax
+	shr	$24, %eax
+#else
 	mov	$LAPIC_BASE_MSR, %ecx
 	rdmsr
 	and	$LAPIC_BASE_X2APIC_ENABLED, %eax
@@ -154,6 +186,7 @@ xapic:
 	shr	$24, %eax
 
 apicid_end:
+#endif
 	mov	$(apic_to_cpu_num), %ebx
 	xor	%ecx, %ecx
 
@@ -169,6 +202,9 @@ apicid_end:
 	movl	$(fallback_stack_top), %esp
 	jmp	align_stack
 1:
+#if CONFIG(SMM_LEGACY_ASEG)
+legacy_cpu_index_ready:
+#endif
 	movl	stack_size, %eax
 	mul	%ecx /* %eax(stack_size) * %ecx(cpu) = %eax(offset) */
 	movl	stack_top, %ebx

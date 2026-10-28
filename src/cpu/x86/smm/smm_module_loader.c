@@ -99,7 +99,9 @@ static int smm_create_map(const uintptr_t smbase, const unsigned int num_cpus,
 	 * Make sure that the first stub does not overlap with the last save state of a segment.
 	 */
 	const size_t stub_size = rmodule_memory_size(&smm_stub);
-	const size_t needed_ss_size = MAX(params->cpu_save_state_size, stub_size);
+	const size_t needed_ss_size = CONFIG(SMM_LEGACY_ASEG) ?
+		ALIGN_UP(MAX(params->cpu_save_state_size, stub_size), 16) :
+		MAX(params->cpu_save_state_size, stub_size);
 	const size_t cpus_per_segment =
 		(SMM_CODE_SEGMENT_SIZE - SMM_ENTRY_OFFSET - stub_size) / needed_ss_size;
 
@@ -166,7 +168,9 @@ static void smm_place_entry_code(const unsigned int num_cpus)
 
 	/* start at 1, the first CPU stub code is already there */
 	size = region_sz(&cpus[0].stub_code);
-	for (i = 1; i < num_cpus; i++) {
+	if (num_cpus > ARRAY_SIZE(cpus))
+		die("SMM entry count exceeds CPU map\n");
+	for (i = 1; i < num_cpus && i < ARRAY_SIZE(cpus); i++) {
 		printk(BIOS_DEBUG,
 		       "SMM Module: placing smm entry code at %zx,  cpu # 0x%x\n",
 		       region_offset(&cpus[i].stub_code), i);
@@ -267,9 +271,19 @@ static int smm_module_setup_stub(const uintptr_t smbase, const size_t smm_size,
 		return -1;
 	}
 	int i = 0;
-	for (struct device *dev = info->cpu; dev; dev = dev->sibling)
-		if (dev->enabled)
-			stub_params->apic_id_to_cpu[i++] = dev->path.apic.initial_lapicid;
+	for (struct device *dev = info->cpu; dev; dev = dev->sibling) {
+		if (!dev->enabled)
+			continue;
+		if (i >= params->num_cpus || i >= ARRAY_SIZE(stub_params->apic_id_to_cpu))
+			return -1;
+		stub_params->apic_id_to_cpu[i++] = CONFIG(SMM_LEGACY_ASEG) ?
+			dev->path.apic.apic_id : dev->path.apic.initial_lapicid;
+	}
+
+#if CONFIG(SMM_LEGACY_ASEG)
+	for (unsigned int cpu = 0; cpu < params->num_cpus; cpu++)
+		stub_params->smbase_to_cpu[cpu] = cpus[cpu].smbase;
+#endif
 
 	if (i != params->num_cpus) {
 		printk(BIOS_ERR, "%s: Failed to set up apic map correctly\n", __func__);
@@ -442,7 +456,9 @@ int smm_load_module(const uintptr_t smram_base, const size_t smram_size,
 	}
 
 	const size_t handler_size = rmodule_memory_size(&smi_handler);
-	const size_t handler_alignment = rmodule_load_alignment(&smi_handler);
+	const size_t handler_alignment = CONFIG(SMM_LEGACY_ASEG) ?
+		MAX(rmodule_load_alignment(&smi_handler), 16) :
+		rmodule_load_alignment(&smi_handler);
 	const uintptr_t handler_base =
 		ALIGN_DOWN(smram_top - stm_size - handler_size,
 			   handler_alignment);

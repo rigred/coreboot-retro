@@ -52,7 +52,7 @@ unsigned long write_pirq_routing_table(unsigned long addr)
 	pirq->exclusive_irqs = 0x0c80;
 
 	pirq->rtr_vendor = 0x8086;
-	pirq->rtr_device = 0x122e;
+	pirq->rtr_device = 0x7110; /* PIIX4 ISA function, not PIIX. */
 
 	pirq->miniport_data = 0;
 

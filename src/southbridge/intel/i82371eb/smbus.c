@@ -29,7 +29,7 @@ static void pwrmgt_enable(struct device *dev)
 	 * bit16 (end of smi): 0=disable smi assertion (cleared by hw)
 	 * bits8-15,26: global standby timer initial count 127 * 4minutes
 	 * bit2  (thrm_pol): 1=active low THRM#
-	 * bit0  (smi_en): 1=disable smi generation upon smi event
+	 * bit0  (smi_en): 1=enable SMI generation upon enabled SMI event
 	 */
 	reg = (sb->lid_polarity<<25)|
 	      (1<<24)|

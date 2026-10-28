@@ -8,6 +8,7 @@
 #include <device/pci_type.h>
 #include <device/resource.h>
 #include <types.h>
+#include <cpu/x86/legacy_aseg.h>
 
 #define SMM_DEFAULT_BASE 0x30000
 #define SMM_DEFAULT_SIZE 0x10000
@@ -105,6 +106,9 @@ struct smm_stub_params {
 	 * contiguous like the 1:1 mapping it is up to the caller of the stub
 	 * loader to adjust this mapping. */
 	u16 apic_id_to_cpu[CONFIG_MAX_CPUS];
+#if CONFIG(SMM_LEGACY_ASEG)
+	u32 smbase_to_cpu[CONFIG_MAX_CPUS];
+#endif
 } __packed;
 
 /* smm_handler_t is called with arg of smm_module_params pointer. */
@@ -177,7 +181,7 @@ void smm_region(uintptr_t *start, size_t *size);
 static inline void aseg_region(uintptr_t *start, size_t *size)
 {
 	*start = SMM_BASE;
-	*size = SMM_DEFAULT_SIZE; /* SMM_CODE_SEGMENT_SIZE ? */
+	*size = CONFIG(SMM_LEGACY_ASEG) ? LEGACY_ASEG_SIZE : SMM_DEFAULT_SIZE;
 }
 
 enum {

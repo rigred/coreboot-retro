@@ -9,6 +9,7 @@
 #include <device/pci.h>
 
 #include "i82371eb.h"
+#include <cpu/x86/smm.h>
 
 /**
  * Create the Fixed ACPI Description Tables (FADT) for any board with this SB.
@@ -16,6 +17,12 @@
  */
 void acpi_fill_fadt(acpi_fadt_t *fadt)
 {
+
+	if (CONFIG(I82371EB_SMM)) {
+		fadt->smi_cmd = APM_CNT;
+		fadt->acpi_enable = APM_CNT_ACPI_ENABLE;
+		fadt->acpi_disable = APM_CNT_ACPI_DISABLE;
+	}
 
 	fadt->pm1a_evt_blk = DEFAULT_PMBASE;
 	fadt->pm1a_cnt_blk = DEFAULT_PMBASE + PMCNTRL;

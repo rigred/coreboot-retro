@@ -9,6 +9,8 @@
 #include <stdint.h>
 #include <option.h>
 #include "i440lx.h"
+#include "smm.h"
+#include <cpu/x86/legacy_aseg.h>
 
 /* Program APSIZE before the generic PCI code probes the aperture BAR. */
 static void northbridge_read_resources(struct device *dev)
@@ -106,13 +108,21 @@ static int get_cpu_count(void)
 }
 
 static const struct mp_ops mp_ops = {
+#if CONFIG(I440LX_SMM)
+	.pre_mp_init = i440lx_smm_prepare,
+	.get_smm_info = legacy_aseg_info,
+	.per_cpu_smm_trigger = legacy_aseg_trigger,
+	.relocation_handler = legacy_aseg_relocate,
+	.post_mp_init = i440lx_smm_complete,
+#endif
 	.get_cpu_count = get_cpu_count,
 };
 
 void mp_init_cpus(struct bus *cpu_bus)
 {
 	/* TODO: Handle mp_init_with_smm failure? */
-	mp_init_with_smm(cpu_bus, &mp_ops);
+	if (mp_init_with_smm(cpu_bus, &mp_ops) != CB_SUCCESS)
+		die("440LX CPU initialization failed\n");
 }
 
 static struct device_operations cpu_bus_ops = {

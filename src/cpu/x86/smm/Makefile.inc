@@ -75,3 +75,5 @@ $(obj)/smm/smm: $(obj)/smm/smm.elf.rmod
 	$(OBJCOPY_smm) -O binary $< $@
 
 endif
+
+ramstage-$(CONFIG_SMM_LEGACY_ASEG) += legacy_aseg.c

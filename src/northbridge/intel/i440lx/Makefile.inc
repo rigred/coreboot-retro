@@ -3,6 +3,7 @@
 ifeq ($(CONFIG_NORTHBRIDGE_INTEL_I440LX),y)
 
 ramstage-y += northbridge.c
+ramstage-$(CONFIG_I440LX_SMM) += smm.c
 
 romstage-y += raminit.c
 romstage-y += romstage.c

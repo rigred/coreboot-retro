@@ -8,3 +8,14 @@ config SOUTHBRIDGE_INTEL_I82371EB
 	select SOUTHBRIDGE_INTEL_COMMON_RESET
 	select BOOT_DEVICE_NOT_SPI_FLASH
 	bool
+
+# Selected only by an explicit, reviewed northbridge/board SMM adapter.
+config I82371EB_SMM
+	bool
+	depends on SOUTHBRIDGE_INTEL_I82371EB && SMM_LEGACY_ASEG
+	help
+	  PIIX4 SMI services using the fixed E400 PM base. The enabled PM
+	  and USB functions must have piix4_pm and piix4_usb device-tree
+	  aliases. sconfig binds these at build time; there is no PCI scan.
+	  The platform must quiesce events before relocation and signal that
+	  SMRAM is locked before the post-device runtime probes can execute.

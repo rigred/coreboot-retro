@@ -2,6 +2,8 @@
 
 #include <southbridge/intel/i82371eb/i82371eb.h>
 
+#define PIIX4_PCI_DEVICE 7
+
 #define SUPERIO_PNP_BASE 0x3F0
 #define SUPERIO_SHOW_UARTA
 #define SUPERIO_SHOW_UARTB
@@ -102,49 +104,38 @@ DefinitionBlock (
 			Name (_UID, 0x00)
 			Name (_BBN, 0x00)
 
-			/* PCI Routing Table */
+			/* Match the P2200 $PIR slot swizzles; physical wiring still needs testing. */
 			Name (_PRT, Package () {
 				Package (0x04) { 0x0001FFFF, 0, LNKA, 0 },
 				Package (0x04) { 0x0001FFFF, 1, LNKB, 0 },
 				Package (0x04) { 0x0001FFFF, 2, LNKC, 0 },
 				Package (0x04) { 0x0001FFFF, 3, LNKD, 0 },
-
-				Package (0x04) { 0x0004FFFF, 0, LNKA, 0 },
-				Package (0x04) { 0x0004FFFF, 1, LNKB, 0 },
-				Package (0x04) { 0x0004FFFF, 2, LNKC, 0 },
-				Package (0x04) { 0x0004FFFF, 3, LNKD, 0 },
-
-				Package (0x04) { 0x0006FFFF, 0, LNKD, 0 },
-				Package (0x04) { 0x0006FFFF, 1, LNKA, 0 },
-				Package (0x04) { 0x0006FFFF, 2, LNKB, 0 },
-				Package (0x04) { 0x0006FFFF, 3, LNKC, 0 },
-
-				Package (0x04) { 0x0009FFFF, 0, LNKD, 0 },
-				Package (0x04) { 0x0009FFFF, 1, LNKA, 0 },
-				Package (0x04) { 0x0009FFFF, 2, LNKB, 0 },
-				Package (0x04) { 0x0009FFFF, 3, LNKC, 0 },
-
+				Package (0x04) { 0x0007FFFF, 0, LNKA, 0 },
+				Package (0x04) { 0x0007FFFF, 1, LNKB, 0 },
+				Package (0x04) { 0x0007FFFF, 2, LNKC, 0 },
+				Package (0x04) { 0x0007FFFF, 3, LNKD, 0 },
+				Package (0x04) { 0x0008FFFF, 0, LNKA, 0 },
+				Package (0x04) { 0x0008FFFF, 1, LNKB, 0 },
+				Package (0x04) { 0x0008FFFF, 2, LNKC, 0 },
+				Package (0x04) { 0x0008FFFF, 3, LNKD, 0 },
+				Package (0x04) { 0x0009FFFF, 0, LNKB, 0 },
+				Package (0x04) { 0x0009FFFF, 1, LNKC, 0 },
+				Package (0x04) { 0x0009FFFF, 2, LNKD, 0 },
+				Package (0x04) { 0x0009FFFF, 3, LNKA, 0 },
 				Package (0x04) { 0x000AFFFF, 0, LNKC, 0 },
 				Package (0x04) { 0x000AFFFF, 1, LNKD, 0 },
 				Package (0x04) { 0x000AFFFF, 2, LNKA, 0 },
 				Package (0x04) { 0x000AFFFF, 3, LNKB, 0 },
-
-				Package (0x04) { 0x0007FFFF, 0, LNKC, 0 },
-				Package (0x04) { 0x0007FFFF, 1, LNKD, 0 },
-				Package (0x04) { 0x0007FFFF, 2, LNKA, 0 },
-				Package (0x04) { 0x0007FFFF, 3, LNKB, 0 },
-
-				Package (0x04) { 0x000BFFFF, 0, LNKB, 0 },
-				Package (0x04) { 0x000BFFFF, 1, LNKC, 0 },
-				Package (0x04) { 0x000BFFFF, 2, LNKD, 0 },
-				Package (0x04) { 0x000BFFFF, 3, LNKA, 0 },
-
+				Package (0x04) { 0x000BFFFF, 0, LNKD, 0 },
+				Package (0x04) { 0x000BFFFF, 1, LNKA, 0 },
+				Package (0x04) { 0x000BFFFF, 2, LNKB, 0 },
+				Package (0x04) { 0x000BFFFF, 3, LNKC, 0 },
 				Package (0x04) { 0x000CFFFF, 0, LNKA, 0 },
 				Package (0x04) { 0x000CFFFF, 1, LNKB, 0 },
 				Package (0x04) { 0x000CFFFF, 2, LNKC, 0 },
 				Package (0x04) { 0x000CFFFF, 3, LNKD, 0 },
 			})
-			#include <northbridge/intel/i440bx/acpi/sb_pci0_crs.asl>
+			#include <northbridge/intel/i440lx/acpi/sb_pci0_crs.asl>
 			#include <southbridge/intel/i82371eb/acpi/isabridge.asl>
 
 			#include <southbridge/intel/i82371eb/acpi/i82371eb.asl>

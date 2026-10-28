@@ -155,6 +155,23 @@ config SMM_ASEG
 	default n
 	depends on !NO_SMM
 
+# Explicit platform contract; never automatically enable this from SMM_ASEG.
+config SMM_LEGACY_ASEG
+	bool
+	depends on PARALLEL_MP && ARCH_RAMSTAGE_X86_32
+	select SMM_ASEG
+	select HAVE_SMI_HANDLER
+	select PARALLEL_MP_AP_WORK
+	help
+	  Shared Intel P6 legacy save-state/SMBASE support for a full 128 KiB
+	  A0000-BFFFF SMRAM window. Requires fixed UC MTRRs and a platform
+	  adapter that masks all SMI sources, opens/closes/locks that window
+	  and verifies permanent entry before enabling runtime SMI sources.
+
+	  Not a generic switch for arbitrary ASEG, CPUs or chipsets. A board
+	  must opt in through its reviewed chipset adapter. Currently limited
+	  to one or two CPUs; no S3 resume or USB emulation is provided.
+
 config SMM_TSEG
 	bool
 	default y

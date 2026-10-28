@@ -69,7 +69,7 @@ void i82371eb_early_init(void);
 #define   GSTBY_STS	(1<<8)
 #define   GP_STS	(1<<7)
 #define   PM1_STS	(1<<6)
-#define   APM_STS	(1<<5)
+#define   PIIX4_APM_STS	(1<<5)
 #define   DEV_STS	(1<<4)
 #define   LEGACY_USB_STS (1<<1)
 #define   BIOS_STS	(1<<0)
