@@ -425,7 +425,7 @@ static void sdram_set_registers(void)
 
 	/* Set registers as specified in the register_values[] array. */
 	for (i = 0; i < max; i += 3) {
-		uint8_t reg,tmp;
+		uint8_t reg;
 		reg = pci_read_config8(NB, register_values[i]);
 		reg &= register_values[i + 1];
 		reg |= register_values[i + 2] & ~(register_values[i + 1]);
@@ -437,7 +437,7 @@ static void sdram_set_registers(void)
 		PRINT_DEBUG_HEX8(register_values[i]);
 		PRINT_DEBUG(" to 0x");
 		PRINT_DEBUG_HEX8(register_values[i + 1]);
-		tmp = pci_read_config8(NB, register_values[i]);
+		uint8_t tmp = pci_read_config8(NB, register_values[i]);
 		PRINT_DEBUG(" read back 0x");
 		PRINT_DEBUG_HEX8(tmp);
 		if (tmp == register_values[i + 1]) {
