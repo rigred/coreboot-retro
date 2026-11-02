@@ -5,10 +5,11 @@
 #include <southbridge/intel/i82371eb/smi.h>
 #include "i440lx.h"
 #include "smm.h"
+#include "errata.h"
 
-#define SMRAM_OPEN 0x4a
-#define SMRAM_CLOSED 0x0a
 #define SMRAM_LOCKED 0x1a
+
+static struct lx_smram_guard smram_guard;
 
 void i440lx_smm_prepare(void)
 {
@@ -16,17 +17,15 @@ void i440lx_smm_prepare(void)
 	if (pci_s_read_config8(NB, SMRAM) & 0x10)
 		die("440LX SMRAM already locked; cold power cycle required\n");
 	legacy_aseg_prepare();
-	pci_s_write_config8(NB, SMRAM, SMRAM_OPEN);
-	if (pci_s_read_config8(NB, SMRAM) != SMRAM_OPEN)
-		die("440LX SMRAM open failed\n");
+	/* PM location is bound by sconfig, not a runtime southbridge search. */
+	pci_devfn_t isa = pcidev_bdf(DEV_PTR(piix4_pm)) & ~PCI_DEV(0, 0, 7);
+	lx_smram_open(&smram_guard, isa);
 }
 
 void i440lx_smm_complete(void)
 {
 	legacy_aseg_complete();
-	pci_s_write_config8(NB, SMRAM, SMRAM_CLOSED);
-	if (pci_s_read_config8(NB, SMRAM) != SMRAM_CLOSED)
-		die("440LX SMRAM close failed\n");
+	lx_smram_end(&smram_guard);
 	pci_s_write_config8(NB, SMRAM, SMRAM_LOCKED);
 	if (pci_s_read_config8(NB, SMRAM) != SMRAM_LOCKED)
 		die("440LX SMRAM lock failed\n");

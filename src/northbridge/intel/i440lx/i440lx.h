@@ -66,6 +66,15 @@
 #define AMTT	0xbc /* AGP MTT Control Register */
 #define LPTT	0xbd /* AGP Low Priority transaction timer register*/
 
+/* Intel 297655-005 errata 5/6; 290564-002 RSTCTRL and SMRAM. */
+#define LX_RSTCTRL 0x93
+#define LX_RSTCTRL_BIST (1 << 3)
+#define LX_RSTCTRL_RCPU (1 << 2)
+#define LX_RSTCTRL_CSRE (1 << 1)
+#define LX_SMRAM_DOPEN (1 << 6)
+#define LX_SMRAM_DLCK (1 << 4)
+#define LX_SMRAM_ASEG_OPEN 0x4a
+
 #define NB PCI_DEV(0, 0, 0)
 #define NBP PCI_DEV(0, 1, 0)
 

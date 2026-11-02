@@ -10,11 +10,13 @@
 #include <option.h>
 #include "i440lx.h"
 #include "smm.h"
+#include "errata.h"
 #include <cpu/x86/legacy_aseg.h>
 
 /* Program APSIZE before the generic PCI code probes the aperture BAR. */
 static void northbridge_read_resources(struct device *dev)
 {
+	lx_smram_close();
 	static const uint8_t sizes[] = { 0x3f, 0x3e, 0x3c, 0x38, 0x30, 0x20, 0x00 };
 	unsigned int choice = get_uint_option("agp_aperture", AGP_APERTURE_DEFAULT);
 	uint8_t reg;
@@ -56,6 +58,7 @@ static void i440lx_domain_read_resources(struct device *dev)
 	struct device *mc_dev;
 	uint32_t pci_tolm;
 
+	lx_smram_close();
 	pci_domain_read_resources(dev);
 
 	pci_tolm = find_pci_tolm(dev->link_list);

@@ -11,7 +11,9 @@ static void generate_cpu_entry(int cpu)
 	acpigen_write_processor_device(cpu);
 
 	/* bit 1:3 in PCNTRL reg (pmbase+0x10) */
-	acpigen_write_PTC(3, 1, DEFAULT_PMBASE + PCNTRL);
+	/* Intel 297655-005 erratum 4: do not advertise PIIX4 throttling on LX. */
+	if (!CONFIG(NORTHBRIDGE_INTEL_I440LX))
+		acpigen_write_PTC(3, 1, DEFAULT_PMBASE + PCNTRL);
 
 	acpigen_write_processor_device_end();
 }

@@ -16,6 +16,8 @@ ramstage-$(CONFIG_HAVE_ACPI_TABLES) += acpi_tables.c
 
 romstage-$(CONFIG_HAVE_ACPI_RESUME) += wakeup.c
 romstage-y += early_pm.c
+romstage-$(CONFIG_NORTHBRIDGE_INTEL_I440LX) += lx_workarounds.c
+ramstage-$(CONFIG_NORTHBRIDGE_INTEL_I440LX) += lx_workarounds.c
 romstage-y += early_smbus.c
 
 endif

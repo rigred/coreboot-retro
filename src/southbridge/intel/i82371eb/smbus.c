@@ -43,6 +43,8 @@ static void pwrmgt_enable(struct device *dev)
 	 * bit9 (cc_en): 1=enable clk control with lvl2 and lvl3 regs
 	 */
 	outl(0, DEFAULT_PMBASE + PCNTRL);
+	if (CONFIG(NORTHBRIDGE_INTEL_I440LX))
+		i82371eb_lx_disable_throttling(pcidev_bdf(dev));
 
 	/* disable smi event enables */
 	outw(0, DEFAULT_PMBASE + GLBEN);

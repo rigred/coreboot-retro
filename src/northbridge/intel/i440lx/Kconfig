@@ -94,6 +94,17 @@ config SDRAM_3DIMM_REVERSE_OFFSET
 	If your board is an MSI 6117, ATC-6130 or otherwise feels special and
 	has it's SMBUS address for Row (0,1) starting at 0x52
 	and ending at Row (4,5) with address 0x50, you must pick this option.
+config I440LX_MAB_SPD_ADDRESS
+	hex "SPD address of the MAB-driven socket (three-DIMM boards)"
+	depends on NORTHBRIDGE_INTEL_I440LX && !SDRAM_4DIMM
+	default 0x50 if SDRAM_3DIMM_REVERSE_OFFSET
+	default 0x52
+	range 0x50 0x57
+	help
+	  Physical socket closest to PAC, driven by MAB. Required for the
+	  x32/x8 loading check in Intel 297655-005 erratum 7. Verify against
+	  the board's wiring; SPD cannot identify which MA copy drives a slot.
+
 config I440LX_SMM
 	bool "Experimental 440LX ASEG SMM (requires hardware validation)"
 	depends on NORTHBRIDGE_INTEL_I440LX && SOUTHBRIDGE_INTEL_I82371EB && PARALLEL_MP

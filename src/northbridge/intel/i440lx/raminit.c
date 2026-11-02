@@ -14,6 +14,7 @@
 #include "i440lx.h"
 #include "raminit.h"
 #include "sdram_policy.h"
+#include "errata.h"
 
 
 /*
@@ -50,9 +51,9 @@ static const u8 register_values[] = {
 	 * 0x50 - 0x51
 	 *
 	 * [15:15] WSC# Handshake Disable
-	 *         1 = Uni-processor mode
-	 *         0 = Dual-processor mode with external IOAPIC (default)
-	 * [14:12] Reserved (Intel 297655-005 supersedes the old frequency bit)
+	 *         1 = No I/O APIC: disable WSC# handshake
+	 *         0 = I/O APIC present: enable WSC# handshake
+	 * [14:12] Reserved (Intel 297655-005 documentation change 1)
 	 * [11:11] DRAM Configuration Mode (strapped on CKE)
 	 *         1 = Memory Configuration #1
 	 *         0 = Memory Configuration #2 (default)
@@ -79,16 +80,10 @@ static const u8 register_values[] = {
 	 *                     cycles in the MDA range.
 	 * [04:00] Reserved
 	 */
-#if CONFIG(I440LX_SPD_RAMINIT)
 #if CONFIG(IOAPIC)
 	PACCFG + 1, 0x78, 0x04,
 #else
 	PACCFG + 1, 0x78, 0x84,
-#endif
-#elif CONFIG(SMP)
-	PACCFG + 1, 0x38, 0x0C,
-#else
-	PACCFG + 1, 0x38, 0x8C,
 #endif
 
 	/* DBC - Data Buffer Control Register 
@@ -414,7 +409,8 @@ static void northbridge_init(void)
 
 	uint16_t reg16;
 	reg16 = pci_read_config16(NB, PACCFG);
-	printk(BIOS_DEBUG, "LX memory wiring configuration %u\n", (reg16 & PACCFG_MEMCFG1) ? 1 : 2);
+	printk(BIOS_DEBUG, "LX DRAM wiring configuration %u\n",
+		(reg16 & (1 << 11)) ? 1 : 2);
 
 	DUMPBRIDGE();
 
@@ -854,7 +850,9 @@ void sdram_initialize(int s3resume)
 	if (s3resume)
 		die_with_post_code(POSTCODE_RAM_FAILURE, "LX S3 resume is not implemented\n");
 	timestamp_add_now(TS_INITRAM_START);
+	lx_smram_close();
 	enable_spd();
+	lx_check_dimm_errata();
 
 	northbridge_init();
 
@@ -878,8 +876,11 @@ void sdram_initialize(int s3resume)
 		lx_sdram_finish(&plan, ecc_mode);
 
 	/* Clear any errors reported during raminit. */
+	/* Writing MEF=1 while it is clear can spuriously assert SERR#.
+	 * 290564-002 section 3.3.25: acknowledge only observed W1C flags.
+	 */
 	pci_write_config8(NB, ERRSTS, pci_read_config8(NB, ERRSTS) & 0x11);
-	pci_write_config8(NB, ERRSTS + 1, 0x7);
+	pci_write_config8(NB, ERRSTS + 1, pci_read_config8(NB, ERRSTS + 1) & 0x07);
 
 	timestamp_add_now(TS_INITRAM_END);
 }

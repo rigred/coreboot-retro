@@ -9,6 +9,8 @@
 #include "i440lx.h"
 #include "raminit.h"
 #include "sdram_policy.h"
+#include "errata.h"
+#include <southbridge/intel/i82371eb/i82371eb.h>
 
 static void require_uncached_ram(uintptr_t top)
 {
@@ -63,13 +65,12 @@ static void initialize_ecc(const struct lx_sdram_plan *p, unsigned int mode)
 		die_with_post_code(POSTCODE_RAM_FAILURE, "ECC requires qualified wiring, ECC ranks and MMX\n");
 	uintptr_t top = (uintptr_t)p->total_mb << 20;
 	require_uncached_ram(top);
-	uint8_t saved_smram = pci_read_config8(NB, SMRAM);
-	if (saved_smram & SMRAM_LOCK)
-		die_with_post_code(POSTCODE_RAM_FAILURE, "ECC init requires unlocked SMRAM\n");
-	/* Include physical DRAM hidden beneath VGA; preserve the original map. */
-	pci_write_config8(NB, SMRAM, SMRAM_ASEG_OPEN);
-	if (pci_read_config8(NB, SMRAM) != SMRAM_ASEG_OPEN)
-		die_with_post_code(POSTCODE_RAM_FAILURE, "ECC init SMRAM open failed\n");
+	struct lx_smram_guard guard = {0};
+	printk(BIOS_INFO, "Initializing %u MiB ECC check bits with full QWord writes\n", p->total_mb);
+	/* Erratum 6: expose the A/B backing DRAM only after blocking PCI and
+	 * ISA/DMA VGA writes. The guard always returns with DOPEN clear.
+	 */
+	lx_smram_open(&guard, i82371eb_lx_isa());
 	uint8_t errcmd = pci_read_config8(NB, ERRCMD);
 	pci_write_config8(NB, ERRCMD, errcmd & ~ERRCMD_MEMORY_MASK);
 	uint8_t old_status = pci_read_config8(NB, ERRSTS) & ERRSTS_ECC_FLAGS;
@@ -79,15 +80,14 @@ static void initialize_ecc(const struct lx_sdram_plan *p, unsigned int mode)
 	uint16_t mode_bits = mode == 1 ? PACCFG_DDIM_EC : PACCFG_DDIM_ECC;
 	/* PACCFG 01 = EC, 11 = ECC; 10 is reserved and is never written. */
 	pci_write_config16(NB, PACCFG, cfg | mode_bits);
-	if ((pci_read_config16(NB, PACCFG) & (PACCFG_DDIM_MASK | PACCFG_ECC_TEST)) != mode_bits)
+	if ((pci_read_config16(NB, PACCFG) & (PACCFG_DDIM_MASK | PACCFG_ECC_TEST)) != mode_bits) {
+		lx_smram_end(&guard);
 		die_with_post_code(POSTCODE_RAM_FAILURE, "ECC mode readback failed\n");
-	printk(BIOS_INFO, "Initializing %u MiB ECC check bits with full QWord writes\n", p->total_mb);
+	}
 	clear_qwords(0, top);
 	/* PCI reads serialize completion of UC stores; do not WBINVD the CAR stack. */
 	pci_read_config16(NB, PACCFG);
-	pci_write_config8(NB, SMRAM, saved_smram);
-	if (pci_read_config8(NB, SMRAM) != saved_smram)
-		die_with_post_code(POSTCODE_RAM_FAILURE, "ECC init SMRAM restore failed\n");
+	lx_smram_end(&guard);
 	uint8_t status = pci_read_config8(NB, ERRSTS) & ERRSTS_ECC_FLAGS;
 	if (status)
 		die_with_post_code(POSTCODE_RAM_FAILURE, "ECC error during check-bit initialization\n");

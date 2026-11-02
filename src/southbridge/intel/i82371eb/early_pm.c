@@ -27,4 +27,6 @@ void enable_pm(void)
 	reg8 = pci_read_config8(dev, PMREGMISC);
 	reg8 |= PMIOSE;
 	pci_write_config8(dev, PMREGMISC, reg8);
+	if (CONFIG(NORTHBRIDGE_INTEL_I440LX))
+		i82371eb_lx_disable_throttling(dev);
 }

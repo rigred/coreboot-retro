@@ -2,7 +2,11 @@
 
 ifeq ($(CONFIG_NORTHBRIDGE_INTEL_I440LX),y)
 
+bootblock-y += bootblock.c
 ramstage-y += northbridge.c
+ramstage-y += smram.c
+romstage-y += smram.c
+romstage-y += dimm_errata.c
 ramstage-$(CONFIG_I440LX_SMM) += smm.c
 
 romstage-y += raminit.c

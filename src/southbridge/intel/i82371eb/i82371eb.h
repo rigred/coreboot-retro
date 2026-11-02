@@ -5,6 +5,9 @@
 
 #if !defined(__ACPI__)
 
+#include <device/pci_type.h>
+pci_devfn_t i82371eb_lx_isa(void);
+void i82371eb_lx_disable_throttling(pci_devfn_t pm);
 void enable_pm(void);
 void i82371eb_early_init(void);
 

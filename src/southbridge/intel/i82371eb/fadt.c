@@ -24,6 +24,12 @@ void acpi_fill_fadt(acpi_fadt_t *fadt)
 		fadt->acpi_disable = APM_CNT_ACPI_DISABLE;
 	}
 
+	if (CONFIG(NORTHBRIDGE_INTEL_I440LX)) {
+		/* No legacy P_BLK duty-cycle interface either (erratum 4). */
+		fadt->duty_offset = 0;
+		fadt->duty_width = 0;
+	}
+
 	fadt->pm1a_evt_blk = DEFAULT_PMBASE;
 	fadt->pm1a_cnt_blk = DEFAULT_PMBASE + PMCNTRL;
 
