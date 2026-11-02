@@ -19,3 +19,6 @@ spread_spectrum=Disable
 overclocking=Disable
 bus_clock=66/33MHz
 cpu_ratio=Auto
+ram_capacity=Use-Supported-Ranks
+ram_limit=Auto
+ram_policy_version=0x4c01

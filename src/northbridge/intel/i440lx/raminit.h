@@ -30,6 +30,9 @@
 
 void enable_spd(void);
 void sdram_initialize(int s3resume);
+struct lx_sdram_plan;
+void lx_spd_configure(struct lx_sdram_plan *plan, unsigned int ecc_mode, int cmos_valid);
+void lx_sdram_finish(const struct lx_sdram_plan *plan, unsigned int ecc_mode);
 
 /* Debug */
 #if CONFIG(DEBUG_RAM_SETUP)

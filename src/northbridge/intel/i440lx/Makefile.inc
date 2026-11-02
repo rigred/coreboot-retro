@@ -6,6 +6,9 @@ ramstage-y += northbridge.c
 ramstage-$(CONFIG_I440LX_SMM) += smm.c
 
 romstage-y += raminit.c
+romstage-$(CONFIG_I440LX_SPD_RAMINIT) += sdram_policy.c
+romstage-$(CONFIG_I440LX_SPD_RAMINIT) += spd_raminit.c
+romstage-$(CONFIG_I440LX_SPD_RAMINIT) += sdram_finish.c
 romstage-y += romstage.c
 romstage-$(CONFIG_DEBUG_RAM_SETUP) += debug.c
 romstage-y += memmap.c

@@ -30,6 +30,16 @@ entries
 #417	1	e	5	srcd_timing
 #418	1	e	5	cas_latency
 
+416 1 e 6 ram_config
+417 1 e 7 cas_latency
+418 1 e 7 ras_to_cas_delay
+419 1 e 7 ras_precharge_time
+420 1 e 8 ma_wait_state
+421 2 e 9 ecc_memory
+423 1 e 16 ram_capacity
+424 3 e 17 ram_limit
+432 16 h 0 ram_policy_version
+
 enumerations
 #ID	value	text
 
@@ -61,6 +71,27 @@ enumerations
 #6	0	Auto
 #6	1	Manual
 
+6 0 Auto
+6 1 Manual
+7 0 3
+7 1 2
+8 0 Slow
+8 1 Fast
+9 0 Non-ECC
+9 1 EC
+9 2 ECC
+9 3 Unsupported-Scrubbing
+
+16 0 Strict
+16 1 Use-Supported-Ranks
+17 0 Auto
+17 1 64MB
+17 2 128MB
+17 3 192MB
+17 4 256MB
+17 5 384MB
+17 6 512MB
+
 checksums
 
-checksum 592 975 976
+checksum 392 975 976

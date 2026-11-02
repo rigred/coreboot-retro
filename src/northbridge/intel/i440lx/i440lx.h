@@ -41,6 +41,21 @@
 
 #define ERRCMD  0x90 /* Error Command Register (0x00). */
 #define ERRSTS  0x91 /* Error Status (0x0000). */
+
+/* SDRAM/ECC fields (290564-002, corrected by 297655-005). */
+#define PACCFG_MEMCFG1 (1U << 11)
+#define PACCFG_DDIM_MASK (3U << 7)
+#define PACCFG_DDIM_EC (1U << 7)
+#define PACCFG_DDIM_ECC (3U << 7)
+#define PACCFG_ECC_TEST (1U << 6)
+#define DRAMT_SRCD_2 (1U << 7)
+#define DRAMT_CAS_2 (1U << 6)
+#define DRAMT_SRPT_2 (1U << 5)
+#define DRAMT_FAST_MA (1U << 0)
+#define ERRCMD_MEMORY_MASK 0x03
+#define ERRSTS_ECC_FLAGS 0x11
+#define SMRAM_ASEG_OPEN 0x4a
+#define SMRAM_LOCK (1U << 4)
 // TODO: AGP stuff.
 #define ACAPID  0xa0 /* AGP Capability Identifier (0x00100002 or 0x00000000) */
 #define AGPSTAT 0xa4 /* AGP Status Register (0x1f000203, read only) */

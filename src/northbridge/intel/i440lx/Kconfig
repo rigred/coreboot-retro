@@ -6,6 +6,60 @@ config NORTHBRIDGE_INTEL_I440LX
 	select HAVE_DEBUG_RAM_SETUP
 	select NO_CBFS_MCACHE
 
+config I440LX_SPD_RAMINIT
+	bool "Experimental SPD/CMOS SDRAM initialization"
+	depends on NORTHBRIDGE_INTEL_I440LX
+	select USE_SDR_SDRAM
+	default n
+	help
+	  Replace the inherited BX geometry assumptions with an LX policy.
+	  Validate complete 64-byte SPD snapshots, select common SDR timings,
+	  detect ECC capability and retain compatible whole ranks within limits.
+	  Manual CMOS timings remain constrained by SPD. No EDO/S3 support.
+
+if I440LX_SPD_RAMINIT
+
+config I440LX_SDRAM_CLOCK_PS
+	int "Actual SDRAM clock period in picoseconds"
+	default 15000
+	range 15000 16667
+	help
+	  Board clock contract: 15000 for 66.67 MHz, 16667 for 60 MHz.
+	  Does not program the PLL. PACCFG bit 14 is reserved in 297655-005.
+
+config I440LX_SDRAM_MAX_TAC_PS
+	int "Board-qualified maximum SDRAM clock-to-output time (ps)"
+	default 9000
+	range 1000 9000
+
+config I440LX_SDRAM_FAST_MA
+	bool "Board-qualified fast MA timing"
+	default n
+	help
+	  Allow fast MA in Auto and Manual modes only after signal/timing tests.
+
+config I440LX_SDRAM_MBSC
+	hex "Board-qualified DRAM buffer strengths"
+	default 0x00000000
+	help
+	  Retains the port's strong-drive baseline. Every two-bit field must
+	  be 00, 01 or 10. Electrical loading is board-specific; no guessed
+	  impedance formula is derived from SPD. Qualify each DIMM population.
+
+config I440LX_ECC_WIRED
+	bool "Board ECC wiring and initialization path verified"
+	default n
+	help
+	  Allow CMOS EC/ECC after verifying all MECC wires and initialization
+	  on this board. Detection works without this. Requires the P6 MMX
+	  CAR path and full QWord initialization of all mapped DRAM.
+
+config I440LX_RAM_ADDRESS_TEST
+	bool "Check sampled rank address lines before using DRAM"
+	default y
+
+endif
+
 config SDRAM_4DIMM
 	bool
 	depends on NORTHBRIDGE_INTEL_I440LX

@@ -13,13 +13,8 @@
 #include <option.h>
 #include "i440lx.h"
 #include "raminit.h"
+#include "sdram_policy.h"
 
-#if CONFIG(USE_OPTION_TABLE)
-#include "option_table.h"
-
-#else
-
-#endif
 
 /*
  * Macros and definitions
@@ -57,11 +52,7 @@ static const u8 register_values[] = {
 	 * [15:15] WSC# Handshake Disable
 	 *         1 = Uni-processor mode
 	 *         0 = Dual-processor mode with external IOAPIC (default)
-	 * [14:14] Host Frequency (RO)
-	 *         MECC0 pin strap, used to select refresh tick rate and display system bus frequency
-	 *         1 = 60 MHz
-	 *         0 = 66 MHz
-	 * [13:12] Reserved
+	 * [14:12] Reserved (Intel 297655-005 supersedes the old frequency bit)
 	 * [11:11] DRAM Configuration Mode (strapped on CKE)
 	 *         1 = Memory Configuration #1
 	 *         0 = Memory Configuration #2 (default)
@@ -88,7 +79,13 @@ static const u8 register_values[] = {
 	 *                     cycles in the MDA range.
 	 * [04:00] Reserved
 	 */
-#if CONFIG(SMP)
+#if CONFIG(I440LX_SPD_RAMINIT)
+#if CONFIG(IOAPIC)
+	PACCFG + 1, 0x78, 0x04,
+#else
+	PACCFG + 1, 0x78, 0x84,
+#endif
+#elif CONFIG(SMP)
 	PACCFG + 1, 0x38, 0x0C,
 #else
 	PACCFG + 1, 0x38, 0x8C,
@@ -106,7 +103,11 @@ static const u8 register_values[] = {
 	 *       0 = Disable
 	 * [4:0] Reserved
 	 */
-	DBC, 0x00, 0xC3, /* Enable all useful features*/
+#if CONFIG(I440LX_SPD_RAMINIT)
+	DBC, 0x9f, 0x60, /* Only documented bits 6:5; preserve reserved bits. */
+#else
+	DBC, 0x00, 0xC3,
+#endif
 
 	/* DRT DRAM Row Type (must be set)
 	 * 0x55 - 0x56
@@ -323,9 +324,9 @@ SDRAM configuration functions.
  *
  * @param command The RAM command to send to the DIMM(s).
  */
-static void do_ram_command(u32 command)
+static void do_ram_command(u32 command, unsigned int caslatency)
 {
-	int i, caslatency;
+	int i;
 	u8 dimm_start, dimm_end;
 	u16 reg16;
 	void *addr;
@@ -348,7 +349,6 @@ static void do_ram_command(u32 command)
 	dimm_start = 0;
 	for (i = 0; i < (DIMM_SOCKETS * 2); i++) {
 		addr_offset = 0;
-		caslatency = 3; /* TODO: Dynamically get CAS latency later. */
 		if (command == RAM_COMMAND_MRS) {
 			if (caslatency == 3)
 				addr_offset = 0x1d0;
@@ -358,7 +358,7 @@ static void do_ram_command(u32 command)
 
 		dimm_end = pci_read_config8(NB, DRB + i);
 
-		addr = (void *)((dimm_start * 8 * 1024 * 1024) + addr_offset);
+		addr = (void *)(((uintptr_t)dimm_start << 23) + addr_offset);
 		if (dimm_end > dimm_start) {
 			read32(addr);
 		}
@@ -370,8 +370,15 @@ static void do_ram_command(u32 command)
 
 static void set_dram_buffer_strength(void)
 {
-	// set drive strength
+#if CONFIG(I440LX_SPD_RAMINIT)
+	uint32_t strength = CONFIG_I440LX_SDRAM_MBSC;
+	for (unsigned int shift = 0; shift < 32; shift += 2)
+		if (((strength >> shift) & 3) == 3)
+			die_with_post_code(POSTCODE_RAM_FAILURE, "Reserved MBSC drive strength\n");
+	pci_write_config32(NB, MBSC, strength);
+#else
 	pci_write_config32(NB, MBSC, 0x00000000);
+#endif
 }
 
 static void set_chipset_regs(void) {
@@ -407,7 +414,7 @@ static void northbridge_init(void)
 
 	uint16_t reg16;
 	reg16 = pci_read_config16(NB, PACCFG);
-	printk(BIOS_DEBUG, "CPU Host Freq: 6%d MHz\n", (reg16 & 0x4000) ? 0 : 6);
+	printk(BIOS_DEBUG, "LX memory wiring configuration %u\n", (reg16 & PACCFG_MEMCFG1) ? 1 : 2);
 
 	DUMPBRIDGE();
 
@@ -436,11 +443,11 @@ static void sdram_set_registers(void)
 		PRINT_DEBUG("    Set register 0x");
 		PRINT_DEBUG_HEX8(register_values[i]);
 		PRINT_DEBUG(" to 0x");
-		PRINT_DEBUG_HEX8(register_values[i + 1]);
+		PRINT_DEBUG_HEX8(reg);
 		uint8_t tmp = pci_read_config8(NB, register_values[i]);
 		PRINT_DEBUG(" read back 0x");
 		PRINT_DEBUG_HEX8(tmp);
-		if (tmp == register_values[i + 1]) {
+		if (tmp == reg) {
 			PRINT_DEBUG(" OK ");
 		} else {
 			PRINT_DEBUG(" FAIL ");
@@ -469,7 +476,9 @@ static struct dimm_size spd_get_dimm_size(unsigned int device)
 
 	/* Find the size of side1. */
 	/* Find the larger value. The larger value is always side1. */
-	for (i = 512; i >= 0; i >>= 1) {
+	if (module_density <= 0 || dimm_banks < 1 || dimm_banks > 2)
+		return (struct dimm_size){0, 0};
+	for (i = 128; i > 0; i >>= 1) {
 		if ((module_density & i) == i) {
 			sz.side1 = i;
 			break;
@@ -488,13 +497,14 @@ static struct dimm_size spd_get_dimm_size(unsigned int device)
 			 * i >>= 1 done initially to make sure we don't get
 			 * the same value again.
 			 */
-			for (i >>= 1; i >= 0; i >>= 1) {
-				if (module_density == (sz.side1 | i)) {
+			for (i >>= 1; i > 0; i >>= 1) {
+				if ((unsigned int)module_density == (sz.side1 | i)) {
 					sz.side2 = i;
 					break;
 				}
 			}
-			/* If not, it's symmetrical. */
+			if (!i)
+				return (struct dimm_size){0, 0};
 		} else {
 			sz.side2 = sz.side1;
 		}
@@ -789,7 +799,7 @@ static void set_dram_row_attributes(void)
 	pci_write_config8(NB, DRAMT, 0xAC);
 }
 
-static void sdram_enable(void)
+static void sdram_enable(unsigned int caslatency)
 {
 	int i;
 	PRINT_DEBUG("Northbridge %s SDRAM enable:\n", "prior to");
@@ -800,29 +810,29 @@ static void sdram_enable(void)
 
 	/* 1. Apply NOP. Wait 200 clock cycles (200us should do). */
 	PRINT_DEBUG("RAM Enable %d: %s\n", 1, "Apply NOP");
-	do_ram_command(RAM_COMMAND_NOP);
+	do_ram_command(RAM_COMMAND_NOP, caslatency);
 	udelay(200);
 
 	/* 2. Precharge all. Wait tRP. */
 	PRINT_DEBUG("RAM Enable %d: %s\n", 2, "Precharge all");
-	do_ram_command(RAM_COMMAND_PRECHARGE);
+	do_ram_command(RAM_COMMAND_PRECHARGE, caslatency);
 	udelay(1);
 
 	/* 3. Perform 8 refresh cycles. Wait tRC each time. */
 	PRINT_DEBUG("RAM Enable %d: %s\n", 3, "CBR");
 	for (i = 0; i < 8; i++) {
-		do_ram_command(RAM_COMMAND_CBR);
+		do_ram_command(RAM_COMMAND_CBR, caslatency);
 		udelay(1);
 	}
 
 	/* 4. Mode register set. Wait two memory cycles. */
 	PRINT_DEBUG("RAM Enable %d: %s\n", 4, "Mode register set");
-	do_ram_command(RAM_COMMAND_MRS);
+	do_ram_command(RAM_COMMAND_MRS, caslatency);
 	udelay(2);
 
 	/* 5. Normal operation. */
 	PRINT_DEBUG("RAM Enable %d: %s\n", 5, "Normal operation");
-	do_ram_command(RAM_COMMAND_NORMAL);
+	do_ram_command(RAM_COMMAND_NORMAL, caslatency);
 	udelay(1);
 
 	/* 6. Finally enable refresh. */
@@ -839,6 +849,10 @@ void __weak enable_spd(void) { }
 
 void sdram_initialize(int s3resume)
 {
+	struct lx_sdram_plan plan;
+	unsigned int ecc_mode = 0;
+	if (s3resume)
+		die_with_post_code(POSTCODE_RAM_FAILURE, "LX S3 resume is not implemented\n");
 	timestamp_add_now(TS_INITRAM_START);
 	enable_spd();
 
@@ -846,15 +860,25 @@ void sdram_initialize(int s3resume)
 
 	dump_spd_registers();
 	sdram_set_registers();
-	/* Set up DRAM row boundary registers and other attributes. */
-	set_dram_row_attributes();
+	/* Keep old board behavior available until the new path is hardware qualified. */
+	if (CONFIG(I440LX_SPD_RAMINIT)) {
+		int cmos_valid = get_uint_option("ram_policy_version", 0) == 0x4c01;
+		ecc_mode = cmos_valid ? get_uint_option("ecc_memory", 0) : 0;
+		if (ecc_mode && !CONFIG(I440LX_ECC_WIRED))
+			die_with_post_code(POSTCODE_RAM_FAILURE, "ECC wiring is not qualified\n");
+		lx_spd_configure(&plan, ecc_mode, cmos_valid);
+	} else {
+		set_dram_row_attributes();
+	}
 	/* Set up DRAM buffer strength. */
 	set_dram_buffer_strength();
 	set_chipset_regs();
-	sdram_enable();
+	sdram_enable(CONFIG(I440LX_SPD_RAMINIT) ? plan.cas : 3);
+	if (CONFIG(I440LX_SPD_RAMINIT))
+		lx_sdram_finish(&plan, ecc_mode);
 
 	/* Clear any errors reported during raminit. */
-	pci_write_config8(NB, ERRSTS, 0x11);
+	pci_write_config8(NB, ERRSTS, pci_read_config8(NB, ERRSTS) & 0x11);
 	pci_write_config8(NB, ERRSTS + 1, 0x7);
 
 	timestamp_add_now(TS_INITRAM_END);

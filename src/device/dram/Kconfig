@@ -1,5 +1,10 @@
 ## SPDX-License-Identifier: GPL-2.0-only
 
+config USE_SDR_SDRAM
+	bool
+	help
+	  system supports SDR SDRAM memory
+
 config USE_DDR5
 	bool
 	default n

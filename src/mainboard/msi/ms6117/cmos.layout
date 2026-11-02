@@ -31,6 +31,10 @@ entries
 411	1	e	6	ras_precharge_time
 412	3	e	7	ma_wait_state
 
+# Memory capacity policy
+419	1	e	16	ram_capacity
+420	3	e	17	ram_limit
+
 # ECC Config
 416	2	e	9	ecc_memory
 
@@ -59,6 +63,7 @@ entries
  464 8	h	0	boot_countdown
 
 # coreboot config options: check sums
+480 16 h 0 ram_policy_version
 984	16	h	0	check_sum
 
 # -----------------------------------------------------------------
@@ -107,7 +112,7 @@ enumerations
 9	0	Non-ECC
 9	1	EC
 9	2	ECC
-9	3	ECC-Scrubbing
+9	3	Unsupported-Scrubbing
 
 # agp aperture size
 10  0	4MB
@@ -158,6 +163,16 @@ enumerations
  15	9	Fallback_HDD
  15	10	Fallback_Floppy
  15	3	ROM
+
+16 0 Strict
+16 1 Use-Supported-Ranks
+17 0 Auto
+17 1 64MB
+17 2 128MB
+17 3 192MB
+17 4 256MB
+17 5 384MB
+17 6 512MB
 
 checksums
 

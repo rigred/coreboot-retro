@@ -19,3 +19,6 @@ ramstage-$(CONFIG_USE_DDR3) += ddr3.c
 
 romstage-$(CONFIG_USE_DDR2) += ddr2.c
 ramstage-$(CONFIG_USE_DDR2) += ddr2.c
+
+romstage-$(CONFIG_USE_SDR_SDRAM) += sdr.c
+ramstage-$(CONFIG_USE_SDR_SDRAM) += sdr.c
