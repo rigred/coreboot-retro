@@ -8,6 +8,7 @@
 #include <identity.h>
 #include <smbios.h>
 #include <string.h>
+#include "mainboard.h"
 
 void mainboard_fill_fadt(acpi_fadt_t *fadt)
 {
@@ -79,14 +80,14 @@ static const struct port_information smbios_type8_info[] = {
 	{
 		.internal_reference_designator = "USB1",
 		.internal_connector_type       = CONN_NONE,
-		.external_reference_designator = "USB 2.0 Type-A",
+		.external_reference_designator = "USB Type-A",
 		.external_connector_type       = CONN_ACCESS_BUS_USB,
 		.port_type                     = TYPE_USB
 	},
 	{
 		.internal_reference_designator = "USB2",
 		.internal_connector_type       = CONN_NONE,
-		.external_reference_designator = "USB 2.0 Type-A",
+		.external_reference_designator = "USB Type-A",
 		.external_connector_type       = CONN_ACCESS_BUS_USB,
 		.port_type                     = TYPE_USB
 	},
@@ -151,19 +152,19 @@ static const struct port_information smbios_type8_info[] = {
 		.internal_connector_type       = CONN_9_PIN_DUAL_INLINE,
 		.external_reference_designator = "DB-9 Serial COM1",
 		.external_connector_type       = CONN_DB_9_PIN_MALE,
-		.port_type                     = TYPE_SERIAL_PORT_16450_COMPATIBLE
+		.port_type                     = TYPE_SERIAL_PORT_16550A_COMPATIBLE
 	},
 	{
 		.internal_reference_designator = "COM2",
 		.internal_connector_type       = CONN_9_PIN_DUAL_INLINE,
 		.external_reference_designator = "DB-9 Serial COM2",
 		.external_connector_type       = CONN_DB_9_PIN_MALE,
-		.port_type                     = TYPE_SERIAL_PORT_16450_COMPATIBLE
+		.port_type                     = TYPE_SERIAL_PORT_16550A_COMPATIBLE
 	},
 	{
 		.internal_reference_designator = "LPT1",
 		.internal_connector_type       = CONN_25_PIN_DUAL_INLINE,
-		.external_reference_designator = "DB-25 Parrallel LPT1",
+		.external_reference_designator = "DB-25 Parallel LPT1",
 		.external_connector_type       = CONN_DB_25_PIN_FEMALE,
 		.port_type                     = TYPE_PARALLEL_PORT_ECP_EPP
 	},
@@ -172,7 +173,7 @@ static const struct port_information smbios_type8_info[] = {
 		.internal_connector_type       = CONN_ON_BOARD_FLOPPY,
 		.external_reference_designator = "",
 		.external_connector_type       = CONN_NONE,
-		.port_type                     = TYPE_8251_FIFO_COMPATIBLE
+		.port_type                     = TYPE_OTHER_PORT
 	},
 	{
 		.internal_reference_designator = "PRIMARY IDE",
@@ -201,6 +202,7 @@ static int mainboard_smbios_data(struct device *dev, int *handle, unsigned long 
 		ARRAY_SIZE(smbios_type8_info)
 		);
 
+	len += ms6117_smbios_slots(current, handle);
 	return len;
 }
 #endif

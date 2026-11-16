@@ -18,6 +18,15 @@ config BOARD_MSI_MS6117
 
 if BOARD_MSI_MS6117
 
+config MS6117_PCI_IRQ_MASK
+	hex "PCI interrupt pool (ISA IRQ bitmap)"
+	default 0x0c00
+	help
+	  Default IRQs 10 and 11 are shared by PCI devices. IRQ 9 is reserved
+	  for SCI; other legacy device IRQs are excluded. Only bits 5, 10 and
+	  11 may be selected. Add IRQ 5 only if no ISA card needs it. This is
+	  board policy, not the broad IRQ capability mask from the OEM BIOS.
+
 config MAX_CPUS
 	int
 	default 1
