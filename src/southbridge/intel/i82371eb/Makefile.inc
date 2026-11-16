@@ -22,3 +22,5 @@ romstage-y += early_smbus.c
 
 endif
 ramstage-$(CONFIG_I82371EB_SMM) += smm_finalize.c
+
+romstage-$(CONFIG_I82371EB_SMBUS_BLOCK_WRITE) += block_write.c

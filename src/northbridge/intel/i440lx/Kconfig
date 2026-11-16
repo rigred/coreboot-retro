@@ -19,6 +19,12 @@ config I440LX_SPD_RAMINIT
 
 if I440LX_SPD_RAMINIT
 
+config I440LX_SDRAM_MIN_CLOCK_PS
+	int
+	default 15000
+	help
+	  Board-qualified lower timing bound. Other LX boards retain PC66 limits.
+
 config I440LX_SDRAM_CLOCK_PS
 	int "Actual SDRAM clock period in picoseconds"
 	default 15000

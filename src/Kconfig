@@ -145,9 +145,17 @@ config UTIL_GENPARSER
 
 	  Otherwise, say N to use the provided pregenerated scanner/parser.
 
+config MAINBOARD_PREFER_CMOS
+	bool
+	depends on HAVE_OPTION_TABLE
+	help
+	  Board preference for new configurations. An explicit profile selection
+	  of another option backend takes precedence.
+
 choice
 	prompt "Option backend to use"
 	default USE_MAINBOARD_SPECIFIC_OPTION_BACKEND if HAVE_MAINBOARD_SPECIFIC_OPTION_BACKEND
+	default USE_OPTION_TABLE if MAINBOARD_PREFER_CMOS
 	default USE_OPTION_TABLE if NVRAMCUI_SECONDARY_PAYLOAD
 	default USE_UEFI_VARIABLE_STORE if DRIVERS_EFI_VARIABLE_STORE && \
 		PAYLOAD_EDK2 && SMMSTORE_V2

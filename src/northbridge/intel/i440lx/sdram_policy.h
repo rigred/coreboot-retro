@@ -16,6 +16,6 @@ struct lx_sdram_plan {
 };
 
 /* Pure policy: no SMBus, CMOS, PCI or CPU-specific operations. */
-int lx_sdram_plan(const struct sdr_dimm dimms[4], unsigned int sockets,
+int lx_sdram_plan(const struct dimm_attr_sdr_st dimms[4], unsigned int sockets,
 		  const struct lx_sdram_options *options, struct lx_sdram_plan *plan);
 #endif

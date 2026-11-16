@@ -1,27 +1,41 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
+
 #ifndef DEVICE_DRAM_SDR_H
 #define DEVICE_DRAM_SDR_H
 
-#include <stdbool.h>
-#include <stdint.h>
+#include <device/dram/sdr_common.h>
 
-#define SDR_SPD_BYTES 64
-#define SDR_MAX_RANKS 2
-
-/* SDR-specific encodings; do not use spd.h's DDR half-clock CAS masks. */
-struct sdr_dimm {
-	uint16_t rank_mb[SDR_MAX_RANKS];
-	uint8_t rows[SDR_MAX_RANKS], cols[SDR_MAX_RANKS];
-	uint8_t ranks, banks, device_width, attributes, refresh;
-	uint8_t cas_mask;
-	uint32_t tck_ps[4], tac_ps[4]; /* entries indexed by CAS latency */
-	uint32_t trp_ps, trcd_ps, tras_ps, trrd_ps;
-	bool ecc;
+struct sdr_dimm_timings {
+	/* Index 0 = maximum CAS, 1 = maximum-1, 2 = maximum-2.
+	 * Not an index into set bits. Units: SDR_TIMEBASE_PS; zero = absent.
+	 */
+	uint16_t cycle_time[3];
+	uint16_t access_time[3];
+	uint8_t cas_supported; /* Bit 0 = CL1, unlike DDR's CAS masks. */
+	uint8_t cas_max;
+	uint8_t cs_latency; /* Bit 0 = zero-clock CS latency. */
+	uint8_t we_latency;
+	uint8_t burst_lengths;
+	uint8_t tCCD; /* Clocks. */
+	uint8_t tRP, tRCD, tRAS, tRRD; /* Whole nanoseconds. */
 };
 
-/* Pure decoder. Caller supplies a complete, successfully read SPD snapshot. */
-int sdr_spd_decode(const uint8_t spd[SDR_SPD_BYTES], struct sdr_dimm *dimm);
-bool sdr_supports_cas(const struct sdr_dimm *dimm, unsigned int cas,
-		     unsigned int clock_ps, unsigned int max_tac_ps);
+struct dimm_attr_sdr_st {
+	struct sdr_dimm_geometry geometry;
+	struct sdr_dimm_timings timings;
+};
 
-#endif
+/* Full checksum-validated decoder, following the DDR2 API convention.
+ * Caller reads a complete snapshot using its existing SMBus/I2C backend.
+ * Output is valid only on SPD_STATUS_OK. No controller policy is applied.
+ */
+enum spd_status spd_decode_sdr(struct dimm_attr_sdr_st *dimm,
+			     const uint8_t spd[SPD_SIZE_MAX_SDR]);
+
+/* Geometry-only users can omit this entry point and all timing code. */
+enum spd_status spd_decode_sdr_timings(struct sdr_dimm_timings *timings,
+				    const uint8_t spd[SPD_SIZE_MAX_SDR]);
+bool spd_sdr_supports_cas(const struct sdr_dimm_timings *timings, unsigned int cas,
+			unsigned int clock_ps, unsigned int max_tac_ps);
+
+#endif /* DEVICE_DRAM_SDR_H */

@@ -28,6 +28,8 @@
 	#define DIMM2		0x50
 #endif 
 
+unsigned int mainboard_sdram_clock_ps(void);
+void mainboard_sdram_clock_apply(void);
 void enable_spd(void);
 void sdram_initialize(int s3resume);
 struct lx_sdram_plan;

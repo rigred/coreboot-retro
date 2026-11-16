@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
+config DRIVERS_IMI_SC643
+	bool
+	help
+	  Transport-independent IMI SC643 control image builder. Board code
+	  supplies wiring, output masks, timing contracts and the bus backend.

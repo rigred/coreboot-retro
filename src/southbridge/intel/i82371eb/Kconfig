@@ -19,3 +19,9 @@ config I82371EB_SMM
 	  aliases. sconfig binds these at build time; there is no PCI scan.
 	  The platform must quiesce events before relocation and signal that
 	  SMRAM is locked before the post-device runtime probes can execute.
+
+config I82371EB_SMBUS_BLOCK_WRITE
+	bool
+	depends on SOUTHBRIDGE_INTEL_I82371EB
+	help
+	  Preloaded-FIFO SMBus block writes for early clock-generator setup.

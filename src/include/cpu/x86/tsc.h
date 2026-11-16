@@ -56,6 +56,13 @@ static inline unsigned long long rdtscll(void)
 /* Provided by CPU/chipset code for the TSC rate in MHz. */
 unsigned long tsc_freq_mhz(void);
 
+#if CONFIG(UNKNOWN_TSC_RATE)
+/* Pre-DRAM clock transition only. Caller provides an independent settle delay.
+ * Firmware timestamps spanning a frequency transition are not calibrated.
+ */
+unsigned long tsc_recalibrate(void);
+#endif
+
 static inline int tsc_constant_rate(void)
 {
 	return !CONFIG(UNKNOWN_TSC_RATE);

@@ -1,81 +1,103 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
+
 #include <device/dram/sdr.h>
+#include <lib.h>
 #include <string.h>
 
-/* Intel PC SDRAM SPD 1.2B, bytes 9/10 and 23/24: decimal nibbles.
- * At revision 1.x, 1..3 in the whole-ns nibble encode 16..18 ns.
- */
-static unsigned int decimal_ps(uint8_t byte, uint8_t revision)
+static uint16_t decode_decimal_time(uint8_t value, bool rollover)
 {
-	unsigned int ns = byte >> 4;
-	if (!ns || (byte & 15) > 9)
+	unsigned int ns = value >> 4;
+
+	if (!ns || (value & 15) > 9)
 		return 0;
-	if (ns <= 3 && (revision >> 4) <= 1)
+	/* Only SDR bytes 23/24 roll 1..3 ns up to 16..18 ns. DDR2's fractional
+	 * nibble encodings differ and must not be reused here.
+	 */
+	if (rollover && ns <= 3)
 		ns += 15;
-	return ns * 1000 + (byte & 15) * 100;
+
+	return ns * 20 + (value & 15) * 2;
 }
 
-int sdr_spd_decode(const uint8_t spd[SDR_SPD_BYTES], struct sdr_dimm *d)
+enum spd_status spd_decode_sdr_timings(struct sdr_dimm_timings *t,
+				    const uint8_t spd[SPD_SIZE_MAX_SDR])
 {
-	unsigned int checksum = 0;
-	unsigned int density_mask = 0;
-	memset(d, 0, sizeof(*d));
-	for (unsigned int i = 0; i < 63; i++)
-		checksum += spd[i];
-	if ((checksum & 255) != spd[63] || spd[0] < 64 || (spd[62] >> 4) > 1 || spd[2] != 4 ||
-	    spd[8] != 1 || spd[5] < 1 || spd[5] > 2 || spd[7] ||
-	    (spd[6] != 64 && spd[6] != 72) || spd[11] > 2 ||
-	    (spd[6] == 64 && spd[11]) || (spd[6] == 72 && !spd[11]) ||
-	    (spd[6] == 64 && spd[14]) ||
-	    (spd[6] == 72 && (!spd[14] || spd[14] > 8 || (spd[14] & (spd[14] - 1)))) ||
-	    (spd[13] != 4 && spd[13] != 8 && spd[13] != 16 && spd[13] != 32) ||
-	    (spd[17] != 2 && spd[17] != 4) || !(spd[16] & 4) ||
-	    !(spd[19] & 1) || !(spd[20] & 1) || spd[15] > 1 ||
-	    (spd[18] & 0xf8) || !(spd[18] & 6))
-		return -1;
-	d->ranks = spd[5];
-	d->banks = spd[17];
-	d->device_width = spd[13];
-	d->attributes = spd[21];
-	d->refresh = spd[12] & 0x7f;
-	d->cas_mask = spd[18];
-	d->ecc = spd[11] == 2 && spd[6] == 72;
-	for (unsigned int rank = 0; rank < d->ranks; rank++) {
-		unsigned int rows = rank && (spd[3] >> 4) ? spd[3] >> 4 : spd[3] & 15;
-		unsigned int cols = rank && (spd[4] >> 4) ? spd[4] >> 4 : spd[4] & 15;
-		if (rows < 10 || rows > 14 || cols < 8 || cols > 12)
-			return -1;
-		unsigned int mb = (1U << (rows + cols - 17)) * d->banks;
-		if (mb < 4 || mb > 512)
-			return -1;
-		/* Byte 31 is an unordered set, not a physical chip-select order.
-		 * Retain rank order from the row/column nibbles and cross-check it. */
-		density_mask |= mb / 4;
-		d->rank_mb[rank] = mb;
-		d->rows[rank] = rows;
-		d->cols[rank] = cols;
+	unsigned int cas_mask = spd[SPD_ACCEPTABLE_CAS_LATENCIES];
+
+	memset(t, 0, sizeof(*t));
+	if (spd[SPD_MEMORY_TYPE] != SPD_MEMORY_TYPE_SDRAM ||
+	    (spd[SPD_SPD_DATA_REVISION_CODE] >> 4) > 1)
+		return SPD_STATUS_INVALID;
+	if (!cas_mask || (cas_mask & 0x80) || !spd[SPD_CS_LATENCY] ||
+	    !spd[SPD_WE_LATENCY] || !spd[SPD_SUPPORTED_BURST_LENGTHS])
+		return SPD_STATUS_INVALID_FIELD;
+	t->cas_supported = cas_mask;
+	t->cas_max = log2(cas_mask) + 1;
+	t->cs_latency = spd[SPD_CS_LATENCY];
+	t->we_latency = spd[SPD_WE_LATENCY];
+	t->burst_lengths = spd[SPD_SUPPORTED_BURST_LENGTHS];
+	t->tCCD = spd[SPD_MIN_CLOCK_DELAY_B2B_RAND_COLUMN];
+	t->tRP = spd[SPD_MIN_ROW_PRECHARGE_TIME];
+	t->tRCD = spd[SPD_MIN_RAS_TO_CAS_DELAY];
+	t->tRAS = spd[SPD_MIN_ACTIVE_TO_PRECHARGE_DELAY];
+	t->tRRD = spd[SPD_MIN_ROWACTIVE_TO_ROWACTIVE];
+	if (!t->tRP || !t->tRCD || !t->tRAS || !t->tRRD)
+		return SPD_STATUS_INVALID_FIELD;
+	for (unsigned int i = 0; i < ARRAY_SIZE(t->cycle_time); i++) {
+		unsigned int cycle_byte = i ? SPD_SDRAM_CYCLE_TIME_2ND + (i - 1) * 2 :
+			SPD_MIN_CYCLE_TIME_AT_CAS_MAX;
+
+		if (t->cas_max <= i || !(cas_mask & (1U << (t->cas_max - i - 1))))
+			continue;
+		/* Lower-CAS timing pairs may be omitted. Retain the advertised CAS
+		 * mask, but never claim that an unspecified timing is usable.
+		 */
+		if (i && !spd[cycle_byte] && !spd[cycle_byte + 1])
+			continue;
+		if (i == 2) {
+			/* Bytes 25/26: six whole-ns bits and two quarter-ns bits. */
+			if (!(spd[cycle_byte] >> 2) || !(spd[cycle_byte + 1] >> 2))
+				return SPD_STATUS_INVALID_FIELD;
+			t->cycle_time[i] = spd[cycle_byte] * 5;
+			t->access_time[i] = spd[cycle_byte + 1] * 5;
+		} else {
+			t->cycle_time[i] = decode_decimal_time(spd[cycle_byte], i != 0);
+			t->access_time[i] = decode_decimal_time(spd[cycle_byte + 1], i != 0);
+		}
+		if (!t->cycle_time[i] || !t->access_time[i])
+			return SPD_STATUS_INVALID_FIELD;
 	}
-	if (density_mask != spd[31])
-		return -1;
-	unsigned int highest = (spd[18] & 4) ? 3 : 2;
-	d->tck_ps[highest] = decimal_ps(spd[9], spd[62]);
-	d->tac_ps[highest] = decimal_ps(spd[10], spd[62]);
-	if (highest == 3 && (spd[18] & 2)) {
-		d->tck_ps[2] = decimal_ps(spd[23], spd[62]);
-		d->tac_ps[2] = decimal_ps(spd[24], spd[62]);
-	}
-	d->trp_ps = spd[27] * 1000U;
-	d->trcd_ps = spd[29] * 1000U;
-	d->tras_ps = spd[30] * 1000U;
-	d->trrd_ps = spd[28] * 1000U;
-	return d->tck_ps[highest] && d->tac_ps[highest] && d->trp_ps &&
-		d->trcd_ps && d->tras_ps && d->trrd_ps ? 0 : -1;
+
+	return SPD_STATUS_OK;
 }
 
-bool sdr_supports_cas(const struct sdr_dimm *d, unsigned int cas,
-		     unsigned int clock_ps, unsigned int max_tac_ps)
+enum spd_status spd_decode_sdr(struct dimm_attr_sdr_st *dimm,
+			     const uint8_t spd[SPD_SIZE_MAX_SDR])
 {
-	return cas >= 2 && cas <= 3 && (d->cas_mask & (1U << (cas - 1))) &&
-		d->tck_ps[cas] && d->tck_ps[cas] <= clock_ps &&
-		d->tac_ps[cas] && d->tac_ps[cas] <= max_tac_ps;
+	enum spd_status ret;
+
+	memset(dimm, 0, sizeof(*dimm));
+	if (spd_checksum(spd, SPD_CHECKSUM_FOR_BYTES_0_TO_62) !=
+	    spd[SPD_CHECKSUM_FOR_BYTES_0_TO_62])
+		return SPD_STATUS_CRC_ERROR;
+	ret = spd_decode_sdr_geometry(&dimm->geometry, spd);
+	if (ret != SPD_STATUS_OK)
+		return ret;
+
+	return spd_decode_sdr_timings(&dimm->timings, spd);
+}
+
+bool spd_sdr_supports_cas(const struct sdr_dimm_timings *t, unsigned int cas,
+			unsigned int clock_ps, unsigned int max_tac_ps)
+{
+	unsigned int index;
+
+	if (!cas || cas > t->cas_max || !(t->cas_supported & (1U << (cas - 1))))
+		return false;
+	index = t->cas_max - cas;
+	if (index >= ARRAY_SIZE(t->cycle_time))
+		return false;
+
+	return t->cycle_time[index] && t->cycle_time[index] * SDR_TIMEBASE_PS <= clock_ps &&
+		t->access_time[index] && t->access_time[index] * SDR_TIMEBASE_PS <= max_tac_ps;
 }

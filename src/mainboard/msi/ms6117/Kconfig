@@ -9,6 +9,7 @@ config BOARD_MSI_MS6117
 	select SUPERIO_WINBOND_W83977TF
 	select W83977TF_HAVE_SEPARATE_IR_DEVICE
 	select BOARD_ROMSIZE_KB_256
+	select MAINBOARD_PREFER_CMOS
 	select HAVE_OPTION_TABLE
 	select HAVE_CMOS_DEFAULT
 	select HAVE_PIRQ_TABLE
@@ -26,6 +27,82 @@ config MS6117_PCI_IRQ_MASK
 	  for SCI; other legacy device IRQs are excluded. Only bits 5, 10 and
 	  11 may be selected. Add IRQ 5 only if no ISA card needs it. This is
 	  board policy, not the broad IRQ capability mask from the OEM BIOS.
+
+# Defaults are preferences, not selects: profiles can override them.
+config COMPRESS_SECONDARY_PAYLOAD
+	default y
+
+config INCLUDE_CONFIG_FILE
+	default n
+
+config I440LX_SDRAM_MIN_CLOCK_PS
+	default 13300 if MS6117_SC643_OVERCLOCK
+	default 14900 if MS6117_SC643
+
+config MS6117_SC643
+	bool "Enable qualified SC643 clock programming before SDRAM init"
+	select DRIVERS_IMI_SC643
+	select I82371EB_SMBUS_BLOCK_WRITE
+	depends on I440LX_SPD_RAMINIT && USE_OPTION_TABLE && UNKNOWN_TSC_RATE
+	default n
+	help
+	  Requires board measurements and a qualified live clock transition.
+	  This chip is WRITE ONLY. CMOS is a request, never clock readback.
+	  Every boot restores hardware strap selection unless an enabled,
+	  versioned CMOS overclock request passes the compile-time gates.
+	  The experimental LX SPD policy currently rejects 128 MiB ranks.
+	  Do not enable this with the working 256 MiB DIMMs yet.
+
+if MS6117_SC643
+
+config MS6117_SC643_QUALIFIED
+	bool "Bus wiring, straps, outputs and live switching verified on this PCB"
+	default n
+	help
+	  Complete the measurement worksheet, including warm reset and recovery.
+	  Programming is refused before the first write until this is enabled.
+	  This flag records qualification of the selected PCB and output masks.
+	  It does not turn a software request into a hardware clock measurement.
+
+config MS6117_SC643_STRAP_CLOCK_PS
+	int "Measured minimum SDRAM period with hardware straps (ps)"
+	default 14900
+	range 14900 15000
+	help
+	  Conservative provisional value for the documented 66.8 MHz mode.
+	  Replace with a lower bound including measurement uncertainty.
+	  This is a board contract, not an automatically measured frequency.
+	  This patch qualifies only the approximately 66.8 MHz baseline strap.
+	  Other strap modes need a refresh-rate and timing review first.
+
+config MS6117_SC643_PROGRAM_OUTPUTS
+	bool "Write all six control bytes, including output enables"
+	default n
+	help
+	  Otherwise only byte zero is sent and power-on output enables remain
+	  untouched. A warm reset does not restore output enables; qualify this
+	  path from every firmware state that you intend to support.
+	  Keep all outputs enabled until their attached loads have been traced.
+
+config MS6117_SC643_OVERCLOCK
+	bool "Permit CMOS 68.5/34.25 and 75/37.5 MHz requests"
+	default n
+	help
+	  Outside Intel's rated LX operating envelope. CPU, AGP, PCI, SDRAM
+	  and storage all require qualification; there is no independent PCI
+	  clock lock. SPD checks cannot certify signal integrity or CPU support.
+
+config MS6117_SC643_68_CLOCK_PS
+	int "Measured minimum period for 68.5 MHz mode (ps)"
+	default 14500
+	range 14400 14598
+
+config MS6117_SC643_75_CLOCK_PS
+	int "Measured minimum period for 75 MHz mode (ps)"
+	default 13300
+	range 13300 13333
+
+endif
 
 config MAX_CPUS
 	int

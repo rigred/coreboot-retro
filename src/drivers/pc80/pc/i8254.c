@@ -97,6 +97,13 @@ bad_ctc:
 #if CONFIG(UNKNOWN_TSC_RATE)
 static u32 timer_tsc;
 
+unsigned long tsc_recalibrate(void)
+{
+	/* Use only before DRAM/MP/payload startup, with no active timeout. */
+	timer_tsc = calibrate_tsc_with_pit();
+	return timer_tsc;
+}
+
 unsigned long tsc_freq_mhz(void)
 {
 	if (timer_tsc > 0)

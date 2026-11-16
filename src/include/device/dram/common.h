@@ -5,6 +5,7 @@
 
 #include <console/console.h>
 #include <stdint.h>
+#include <stddef.h>
 
 /**
  * \brief Convenience definitions for TCK values
@@ -54,6 +55,9 @@ enum spd_status {
 	SPD_STATUS_CRC_ERROR,
 	SPD_STATUS_INVALID_FIELD,
 };
+
+/* Additive checksum used by SDR and DDR2 SPD bytes 0..62. */
+uint8_t spd_checksum(const uint8_t *spd, size_t len);
 
 u16 ddr_crc16(const u8 *ptr, int n_crc);
 

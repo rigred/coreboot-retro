@@ -8,17 +8,29 @@
 #include "raminit.h"
 #include "sdram_policy.h"
 
+/* Board clock policy stays outside the generic decoder. Validate the complete
+ * DIMM plan at the requested period before changing a write-only clock chip.
+ */
+__weak unsigned int mainboard_sdram_clock_ps(void)
+{
+	return CONFIG_I440LX_SDRAM_CLOCK_PS;
+}
+
+__weak void mainboard_sdram_clock_apply(void)
+{
+}
+
 void lx_spd_configure(struct lx_sdram_plan *plan, unsigned int ecc_mode, int cmos_valid)
 {
-	struct sdr_dimm dimms[4] = {0};
-	uint8_t spd[SDR_SPD_BYTES];
+	struct dimm_attr_sdr_st dimms[4] = {0};
+	uint8_t spd[SPD_SIZE_MAX_SDR];
 	const unsigned int capacities[] = {0, 64, 128, 192, 256, 384, 512};
 	unsigned int capacity = cmos_valid ? get_uint_option("ram_limit", 0) : 0;
 	unsigned int policy = cmos_valid ? get_uint_option("ram_capacity", 1) : 1;
 	unsigned int manual = cmos_valid ? get_uint_option("ram_config", 0) : 0;
 	unsigned int ma = manual ? get_uint_option("ma_wait_state", 0) : 0;
 	struct lx_sdram_options options = {
-		.clock_ps = CONFIG_I440LX_SDRAM_CLOCK_PS,
+		.clock_ps = mainboard_sdram_clock_ps(),
 		.max_tac_ps = CONFIG_I440LX_SDRAM_MAX_TAC_PS,
 		.use_supported = policy == 1,
 		.fast_ma = CONFIG(I440LX_SDRAM_FAST_MA),
@@ -49,7 +61,7 @@ void lx_spd_configure(struct lx_sdram_plan *plan, unsigned int ecc_mode, int cmo
 		int type = smbus_read_byte(address, 2);
 		if (type < 0 || type == 0xff || type == 0)
 			continue; /* SMBus NACK cannot distinguish absent from unreadable SPD. */
-		if (type != 4)
+		if (type != SPD_MEMORY_TYPE_SDRAM)
 			die_with_post_code(POSTCODE_RAM_FAILURE, "Only SDR SDRAM initialization supported\n");
 		for (unsigned int byte = 0; byte < sizeof(spd); byte++) {
 			int value = smbus_read_byte(address, byte);
@@ -57,20 +69,21 @@ void lx_spd_configure(struct lx_sdram_plan *plan, unsigned int ecc_mode, int cmo
 				die_with_post_code(POSTCODE_RAM_FAILURE, "SPD read failed\n");
 			spd[byte] = value;
 		}
-		if (sdr_spd_decode(spd, &dimms[slot]))
+		if (spd_decode_sdr(&dimms[slot], spd) != SPD_STATUS_OK)
 			die_with_post_code(POSTCODE_RAM_FAILURE, "SPD checksum/geometry/timing invalid\n");
 		printk(BIOS_INFO, "DIMM%u SPD %02x: %u ranks %u/%u MiB, x%u, %s\n",
-			slot, address, dimms[slot].ranks, dimms[slot].rank_mb[0],
-			dimms[slot].rank_mb[1], dimms[slot].device_width,
-			dimms[slot].ecc ? "72-bit ECC capable" : "non-ECC/parity");
+			slot, address, dimms[slot].geometry.ranks, dimms[slot].geometry.rank[0].size_mb,
+			dimms[slot].geometry.rank[1].size_mb, dimms[slot].geometry.rank[0].width,
+			dimms[slot].geometry.error_type == SDR_ERROR_ECC ? "ECC capable" : "non-ECC/parity");
 	}
 	if (lx_sdram_plan(dimms, DIMM_SOCKETS, &options, plan))
 		die_with_post_code(POSTCODE_RAM_FAILURE, "No valid LX SDRAM plan for SPD/CMOS\n");
 	for (unsigned int slot = 0; slot < DIMM_SOCKETS; slot++)
-		for (unsigned int rank = 0; rank < dimms[slot].ranks; rank++)
+		for (unsigned int rank = 0; rank < dimms[slot].geometry.ranks; rank++)
 			if (!(plan->selected & (1U << (slot * 2 + rank))))
 				printk(BIOS_WARNING, "DIMM%u rank%u disabled by geometry/capacity/ECC policy\n",
 					slot, rank);
+	mainboard_sdram_clock_apply();
 	/* Set every row, including the two nonexistent rows on 3-DIMM boards. */
 	for (unsigned int row = 0; row < 8; row++)
 		pci_write_config8(NB, DRB + row, plan->drb[row]);

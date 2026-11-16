@@ -22,3 +22,6 @@ ramstage-$(CONFIG_USE_DDR2) += ddr2.c
 
 romstage-$(CONFIG_USE_SDR_SDRAM) += sdr.c
 ramstage-$(CONFIG_USE_SDR_SDRAM) += sdr.c
+
+romstage-$(CONFIG_USE_SDR_SDRAM) += sdr_common.c
+ramstage-$(CONFIG_USE_SDR_SDRAM) += sdr_common.c

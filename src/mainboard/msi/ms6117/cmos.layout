@@ -48,8 +48,7 @@ entries
 # -----------------------------------------------------------------
 # clock config options
 432	1	e	1	overclocking
-433	1	e	1	spread_spectrum
-434	1	e	13	spread_factor
+433	2	r	0	reserved_spread_bits
 435	2	e	12	bus_clock
 
 # Pentium Pro and Klamath CPU ratio setting
@@ -64,6 +63,7 @@ entries
 
 # coreboot config options: check sums
 480 16 h 0 ram_policy_version
+496 16 h 0 clock_policy_version
 984	16	h	0	check_sum
 
 # -----------------------------------------------------------------
@@ -129,13 +129,11 @@ enumerations
 11	2	2x
 
 # pll fsb clock
-12	0	66/33MHz
-12	1	68/34MHz
+12	0	Hardware-Straps
+12	1	68.5/34.25MHz
 12	2	75/37.5MHz
 
-# pll spread spectrum factor
-13	0	0.25%
-13	1	0.5%
+# Spread spectrum is not an implemented SC643 feature.
 
 # CPU multiplier ratio
 14	0	Auto
