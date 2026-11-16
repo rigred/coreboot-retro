@@ -43,10 +43,17 @@ int spd_dimm_is_registered_ddr2(enum spd_dimm_type_ddr2 type)
  */
 u8 spd_ddr2_calc_checksum(u8 *spd, int len)
 {
+	int i;
+	u8 c = 0;
+
 	if (len < 63)
+		/* Not enough bytes available to get the checksum */
 		return 0;
 
-	return spd_checksum(spd, 63);
+	for (i = 0; i < 63; i++)
+		c += spd[i];
+
+	return c;
 }
 
 /**

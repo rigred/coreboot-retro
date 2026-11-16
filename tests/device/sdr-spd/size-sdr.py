@@ -24,7 +24,7 @@ with tempfile.TemporaryDirectory(dir=pathlib.Path(__file__).resolve().parent) as
     }
     for name, content in headers.items():
         f=d/name;f.parent.mkdir(parents=True, exist_ok=True);f.write_text(content)
-    support = '#include <device/dram/sdr.h>\nuint8_t spd[64];\n' + \
+    support = '#include <stddef.h>\n#include <device/dram/sdr.h>\nuint8_t spd[64];\n' + \
         'void *memset(void *p,int v,size_t n) {volatile uint8_t *b=p;while(n--)*b++=v;return p;}\n'
     profiles = {
         'geometry': 'struct sdr_dimm_geometry g;void _start(void){volatile int r=spd_decode_sdr_geometry(&g,spd);(void)r;for(;;);}',
@@ -41,13 +41,13 @@ with tempfile.TemporaryDirectory(dir=pathlib.Path(__file__).resolve().parent) as
                         '-nostdlib','-no-pie','-Wl,--gc-sections,-e,_start',
                         '-I',str(d),'-idirafter',str(tree/'src/include'),
                         str(d/'entry.c'),*[str(tree/'src/device/dram'/f)
-                        for f in ['sdr.c','sdr_common.c','ddr_common.c']],'-o',str(binary)],check=True)
+                        for f in ['sdr.c','sdr_common.c']],'-o',str(binary)],check=True)
         symbols=subprocess.check_output(['nm',str(binary)],text=True)
         if name=='geometry':
-            assert 'spd_decode_sdr_timings' not in symbols and 'spd_checksum' not in symbols
+            assert 'spd_decode_sdr_timings' not in symbols and 'sdr_spd_checksum' not in symbols
             assert 'spd_sdr_supports_cas' not in symbols
         if name=='timings':
-            assert 'spd_decode_sdr_geometry' not in symbols and 'spd_checksum' not in symbols
+            assert 'spd_decode_sdr_geometry' not in symbols and 'sdr_spd_checksum' not in symbols
         sections=subprocess.check_output(['size','-A',str(binary)],text=True)
         sizes={line.split()[0]:int(line.split()[1]) for line in sections.splitlines()
                if line.startswith(('.text ','.rodata ','.data ','.bss '))}

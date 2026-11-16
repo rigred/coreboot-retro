@@ -88,9 +88,12 @@ if that CAS bit is advertised. No timing is inferred from a PC66/PC100 label.
 
 The code uses the existing `spd.h` field numbers and memory-type enum,
 `device/dram/common.h` status enum, `lib.h` integer `log2()` and build/link
-conventions. The former DDR2 checksum loop is shared as `spd_checksum()` in
-`ddr_common.c`; the public DDR2 wrapper retains its signature and short-input
-behavior. No DDR2 timing decoder is reused because its encodings differ.
+conventions without modifying those interfaces. The fixed-length additive
+checksum is private to `sdr.c`: only the complete SDR decoder uses it. There
+is no new shared checksum API, no dependency on `ddr_common.c`, and no DDR2
+source change. Geometry-only and timing-only users do not retain the complete
+decoder or its checksum code. Test fixtures compute their checksum independently.
+No DDR2 timing decoder is reused because its encodings differ.
 
 The linked upstream `spd.c` contains manufacturer and SMBIOS module mappings,
 not the raw byte transport/parser. Those interfaces remain unchanged. This

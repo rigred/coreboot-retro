@@ -28,7 +28,7 @@ with tempfile.TemporaryDirectory(dir=pathlib.Path(__file__).resolve().parent) as
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(content)
     sources = ['src/device/dram/sdr.c', 'src/device/dram/sdr_common.c',
-               'src/device/dram/ddr_common.c', 'src/northbridge/intel/i440lx/sdram_policy.c']
+               'src/northbridge/intel/i440lx/sdram_policy.c']
     binary = d/'test-sdr'
     args = ['cc', '-std=c11', '-O2', '-Wall', '-Wextra', '-Werror', '-Wno-builtin-declaration-mismatch',
             '-fsanitize=undefined', '-include', str(d/'host.h'), '-I', str(d),
@@ -42,18 +42,3 @@ with tempfile.TemporaryDirectory(dir=pathlib.Path(__file__).resolve().parent) as
                    [str(tree/s) for s in sources] +
                    [str(tree/'src/northbridge/intel/i440lx/spd_raminit.c'), '-o', str(binary)], check=True)
     subprocess.run([str(binary)], check=True)
-
-    # Execute the actual DDR2 checksum wrapper, with unchanged short-input behavior.
-    text = (tree/'src/device/dram/ddr2.c').read_text()
-    start = text.index('u8 spd_ddr2_calc_checksum(')
-    end = text.index('\n/**', start)
-    (d/'ddr2-checksum.c').write_text('#include <assert.h>\n#include <device/dram/common.h>\n' + text[start:end] +
-        '\nint main(void) {uint8_t a[128];for(int i=0;i<128;i++)a[i]=i;'
-        'assert(spd_ddr2_calc_checksum(a,62)==0);'
-        'assert(spd_ddr2_calc_checksum(a,63)==(uint8_t)1953);'
-        'assert(spd_ddr2_calc_checksum(a,128)==(uint8_t)1953);return 0;}\n')
-    subprocess.run(base_args +
-                   [str(d/'ddr2-checksum.c'), str(tree/'src/device/dram/ddr_common.c'),
-                    '-o', str(binary)], check=True)
-    subprocess.run([str(binary)], check=True)
-    print('PASS: unchanged DDR2 checksum wrapper behavior')

@@ -4,6 +4,17 @@
 #include <lib.h>
 #include <string.h>
 
+/* SDR SPD byte 63 stores the additive checksum of bytes 0 through 62. */
+static uint8_t sdr_spd_checksum(const uint8_t spd[SPD_SIZE_MAX_SDR])
+{
+	uint8_t checksum = 0;
+
+	for (unsigned int i = 0; i < SPD_CHECKSUM_FOR_BYTES_0_TO_62; i++)
+		checksum += spd[i];
+
+	return checksum;
+}
+
 static uint16_t decode_decimal_time(uint8_t value, bool rollover)
 {
 	unsigned int ns = value >> 4;
@@ -77,7 +88,7 @@ enum spd_status spd_decode_sdr(struct dimm_attr_sdr_st *dimm,
 	enum spd_status ret;
 
 	memset(dimm, 0, sizeof(*dimm));
-	if (spd_checksum(spd, SPD_CHECKSUM_FOR_BYTES_0_TO_62) !=
+	if (sdr_spd_checksum(spd) !=
 	    spd[SPD_CHECKSUM_FOR_BYTES_0_TO_62])
 		return SPD_STATUS_CRC_ERROR;
 	ret = spd_decode_sdr_geometry(&dimm->geometry, spd);

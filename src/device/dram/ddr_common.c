@@ -3,16 +3,6 @@
 #include <device/dram/common.h>
 #include <types.h>
 
-uint8_t spd_checksum(const uint8_t *spd, size_t len)
-{
-	uint8_t checksum = 0;
-
-	for (size_t i = 0; i < len; i++)
-		checksum += spd[i];
-
-	return checksum;
-}
-
 /**
  * \brief Calculate the CRC of a DDR SPD data
  *

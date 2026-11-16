@@ -7,7 +7,11 @@
 
 static void checksum(uint8_t spd[64])
 {
-	spd[63] = spd_checksum(spd, 63);
+	uint8_t value = 0;
+
+	for (unsigned int i = 0; i < 63; i++)
+		value += spd[i];
+	spd[63] = value;
 }
 
 static void fixture(uint8_t spd[64])
